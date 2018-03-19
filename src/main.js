@@ -18,6 +18,77 @@ let camera_z = 10;
 let camera_yaw = 0;
 let camera_pitch = 0;
 
+class UnitCell {
+    constructor() {
+        this.x_piece = false;
+        this.y_piece = false;
+        this.z_piece = false;
+    }
+
+    get center_piece() {
+        return this.x_piece || this.y_piece || this.z_piece;
+    }
+}
+
+let cells = new Map();
+cells.set("0,0,0", new UnitCell());
+cells.set("0,0,1", new UnitCell());
+cells.get("0,0,0").x_piece = true;
+cells.get("0,0,1").x_piece = true;
+cells.get("0,0,1").y_piece = true;
+
+class Box {
+    constructor(x0, y0, z0, dx, dy, dz) {
+        this.x0 = x0;
+        this.y0 = y0;
+        this.z0 = z0;
+        this.dx = dx;
+        this.dy = dy;
+        this.dz = dz;
+    }
+
+    vertices() {
+        let corners = [];
+        for (let x of [this.x0, this.x0 + this.dx]) {
+            for (let y of [this.y0, this.y0 + this.dy]) {
+                for (let z of [this.z0, this.z0 + this.dz]) {
+                    corners.push(x, y, z);
+                }
+            }
+        }
+        return corners;
+    }
+
+    toString() {
+        return `Box(${this.x0}, ${this.y0}, ${this.z0}, ${this.dx}, ${this.dy}, ${this.dz})`;
+    }
+}
+
+function boxesFromUnitCells() {
+    let result = [];
+    for (let key of cells.keys()) {
+        let [x, y, z] = key.split(",");
+        x = parseInt(x);
+        y = parseInt(y);
+        z = parseInt(z);
+
+        let val = cells.get(key);
+        if (val.x_piece) {
+            result.push(new Box(x, y, z, 1, 0.1, 0.1));
+        }
+        if (val.y_piece) {
+            result.push(new Box(x, y, z, 0.1, 1, 0.1));
+        }
+        if (val.z_piece) {
+            result.push(new Box(x, y, z, 0.1, 0.1, 1));
+        }
+        if (val.center_piece) {
+            result.push(new Box(x, y, z, 0.1, 0.1, 0.1));
+        }
+    }
+    return result;
+}
+
 const squareTriangleIndices = [0, 1, 2, 1, 2, 3];
 const boxTriangleIndices = [];
 for (let r = 0; r < 3; r++) {
@@ -101,53 +172,11 @@ function main() {
     requestAnimationFrame(render);
 }
 
-function boxVertices(x0, y0, z0, dx, dy, dz) {
-    let corners = [];
-    for (let x of [x0, x0 + dx]) {
-        for (let y of [y0, y0 + dy]) {
-            for (let z of [z0, z0 + dz]) {
-                corners.push(x, y, z);
-            }
-        }
-    }
-    return corners;
-}
-
 function initBuffers(gl) {
-
-    const positions = boxVertices(-1, -1, -1, 2, 2, 2);
     const positionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-
-    const faceColors = [
-        ...[0.8,  0.8,  0.8,  1.0],
-        ...[0.8,  0.8,  0.8,  1.0],
-        ...[0.8,  0.8,  0.8,  1.0],
-        ...[0.8,  0.8,  0.8,  1.0],
-        ...[0.8,  0.8,  0.8,  1.0],
-        ...[0.8,  0.8,  0.8,  1.0],
-        ...[0.8,  0.8,  0.8,  1.0],
-        ...[0.8,  0.8,  0.8,  1.0],
-    ];
     const colorBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(faceColors), gl.STATIC_DRAW);
-
-    let baryData = new Float32Array(8*3);
-    for (let i = 0; i < 8; i++) {
-        for (let j = 0; j < 3; j++) {
-            baryData[i*3 + j] = (i >> j) & 1;
-        }
-    }
     const barycentricIndexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, barycentricIndexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, baryData, gl.STATIC_DRAW);
-
     const indexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(boxTriangleIndices), gl.STATIC_DRAW);
-
     return {
         position: positionBuffer,
         color: colorBuffer,
@@ -174,20 +203,48 @@ function drawScene(gl, programInfo, buffers) {
         false,
         viewMatrix.raw);
 
+    let boxes = boxesFromUnitCells();
+
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
+    let positions = [];
+    for (let box of boxes) {
+        positions.push(...box.vertices());
+    }
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
     gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.baryCoords);
+    let baryData = new Float32Array(boxes.length*8*3);
+    for (let i = 0; i < boxes.length*8; i++) {
+        for (let j = 0; j < 3; j++) {
+            baryData[i*3 + j] = (i >> j) & 1;
+        }
+    }
+    gl.bufferData(gl.ARRAY_BUFFER, baryData, gl.STATIC_DRAW);
     gl.vertexAttribPointer(programInfo.attribLocations.baryCoord, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(programInfo.attribLocations.baryCoord);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
+    const faceColors = [0.8,  0.8,  0.8,  1.0];
+    let colorData = [];
+    for (let i = 0; i < boxes.length * 8; i++) {
+        colorData.push(...faceColors);
+    }
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colorData), gl.STATIC_DRAW);
     gl.vertexAttribPointer(programInfo.attribLocations.vertexColor, 4, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-    gl.drawElements(gl.TRIANGLES, boxTriangleIndices.length, gl.UNSIGNED_SHORT, 0);
+    let indexData = [];
+    for (let i = 0; i < boxes.length; i++) {
+        for (let e of boxTriangleIndices) {
+            indexData.push(8*i + e);
+        }
+    }
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), gl.STATIC_DRAW);
+
+    gl.drawElements(gl.TRIANGLES, indexData.length, gl.UNSIGNED_SHORT, 0);
 }
 
 function initShaderProgram(gl, vsSource, fsSource) {
