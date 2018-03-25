@@ -12,10 +12,10 @@ import {describe} from "src/base/Describe.js";
 import {Mat4} from "src/base/Mat4.js";
 
 
-let camera_x = 2;
-let camera_y = 0;
-let camera_z = 10;
-let camera_yaw = 0;
+let camera_x = 2.2;
+let camera_y = 0.3;
+let camera_z = 0.8;
+let camera_yaw = -Math.PI/2;
 let camera_pitch = 0;
 
 class UnitCell {
@@ -24,18 +24,18 @@ class UnitCell {
         this.y_piece = false;
         this.z_piece = false;
     }
-
-    get center_piece() {
-        return this.x_piece || this.y_piece || this.z_piece;
-    }
 }
 
 let cells = new Map();
 cells.set("0,0,0", new UnitCell());
-cells.set("0,0,1", new UnitCell());
 cells.get("0,0,0").x_piece = true;
+
+cells.set("0,0,1", new UnitCell());
 cells.get("0,0,1").x_piece = true;
 cells.get("0,0,1").y_piece = true;
+
+cells.set("0,1,0", new UnitCell());
+cells.get("0,1,0").z_piece = true;
 
 class Box {
     constructor(x0, y0, z0, dx, dy, dz) {
@@ -66,6 +66,7 @@ class Box {
 
 function boxesFromUnitCells() {
     let result = [];
+    let centers = new Set();
     for (let key of cells.keys()) {
         let [x, y, z] = key.split(",");
         x = parseInt(x);
@@ -74,17 +75,27 @@ function boxesFromUnitCells() {
 
         let val = cells.get(key);
         if (val.x_piece) {
-            result.push(new Box(x, y, z, 1, 0.1, 0.1));
+            result.push(new Box(x + 0.1, y, z, 0.9, 0.1, 0.1));
+            centers.add(key);
+            centers.add(`${x+1},${y},${z}`);
         }
         if (val.y_piece) {
-            result.push(new Box(x, y, z, 0.1, 1, 0.1));
+            result.push(new Box(x, y + 0.1, z, 0.1, 0.9, 0.1));
+            centers.add(key);
+            centers.add(`${x},${y+1},${z}`);
         }
         if (val.z_piece) {
-            result.push(new Box(x, y, z, 0.1, 0.1, 1));
+            result.push(new Box(x, y, z + 0.1, 0.1, 0.1, 0.9));
+            centers.add(key);
+            centers.add(`${x},${y},${z+1}`);
         }
-        if (val.center_piece) {
-            result.push(new Box(x, y, z, 0.1, 0.1, 0.1));
-        }
+    }
+    for (let key of centers) {
+        let [x, y, z] = key.split(",");
+        x = parseInt(x);
+        y = parseInt(y);
+        z = parseInt(z);
+        result.push(new Box(x, y, z, 0.1, 0.1, 0.1));
     }
     return result;
 }
@@ -101,8 +112,8 @@ for (let r = 0; r < 3; r++) {
     }
 }
 
+const canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 function main() {
-    const canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
     const canvasDiv = /** @type {!HTMLDivElement} */ document.getElementById('canvasDiv');
     canvas.width = 1000;
     canvas.height = 500;
@@ -112,16 +123,19 @@ function main() {
         attribute vec4 aVertexPosition;
         attribute vec4 aVertexColor;
         attribute vec3 aBaryCoord;
+        attribute vec3 aSize;
 
         uniform mat4 uMatrix;
 
         varying lowp vec4 vColor;
         varying lowp vec3 vBaryCoord;
+        varying lowp vec3 vSize;
 
         void main(void) {
             gl_Position = uMatrix * aVertexPosition;
             vColor = aVertexColor;
             vBaryCoord = aBaryCoord;
+            vSize = aSize;
         }
     `;
 
@@ -130,13 +144,23 @@ function main() {
 
         varying lowp vec4 vColor;
         varying lowp vec3 vBaryCoord;
+        varying lowp vec3 vSize;
 
         void main(void) {
-            float dx = float(abs(vBaryCoord.x - 0.5) > 0.49);
-            float dy = float(abs(vBaryCoord.y - 0.5) > 0.49);
-            float dz = float(abs(vBaryCoord.z - 0.5) > 0.49);
-            float edge = float(dx + dy + dz >= 2.0);
-            vec4 e = vec4(vec3(1.0, 1.0, 1.0) - edge*0.5, 1.0);
+            vec3 b = min(vBaryCoord, 1.0 - vBaryCoord) * vSize;
+            if (b.x > b.y) {
+                b = vec3(b.y, b.x, b.z);
+            }
+            if (b.y > b.z) {
+                b = vec3(b.x, b.z, b.y);
+            }
+            if (b.x > b.y) {
+                b = vec3(b.y, b.x, b.z);
+            }
+            
+            float y = 2.0 - b.y * 750.0;
+            float edge = max(0.0, y);
+            vec4 e = vec4(vec3(1.0, 1.0, 1.0) - edge, 1.0);
             gl_FragColor = vColor * e;
         }
     `;
@@ -155,6 +179,7 @@ function main() {
             vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
             vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
             baryCoord: gl.getAttribLocation(shaderProgram, 'aBaryCoord'),
+            size: gl.getAttribLocation(shaderProgram, 'aSize'),
         },
         uniformLocations: {
             matrix: gl.getUniformLocation(shaderProgram, 'uMatrix'),
@@ -177,11 +202,13 @@ function initBuffers(gl) {
     const colorBuffer = gl.createBuffer();
     const barycentricIndexBuffer = gl.createBuffer();
     const indexBuffer = gl.createBuffer();
+    const sizeBuffer = gl.createBuffer();
     return {
         position: positionBuffer,
         color: colorBuffer,
         indices: indexBuffer,
         baryCoords: barycentricIndexBuffer,
+        size: sizeBuffer,
     };
 }
 
@@ -195,8 +222,8 @@ function drawScene(gl, programInfo, buffers) {
 
     gl.useProgram(programInfo.program);
     let viewMatrix = Mat4.perspective(Math.PI/4, gl.canvas.clientWidth/gl.canvas.clientHeight, 0.1, 100).
-        inline_rotate(camera_pitch, [0, 1, 0]).
-        inline_rotate(camera_yaw, [1, 0, 0]).
+        inline_rotate(camera_pitch, [1, 0, 0]).
+        inline_rotate(camera_yaw, [0, 1, 0]).
         inline_translate(-camera_x, -camera_y, -camera_z);
     gl.uniformMatrix4fv(
         programInfo.uniformLocations.matrix,
@@ -225,6 +252,17 @@ function drawScene(gl, programInfo, buffers) {
     gl.vertexAttribPointer(programInfo.attribLocations.baryCoord, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(programInfo.attribLocations.baryCoord);
 
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.size);
+    let sizeData = new Float32Array(boxes.length*8*3);
+    for (let i = 0; i < boxes.length*8; i++) {
+        sizeData[i*3] = boxes[i >> 3].dz;
+        sizeData[i*3 + 1] = boxes[i >> 3].dy;
+        sizeData[i*3 + 2] = boxes[i >> 3].dx;
+    }
+    gl.bufferData(gl.ARRAY_BUFFER, sizeData, gl.STATIC_DRAW);
+    gl.vertexAttribPointer(programInfo.attribLocations.size, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(programInfo.attribLocations.size);
+
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
     const faceColors = [0.8,  0.8,  0.8,  1.0];
     let colorData = [];
@@ -251,18 +289,13 @@ function initShaderProgram(gl, vsSource, fsSource) {
     const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
     const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
 
-    // Create the shader program
-
     const shaderProgram = gl.createProgram();
     gl.attachShader(shaderProgram, vertexShader);
     gl.attachShader(shaderProgram, fragmentShader);
     gl.linkProgram(shaderProgram);
 
-    // If creating the shader program failed, alert
-
     if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-        alert('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
-        return null;
+        throw new Error('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
     }
 
     return shaderProgram;
@@ -282,35 +315,47 @@ function loadShader(gl, type, source) {
 
 main();
 
-document.onkeydown = ev => {
-    if (ev.keyCode === 'A'.charCodeAt(0)) {
-        camera_x -= 0.1;
+let prevMouse = [0, 0];
+canvas.addEventListener('mousemove', ev => {
+    let b = canvas.getBoundingClientRect();
+    let curMouse = [ev.clientX - b.left, ev.clientY - b.top];
+    if (ev.which === 1) {
+        camera_yaw -= (curMouse[0] - prevMouse[0]) * 0.002;
+        camera_pitch -= (curMouse[1] - prevMouse[1]) * 0.002;
+        camera_pitch = Math.max(Math.min(camera_pitch, Math.PI/2), -Math.PI/2);
     }
-    if (ev.keyCode === 'D'.charCodeAt(0)) {
-        camera_x += 0.1;
+    prevMouse = curMouse;
+});
+
+function step(dx, dy, dz) {
+    let viewMatrix = Mat4.rotation(-camera_yaw, [0, 1, 0]).times(Mat4.rotation(-camera_pitch, [1, 0, 0]));
+    let [x, y ,z] = viewMatrix.transformVector(dx, dy, dz);
+    camera_x += x;
+    camera_y += y;
+    camera_z += z;
+}
+canvas.addEventListener('mousewheel', ev => {
+    let d = -ev.wheelDelta / 500.0;
+    step((prevMouse[0] / canvas.clientWidth - 0.5) * -2 * d,
+         (prevMouse[1] / canvas.clientHeight - 0.5) * d,
+         d);
+});
+document.addEventListener('keydown', ev => {
+    if (ev.keyCode === 'A'.charCodeAt(0) || ev.keyCode === 37) {
+        step(-0.1, 0, 0);
+        ev.preventDefault();
     }
-    if (ev.keyCode === 'S'.charCodeAt(0)) {
-        camera_y -= 0.1;
+    if (ev.keyCode === 'D'.charCodeAt(0) || ev.keyCode === 39) {
+        step(0.1, 0, 0);
+        ev.preventDefault();
     }
-    if (ev.keyCode === 'W'.charCodeAt(0)) {
-        camera_y += 0.1;
+
+    if (ev.keyCode === 'S'.charCodeAt(0) || ev.keyCode === 40) {
+        step(0, -0.1, 0);
+        ev.preventDefault();
     }
-    if (ev.keyCode === 'Q'.charCodeAt(0)) {
-        camera_z -= 0.1;
+    if (ev.keyCode === 'W'.charCodeAt(0) || ev.keyCode === 38) {
+        step(0, 0.1, 0);
+        ev.preventDefault();
     }
-    if (ev.keyCode === 'E'.charCodeAt(0)) {
-        camera_z += 0.1;
-    }
-    if (ev.keyCode === 'R'.charCodeAt(0)) {
-        camera_yaw -= 0.1;
-    }
-    if (ev.keyCode === 'T'.charCodeAt(0)) {
-        camera_yaw += 0.1;
-    }
-    if (ev.keyCode === 'F'.charCodeAt(0)) {
-        camera_pitch -= 0.1;
-    }
-    if (ev.keyCode === 'G'.charCodeAt(0)) {
-        camera_pitch += 0.1;
-    }
-};
+});

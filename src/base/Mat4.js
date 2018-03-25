@@ -2,7 +2,7 @@ import {DetailedError} from "src/base/DetailedError.js"
 
 class Mat4 {
     /**
-     * @param {!Float32Array} buf
+     * @param {!Float32Array} buf An array containing the elements of the matrix, column by column.
      */
     constructor(buf) {
         this.raw = buf;
@@ -41,9 +41,9 @@ class Mat4 {
     }
 
     /**
-     * @param {!float} x
-     * @param {!float} y
-     * @param {!float} z
+     * @param {!number} x
+     * @param {!number} y
+     * @param {!number} z
      * @returns {!Mat4}
      */
     translate(x, y, z) {
@@ -83,7 +83,7 @@ class Mat4 {
 
     /**
      * @param {!Mat4} other
-     * @returns {!Mat4} out
+     * @returns {!Mat4}
      */
     times(other) {
         return Mat4.generate((row, col) => {
@@ -93,6 +93,22 @@ class Mat4 {
             }
             return t;
         });
+    }
+
+    /**
+     * @param {!number} x
+     * @param {!number} y
+     * @param {!number} z
+     * @returns {![!number, !number, !number]}
+     */
+    transformVector(x, y, z) {
+        let m = Mat4.zero();
+        m.raw[0] = x;
+        m.raw[1] = y;
+        m.raw[2] = z;
+        m.raw[3] = 1;
+        let r = this.times(m);
+        return [r.raw[0], r.raw[1], r.raw[2]];
     }
 
     /**
