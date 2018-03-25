@@ -10,6 +10,9 @@ window.onerror = function(msg, url, line, col, error) {
 import {DetailedError} from 'src/base/DetailedError.js'
 import {describe} from "src/base/Describe.js";
 import {Mat4} from "src/base/Mat4.js";
+import {Box, BOX_TRIANGLE_INDICES} from "src/geo/Box.js";
+import {Vector} from "src/geo/Vector.js";
+import {Point} from "src/geo/Point.js";
 
 
 let camera_x = 2.2;
@@ -26,7 +29,7 @@ class UnitCell {
     }
 }
 
-let cells = new Map();
+let cells = /** @type {!Map.<!string, !UnitCell>} */ new Map();
 cells.set("0,0,0", new UnitCell());
 cells.get("0,0,0").x_piece = true;
 
@@ -36,33 +39,6 @@ cells.get("0,0,1").y_piece = true;
 
 cells.set("0,1,0", new UnitCell());
 cells.get("0,1,0").z_piece = true;
-
-class Box {
-    constructor(x0, y0, z0, dx, dy, dz) {
-        this.x0 = x0;
-        this.y0 = y0;
-        this.z0 = z0;
-        this.dx = dx;
-        this.dy = dy;
-        this.dz = dz;
-    }
-
-    vertices() {
-        let corners = [];
-        for (let x of [this.x0, this.x0 + this.dx]) {
-            for (let y of [this.y0, this.y0 + this.dy]) {
-                for (let z of [this.z0, this.z0 + this.dz]) {
-                    corners.push(x, y, z);
-                }
-            }
-        }
-        return corners;
-    }
-
-    toString() {
-        return `Box(${this.x0}, ${this.y0}, ${this.z0}, ${this.dx}, ${this.dy}, ${this.dz})`;
-    }
-}
 
 function boxesFromUnitCells() {
     let result = [];
@@ -75,17 +51,17 @@ function boxesFromUnitCells() {
 
         let val = cells.get(key);
         if (val.x_piece) {
-            result.push(new Box(x + 0.1, y, z, 0.9, 0.1, 0.1));
+            result.push(new Box(new Point(x + 0.1, y, z), new Vector(0.9, 0.1, 0.1)));
             centers.add(key);
             centers.add(`${x+1},${y},${z}`);
         }
         if (val.y_piece) {
-            result.push(new Box(x, y + 0.1, z, 0.1, 0.9, 0.1));
+            result.push(new Box(new Point(x, y + 0.1, z), new Vector(0.1, 0.9, 0.1)));
             centers.add(key);
             centers.add(`${x},${y+1},${z}`);
         }
         if (val.z_piece) {
-            result.push(new Box(x, y, z + 0.1, 0.1, 0.1, 0.9));
+            result.push(new Box(new Point(x, y, z + 0.1), new Vector(0.1, 0.1, 0.9)));
             centers.add(key);
             centers.add(`${x},${y},${z+1}`);
         }
@@ -95,21 +71,9 @@ function boxesFromUnitCells() {
         x = parseInt(x);
         y = parseInt(y);
         z = parseInt(z);
-        result.push(new Box(x, y, z, 0.1, 0.1, 0.1));
+        result.push(new Box(new Point(x, y, z), new Vector(0.1, 0.1, 0.1)));
     }
     return result;
-}
-
-const squareTriangleIndices = [0, 1, 2, 1, 2, 3];
-const boxTriangleIndices = [];
-for (let r = 0; r < 3; r++) {
-    for (let m of [0, 7]) {
-        for (let e of squareTriangleIndices) {
-            e = ((e << r) | (e >> (3 - r))) & 7;
-            e ^= m;
-            boxTriangleIndices.push(e);
-        }
-    }
 }
 
 const canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
@@ -190,7 +154,7 @@ function main() {
     // objects we'll be drawing.
     const buffers = initBuffers(gl);
 
-    function render(now) {
+    function render() {
         drawScene(gl, programInfo, buffers);
         requestAnimationFrame(render);
     }
@@ -235,7 +199,7 @@ function drawScene(gl, programInfo, buffers) {
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
     let positions = [];
     for (let box of boxes) {
-        positions.push(...box.vertices());
+        positions.push(...box.cornerCoords());
     }
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
     gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
@@ -255,9 +219,9 @@ function drawScene(gl, programInfo, buffers) {
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.size);
     let sizeData = new Float32Array(boxes.length*8*3);
     for (let i = 0; i < boxes.length*8; i++) {
-        sizeData[i*3] = boxes[i >> 3].dz;
-        sizeData[i*3 + 1] = boxes[i >> 3].dy;
-        sizeData[i*3 + 2] = boxes[i >> 3].dx;
+        sizeData[i*3] = boxes[i >> 3].diagonal.z;
+        sizeData[i*3 + 1] = boxes[i >> 3].diagonal.y;
+        sizeData[i*3 + 2] = boxes[i >> 3].diagonal.x;
     }
     gl.bufferData(gl.ARRAY_BUFFER, sizeData, gl.STATIC_DRAW);
     gl.vertexAttribPointer(programInfo.attribLocations.size, 3, gl.FLOAT, false, 0, 0);
@@ -276,7 +240,7 @@ function drawScene(gl, programInfo, buffers) {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
     let indexData = [];
     for (let i = 0; i < boxes.length; i++) {
-        for (let e of boxTriangleIndices) {
+        for (let e of BOX_TRIANGLE_INDICES) {
             indexData.push(8*i + e);
         }
     }
