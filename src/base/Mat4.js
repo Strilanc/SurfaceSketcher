@@ -8,10 +8,16 @@ class Mat4 {
         this.raw = buf;
     }
 
+    /**
+     * @returns {!Mat4}
+     */
     static zero() {
         return new Mat4(new Float32Array(16));
     }
 
+    /**
+     * @returns {!Mat4}
+     */
     static identity() {
         let result = Mat4.zero();
         result.raw[0] = 1;
@@ -21,6 +27,9 @@ class Mat4 {
         return result;
     }
 
+    /**
+     * @returns {!Mat4}
+     */
     clone() {
         return new Mat4(this.raw);
     }
@@ -31,23 +40,27 @@ class Mat4 {
      * @param {!number} z
      * @returns {!Mat4}
      */
-    inline_translate(x, y, z) {
-        let b = this.raw;
-        b[12] += b[0] * x + b[4] * y + b[8] * z;
-        b[13] += b[1] * x + b[5] * y + b[9] * z + b[13];
-        b[14] += b[2] * x + b[6] * y + b[10] * z;
-        b[15] += b[3] * x + b[7] * y + b[11] * z;
-        return this;
+    static translation(x, y, z) {
+        let r = Mat4.identity();
+        r.raw[3] = x;
+        r.raw[7] = y;
+        r.raw[11] = z;
+        return r;
     }
 
+
     /**
-     * @param {!number} x
-     * @param {!number} y
-     * @param {!number} z
+     * @param {!number} sx
+     * @param {!number} sy
+     * @param {!number} sz
      * @returns {!Mat4}
      */
-    translate(x, y, z) {
-        return this.clone().inline_translate(x, y, z);
+    static scaling(sx, sy, sz) {
+        let r = Mat4.identity();
+        r.raw[0] = sx;
+        r.raw[5] = sy;
+        r.raw[10] = sz;
+        return r;
     }
 
     /**
@@ -60,24 +73,61 @@ class Mat4 {
     static perspective(fovy, aspect, near, far) {
         let f = 1.0 / Math.tan(fovy / 2);
         let nf = 1 / (near - far);
+        let a = (far + near) * nf;
+        let b = 2 * far * near * nf;
         return new Mat4(new Float32Array([
             f / aspect, 0, 0, 0,
             0, f, 0, 0,
-            0, 0, (far + near) * nf, -1,
-            0, 0, 2 * far * near * nf, 0]));
+            0, 0, a, -1,
+            0, 0, b, 0]));
     }
 
+    /**
+     * @returns {!Mat4}
+     */
+    transpose() {
+        return Mat4.generate((row, col) => this.getCell(col, row));
+    }
+
+    /**
+     * @param {!number} fovy Vertical field of view in radians
+     * @param {!number} aspect Aspect ratio. typically viewport width/height
+     * @param {!number} near Near bound of the frustum
+     * @param {!number} far Far bound of the frustum
+     * @returns {!Mat4}
+     */
+    static inverse_perspective(fovy, aspect, near, far) {
+        let f = 1.0 / Math.tan(fovy / 2);
+        let nf = 1 / (near - far);
+        let a = (far + near) * nf;
+        let b = 2 * far * near * nf;
+        return new Mat4(new Float32Array([
+            aspect / f, 0, 0, 0,
+            0, 1 / f, 0, 0,
+            0, 0, 0, 1/b,
+            0, 0, -1, a/b]));
+    }
+
+    /**
+     * @param {!function(!int, !int) : !number} cellValueFunc
+     * @returns {!Mat4}
+     */
     static generate(cellValueFunc) {
         let result = Mat4.zero();
         for (let row = 0; row < 4; row++) {
             for (let col = 0; col < 4; col++) {
-                result.raw[col + row * 4] = cellValueFunc(col, row);
+                result.raw[col + row * 4] = cellValueFunc(row, col);
             }
         }
         return result;
     }
 
-    getCell(col, row) {
+    /**
+     * @param {!int} row
+     * @param {!int} col
+     * @returns {!number}
+     */
+    getCell(row, col) {
         return this.raw[col + row * 4];
     }
 
@@ -104,20 +154,26 @@ class Mat4 {
     transformVector(x, y, z) {
         let m = Mat4.zero();
         m.raw[0] = x;
-        m.raw[1] = y;
-        m.raw[2] = z;
-        m.raw[3] = 1;
+        m.raw[4] = y;
+        m.raw[8] = z;
         let r = this.times(m);
-        return [r.raw[0], r.raw[1], r.raw[2]];
+        return [r.raw[0], r.raw[4], r.raw[8]];
     }
 
     /**
-     * @param {!Mat4} other
-     * @returns {!Mat4}
+     * @param {!number} x
+     * @param {!number} y
+     * @param {!number} z
+     * @returns {![!number, !number, !number]}
      */
-    inline_times(other) {
-        this.raw = this.times(other).raw;
-        return this;
+    transformPoint(x, y, z) {
+        let m = Mat4.zero();
+        m.raw[0] = x;
+        m.raw[4] = y;
+        m.raw[8] = z;
+        m.raw[12] = 1;
+        let r = this.times(m);
+        return [r.raw[0], r.raw[4], r.raw[8]];
     }
 
     /**
@@ -161,13 +217,34 @@ class Mat4 {
     }
 
     /**
-     * @param {!number} angle rotation angle in radians
-     * @param {![!number, !number, !number]} axis rotation axis
-     * @returns {!Mat4}
+     * @param {*|!Mat4} other
+     * @returns {!boolean}
      */
-    inline_rotate(angle, axis) {
-        this.inline_times(Mat4.rotation(angle, axis));
-        return this;
+    isEqualTo(other) {
+        if (!(other instanceof Mat4)) {
+            return false;
+        }
+        for (let i = 0; i < 16; i++) {
+            if (this.raw[i] !== other.raw[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * @returns {!string}
+     */
+    toString() {
+        let rows = [];
+        for (let row = 0; row < 4; row++) {
+            let rowEntries = [];
+            for (let col = 0; col < 4; col++) {
+                rowEntries.push(this.getCell(row, col));
+            }
+            rows.push('{' + rowEntries.join(', ') + '}')
+        }
+        return '{\n    ' + rows.join('\n    ') + '\n}';
     }
 }
 

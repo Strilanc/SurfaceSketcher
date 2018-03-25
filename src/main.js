@@ -13,6 +13,7 @@ import {Mat4} from "src/base/Mat4.js";
 import {Box, BOX_TRIANGLE_INDICES} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
 import {Point} from "src/geo/Point.js";
+import {Ray} from "src/geo/Ray.js";
 
 
 let camera_x = 2.2;
@@ -129,14 +130,8 @@ function main() {
         }
     `;
 
-    // Initialize a shader program; this is where all the lighting
-    // for the vertices and so forth is established.
     const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
 
-    // Collect all the info needed to use the shader program.
-    // Look up which attributes our shader program is using
-    // for aVertexPosition, aVevrtexColor and also
-    // look up uniform locations.
     const programInfo = {
         program: shaderProgram,
         attribLocations: {
@@ -150,8 +145,6 @@ function main() {
         },
     };
 
-    // Here's where we call the routine that builds all the
-    // objects we'll be drawing.
     const buffers = initBuffers(gl);
 
     function render() {
@@ -176,6 +169,23 @@ function initBuffers(gl) {
     };
 }
 
+function worldToScreenMatrix() {
+    let perspective = Mat4.perspective(Math.PI/4, canvas.clientWidth/canvas.clientHeight, 0.1, 100);
+    let pitch = Mat4.rotation(camera_pitch, [1, 0, 0]);
+    let yaw = Mat4.rotation(camera_yaw, [0, 1, 0]);
+    let shift = Mat4.translation(-camera_x, -camera_y, -camera_z).transpose();
+    return shift.times(yaw).times(pitch).times(perspective);
+}
+
+function screenToWorldMatrix() {
+    let perspective = Mat4.inverse_perspective(
+        Math.PI/4, canvas.clientWidth/canvas.clientHeight, 0.1, 100);
+    let pitch = Mat4.rotation(-camera_pitch, [1, 0, 0]);
+    let yaw = Mat4.rotation(-camera_yaw, [0, 1, 0]);
+    let shift = Mat4.translation(camera_x, camera_y, camera_z).transpose();
+    return perspective.times(pitch).times(yaw).times(shift);
+}
+
 function drawScene(gl, programInfo, buffers) {
     gl.clearColor(1.0, 1.0, 1.0, 1.0);
     gl.clearDepth(1.0);
@@ -185,14 +195,10 @@ function drawScene(gl, programInfo, buffers) {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     gl.useProgram(programInfo.program);
-    let viewMatrix = Mat4.perspective(Math.PI/4, gl.canvas.clientWidth/gl.canvas.clientHeight, 0.1, 100).
-        inline_rotate(camera_pitch, [1, 0, 0]).
-        inline_rotate(camera_yaw, [0, 1, 0]).
-        inline_translate(-camera_x, -camera_y, -camera_z);
     gl.uniformMatrix4fv(
         programInfo.uniformLocations.matrix,
         false,
-        viewMatrix.raw);
+        worldToScreenMatrix().raw);
 
     let boxes = boxesFromUnitCells();
 
@@ -292,7 +298,8 @@ canvas.addEventListener('mousemove', ev => {
 });
 
 function step(dx, dy, dz) {
-    let viewMatrix = Mat4.rotation(-camera_yaw, [0, 1, 0]).times(Mat4.rotation(-camera_pitch, [1, 0, 0]));
+    let viewMatrix = Mat4.rotation(camera_yaw, [0, 1, 0]).
+        times(Mat4.rotation(camera_pitch, [1, 0, 0]));
     let [x, y ,z] = viewMatrix.transformVector(dx, dy, dz);
     camera_x += x;
     camera_y += y;
@@ -300,9 +307,10 @@ function step(dx, dy, dz) {
 }
 canvas.addEventListener('mousewheel', ev => {
     let d = -ev.wheelDelta / 500.0;
-    step((prevMouse[0] / canvas.clientWidth - 0.5) * -2 * d,
-         (prevMouse[1] / canvas.clientHeight - 0.5) * d,
-         d);
+    step(
+        (prevMouse[0] / canvas.clientWidth - 0.5) * -2 * d,
+        (prevMouse[1] / canvas.clientHeight - 0.5) * d,
+        d);
 });
 document.addEventListener('keydown', ev => {
     if (ev.keyCode === 'A'.charCodeAt(0) || ev.keyCode === 37) {
