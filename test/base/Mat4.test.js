@@ -1,5 +1,6 @@
 import {Suite, assertThat} from "test/TestUtil.js"
 import {Mat4} from "src/base/Mat4.js"
+import {Point} from "src/geo/Point.js"
 
 let suite = new Suite("Mat4");
 
@@ -58,9 +59,16 @@ suite.test("scaling", () => {
 suite.test("transformPoint", () => {
     let t = Mat4.translation(2, 3, 5);
     let s = Mat4.scaling(2, 3, 5);
-    assertThat(t.transformPoint(1, 3, -8)).isEqualTo([3, 6, -3]);
-    assertThat(s.transformPoint(1, 3, -8)).isEqualTo([2, 9, -40]);
+    assertThat(t.transformPoint(new Point(1, 3, -8))).isEqualTo(new Point(3, 6, -3));
+    assertThat(s.transformPoint(new Point(1, 3, -8))).isEqualTo(new Point(2, 9, -40));
 
-    assertThat(t.times(s).transformPoint(1, 3, -8)).isEqualTo([4, 12, -35]);
-    assertThat(s.times(t).transformPoint(1, 3, -8)).isEqualTo([6, 18, -15]);
+    assertThat(t.times(s).transformPoint(new Point(1, 3, -8))).isEqualTo(new Point(4, 12, -35));
+    assertThat(s.times(t).transformPoint(new Point(1, 3, -8))).isEqualTo(new Point(6, 18, -15));
 });
+
+suite.test("perspective", () => {
+    let p = Mat4.perspective(20, 1.1, 0.1, 100);
+    let inv = Mat4.inverse_perspective(20, 1.1, 0.1, 100);
+    assertThat(p.times(inv)).isApproximatelyEqualTo(Mat4.identity())
+});
+

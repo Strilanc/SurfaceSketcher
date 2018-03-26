@@ -71,10 +71,17 @@ class Triangle {
     }
 
     /**
+     * @returns {!number}
+     */
+    area() {
+        return this.b.minus(this.a).cross(this.c.minus(this.a)).length() / 2;
+    }
+
+    /**
      * @returns {!string}
      */
     toString() {
-        return `Triangle(${this.a}, ${this.b}, ${this.c})`;
+        return `Area(${this.area()}, Triangle(${this.a}, ${this.b}, ${this.c})`;
     }
 }
 

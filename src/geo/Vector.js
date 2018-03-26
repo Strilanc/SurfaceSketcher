@@ -45,6 +45,14 @@ class Vector {
 
     /**
      * @param {!Vector} other
+     * @returns {!Vector}
+     */
+    pointwiseMultiply(other) {
+        return new Vector(this.x * other.x, this.y * other.y, this.z * other.z);
+    }
+
+    /**
+     * @param {!Vector} other
      * @returns {!number}
      */
     dot(other) {
@@ -80,6 +88,14 @@ class Vector {
      */
     minus(other) {
         return new Vector(this.x - other.x, this.y - other.y, this.z - other.z);
+    }
+
+    /**
+     * @param {!Vector} other
+     * @returns {!Vector}
+     */
+    plus(other) {
+        return new Vector(this.x + other.x, this.y + other.y, this.z + other.z);
     }
 
     /**

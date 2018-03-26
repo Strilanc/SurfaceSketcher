@@ -29,6 +29,17 @@ class Point {
     }
 
     /**
+     * Linear interpolation between two points.
+     *
+     * @param {!Point} other
+     * @param {!number} p interpolation coefficient
+     * @returns {!Point}
+     */
+    lerp(other, p) {
+        return this.plus(other.minus(this).scaledBy(p));
+    }
+
+    /**
      * @returns {!Vector}
      */
     asVector() {

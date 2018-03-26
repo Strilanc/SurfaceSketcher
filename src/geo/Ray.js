@@ -20,11 +20,11 @@ class Ray {
     intersectPlane(plane, epsilon) {
         let scalarDistance = plane.center.minus(this.start).dot(plane.normal);
         let scalarDirection = this.direction.dot(plane.normal);
-        if (scalarDirection < epsilon) {
+        if (Math.abs(scalarDirection) < epsilon) {
             return undefined;
         }
         let t = scalarDistance / scalarDirection;
-        if (t < 0) {
+        if (t < -epsilon) {
             return undefined;
         }
 

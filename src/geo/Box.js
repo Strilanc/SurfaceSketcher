@@ -1,4 +1,5 @@
 import {Point} from "src/geo/Point.js"
+import {Vector} from "src/geo/Vector.js"
 
 /**
  * An axis-aligned box.
@@ -22,6 +23,39 @@ class Box {
             result.push(corner.x, corner.y, corner.z);
         }
         return result;
+    }
+
+    /**
+     * @returns {!Point}
+     */
+    center() {
+        return this.baseCorner.plus(this.diagonal.scaledBy(0.5));
+    }
+
+    /**
+     * @param {!Point} pt
+     * @returns {undefined|!Vector}
+     */
+    facePointToDirection(pt) {
+        if (Math.abs(pt.x - this.baseCorner.x) < 0.001) {
+            return new Vector(-1, 0, 0);
+        }
+        if (Math.abs(pt.x - this.baseCorner.x - this.diagonal.x) < 0.001) {
+            return new Vector(+1, 0, 0);
+        }
+        if (Math.abs(pt.y - this.baseCorner.y) < 0.001) {
+            return new Vector(0, -1, 0);
+        }
+        if (Math.abs(pt.y - this.baseCorner.y - this.diagonal.y) < 0.001) {
+            return new Vector(0, +1, 0);
+        }
+        if (Math.abs(pt.z - this.baseCorner.z) < 0.001) {
+            return new Vector(0, 0, -1);
+        }
+        if (Math.abs(pt.z - this.baseCorner.z - this.diagonal.z) < 0.001) {
+            return new Vector(0, 0, +1);
+        }
+        return undefined;
     }
 
     /**

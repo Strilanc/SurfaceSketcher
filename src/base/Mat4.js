@@ -1,4 +1,6 @@
 import {DetailedError} from "src/base/DetailedError.js"
+import {Point} from "src/geo/Point.js";
+import {Vector} from "src/geo/Vector.js";
 
 class Mat4 {
     /**
@@ -73,8 +75,8 @@ class Mat4 {
     static perspective(fovy, aspect, near, far) {
         let f = 1.0 / Math.tan(fovy / 2);
         let nf = 1 / (near - far);
-        let a = (far + near) * nf;
-        let b = 2 * far * near * nf;
+        let a = far * nf;
+        let b = far * near * nf;
         return new Mat4(new Float32Array([
             f / aspect, 0, 0, 0,
             0, f, 0, 0,
@@ -99,8 +101,8 @@ class Mat4 {
     static inverse_perspective(fovy, aspect, near, far) {
         let f = 1.0 / Math.tan(fovy / 2);
         let nf = 1 / (near - far);
-        let a = (far + near) * nf;
-        let b = 2 * far * near * nf;
+        let a = far * nf;
+        let b = far * near * nf;
         return new Mat4(new Float32Array([
             aspect / f, 0, 0, 0,
             0, 1 / f, 0, 0,
@@ -146,34 +148,31 @@ class Mat4 {
     }
 
     /**
-     * @param {!number} x
-     * @param {!number} y
-     * @param {!number} z
-     * @returns {![!number, !number, !number]}
+     * @param {!Vector} vec
+     * @returns {!Vector}
      */
-    transformVector(x, y, z) {
+    transformVector(vec) {
         let m = Mat4.zero();
-        m.raw[0] = x;
-        m.raw[4] = y;
-        m.raw[8] = z;
+        m.raw[0] = vec.x;
+        m.raw[4] = vec.y;
+        m.raw[8] = vec.z;
         let r = this.times(m);
-        return [r.raw[0], r.raw[4], r.raw[8]];
+        return new Vector(r.raw[0], r.raw[4], r.raw[8]);
     }
 
     /**
-     * @param {!number} x
-     * @param {!number} y
-     * @param {!number} z
-     * @returns {![!number, !number, !number]}
+     * @param {!Point} pt
+     * @returns {!Point}
      */
-    transformPoint(x, y, z) {
+    transformPoint(pt) {
         let m = Mat4.zero();
-        m.raw[0] = x;
-        m.raw[4] = y;
-        m.raw[8] = z;
+        m.raw[0] = pt.x;
+        m.raw[4] = pt.y;
+        m.raw[8] = pt.z;
         m.raw[12] = 1;
         let r = this.times(m);
-        return [r.raw[0], r.raw[4], r.raw[8]];
+        let w = r.raw[12];
+        return new Point(r.raw[0] / w, r.raw[4] / w, r.raw[8] / w);
     }
 
     /**
@@ -226,6 +225,23 @@ class Mat4 {
         }
         for (let i = 0; i < 16; i++) {
             if (this.raw[i] !== other.raw[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * @param {*|!Mat4} other
+     * @param {!number} epsilon
+     * @returns {!boolean}
+     */
+    isApproximatelyEqualTo(other, epsilon) {
+        if (!(other instanceof Mat4)) {
+            return false;
+        }
+        for (let i = 0; i < 16; i++) {
+            if (Math.abs(this.raw[i] - other.raw[i]) > epsilon) {
                 return false;
             }
         }

@@ -94,3 +94,19 @@ suite.test("intersectBox", () => {
     r = new Ray(new Point(5.5, 7, 8.5), new Vector(1, 1, 1));
     assertThat(r.intersectBox(b, 0.001)).isApproximatelyEqualTo(new Point(6, 7.5, 9));
 });
+
+suite.test("intersectBox_knownFailures", () => {
+    let ray = new Ray(
+        new Point((9.0000000268220903)/9, 0.51839999109506596, 5.465599998831749),
+        new Vector(-6.908098448055072/9, 0.06328029202166196, -7.230087927309097));
+    let box = new Box(new Point(0, 0, 0), new Vector(1, 1, 1));
+    assertThat(ray.intersectBox(box, 0.001)).isNotEqualTo(undefined);
+});
+
+suite.test("intersectTriangle_knownFailure", () => {
+    let ray = new Ray(
+        new Point((9.0000000268220903)/9, 0.51839999109506596, 5.465599998831749),
+        new Vector(-6.908098448055072/9, 0.06328029202166196, -7.230087927309097));
+    let t = new Triangle(new Point(1, 1, 1), new Point(1, 0, 1), new Point(0, 1, 1));
+    assertThat(ray.intersectTriangle(t, 0.001)).isNotEqualTo(undefined);
+});

@@ -16,9 +16,7 @@ import {Point} from "src/geo/Point.js";
 import {Ray} from "src/geo/Ray.js";
 
 
-let camera_x = 2.2;
-let camera_y = 0.3;
-let camera_z = 0.8;
+let camera_pos = new Point(2.2, 0.3, 0.8);
 let camera_yaw = -Math.PI/2;
 let camera_pitch = 0;
 
@@ -73,6 +71,16 @@ function boxesFromUnitCells() {
         y = parseInt(y);
         z = parseInt(z);
         result.push(new Box(new Point(x, y, z), new Vector(0.1, 0.1, 0.1)));
+    }
+
+    // let d = new Vector(1, 1, 1).scaledBy(0.01);
+    // result.push(new Box(worldPos1.plus(d.scaledBy(-0.5)), d));
+    // result.push(new Box(worldPos2.plus(d.scaledBy(-0.5)), d));
+
+    if (selectedDir !== undefined && selectedBox !== undefined) {
+        let shift = selectedDir.pointwiseMultiply(
+            selectedBox.diagonal.scaledBy(0.5).plus(new Vector(0.01, 0.01, 0.01)));
+        result.push(new Box(selectedBox.center().plus(shift), new Vector(0.01, 0.01, 0.01)));
     }
     return result;
 }
@@ -170,20 +178,20 @@ function initBuffers(gl) {
 }
 
 function worldToScreenMatrix() {
-    let perspective = Mat4.perspective(Math.PI/4, canvas.clientWidth/canvas.clientHeight, 0.1, 100);
-    let pitch = Mat4.rotation(camera_pitch, [1, 0, 0]);
-    let yaw = Mat4.rotation(camera_yaw, [0, 1, 0]);
-    let shift = Mat4.translation(-camera_x, -camera_y, -camera_z).transpose();
-    return shift.times(yaw).times(pitch).times(perspective);
+    let perspective = Mat4.perspective(Math.PI/4, canvas.clientWidth/canvas.clientHeight, 0.1, 100).transpose();
+    let pitch = Mat4.rotation(-camera_pitch, [1, 0, 0]);
+    let yaw = Mat4.rotation(-camera_yaw, [0, 1, 0]);
+    let shift = Mat4.translation(-camera_pos.x, -camera_pos.y, -camera_pos.z);
+    return perspective.times(pitch).times(yaw).times(shift);
 }
 
 function screenToWorldMatrix() {
     let perspective = Mat4.inverse_perspective(
-        Math.PI/4, canvas.clientWidth/canvas.clientHeight, 0.1, 100);
-    let pitch = Mat4.rotation(-camera_pitch, [1, 0, 0]);
-    let yaw = Mat4.rotation(-camera_yaw, [0, 1, 0]);
-    let shift = Mat4.translation(camera_x, camera_y, camera_z).transpose();
-    return perspective.times(pitch).times(yaw).times(shift);
+        Math.PI/4, canvas.clientWidth/canvas.clientHeight, 0.1, 100).transpose();
+    let pitch = Mat4.rotation(camera_pitch, [1, 0, 0]);
+    let yaw = Mat4.rotation(camera_yaw, [0, 1, 0]);
+    let shift = Mat4.translation(camera_pos.x, camera_pos.y, camera_pos.z);
+    return shift.times(yaw).times(pitch).times(perspective);
 }
 
 function drawScene(gl, programInfo, buffers) {
@@ -198,7 +206,7 @@ function drawScene(gl, programInfo, buffers) {
     gl.uniformMatrix4fv(
         programInfo.uniformLocations.matrix,
         false,
-        worldToScreenMatrix().raw);
+        worldToScreenMatrix().transpose().raw);
 
     let boxes = boxesFromUnitCells();
 
@@ -235,9 +243,15 @@ function drawScene(gl, programInfo, buffers) {
 
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
     const faceColors = [0.8,  0.8,  0.8,  1.0];
+    const selColors = [1.0,  0.8,  0.8,  1.0];
     let colorData = [];
     for (let i = 0; i < boxes.length * 8; i++) {
-        colorData.push(...faceColors);
+        let isSelectedBox = boxes[i>>3].isEqualTo(selectedBox);
+        if (isSelectedBox) {
+            colorData.push(...selColors);
+        } else {
+            colorData.push(...faceColors);
+        }
     }
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colorData), gl.STATIC_DRAW);
     gl.vertexAttribPointer(programInfo.attribLocations.vertexColor, 4, gl.FLOAT, false, 0, 0);
@@ -285,25 +299,112 @@ function loadShader(gl, type, source) {
 
 main();
 
+function screenPosToWorld(screen_x, screen_y) {
+    let x = 2 * screen_x / canvas.clientWidth - 1;
+    let y = 1 - 2 * screen_y / canvas.clientHeight;
+    let q = screenToWorldMatrix().transformPoint(new Point(x, y, 1));
+    let d = q.minus(camera_pos);
+    let yaw = Math.atan2(d.x, d.z);
+    let pitch = Math.atan2(d.y, Math.sqrt(d.x*d.x + d.z*d.z));
+    let ray = new Ray(camera_pos, q.minus(camera_pos));
+    return {yaw, pitch, ray};
+}
+
+function getCell(x, y, z) {
+    let key = `${x},${y},${z}`;
+    if (!cells.has(key)) {
+        cells.set(key, new UnitCell());
+    }
+    return cells.get(key);
+}
+
+canvas.addEventListener('click', ev => {
+    if (selectedBox === undefined || selectedDir === undefined) {
+        return;
+    }
+
+    let {x, y, z} = selectedBox.baseCorner;
+    x = Math.floor(x);
+    y = Math.floor(y);
+    z = Math.floor(z);
+    let cell = getCell(x, y, z);
+
+    if (selectedBox.diagonal.length() >= 0.15*Math.sqrt(3)) {
+        // long box
+        if (selectedBox.diagonal.x > 0.2) {
+            cell.x_piece = false;
+        }
+        if (selectedBox.diagonal.y > 0.2) {
+            cell.y_piece = false;
+        }
+        if (selectedBox.diagonal.z > 0.2) {
+            cell.z_piece = false;
+        }
+    } else {
+        // joiner
+        if (selectedDir.x === 1) {
+            cell.x_piece = true;
+        }
+        if (selectedDir.y === 1) {
+            cell.y_piece = true;
+        }
+        if (selectedDir.z === 1) {
+            cell.z_piece = true;
+        }
+        if (selectedDir.x === -1) {
+            getCell(x - 1, y, z).x_piece = true;
+        }
+        if (selectedDir.y === -1) {
+            getCell(x, y - 1, z).y_piece = true;
+        }
+        if (selectedDir.z === -1) {
+            getCell(x, y, z - 1).z_piece = true;
+        }
+    }
+});
+
 let prevMouse = [0, 0];
+let worldPos1 = new Point(0, 0, 0);
+let worldPos2 = new Point(0, 0, 0);
+let selectedBox = undefined;
+let selectedDir = undefined;
 canvas.addEventListener('mousemove', ev => {
     let b = canvas.getBoundingClientRect();
     let curMouse = [ev.clientX - b.left, ev.clientY - b.top];
+
+    let yaw1 = screenPosToWorld(curMouse[0], curMouse[1]).yaw;
+    let yaw2 = screenPosToWorld(prevMouse[0], prevMouse[1]).yaw;
+
     if (ev.which === 1) {
-        camera_yaw -= (curMouse[0] - prevMouse[0]) * 0.002;
+        camera_yaw += yaw1 - yaw2;
         camera_pitch -= (curMouse[1] - prevMouse[1]) * 0.002;
         camera_pitch = Math.max(Math.min(camera_pitch, Math.PI/2), -Math.PI/2);
     }
     prevMouse = curMouse;
+
+    let ray = screenPosToWorld(curMouse[0], curMouse[1]).ray;
+    let bestBox = undefined;
+    let bestPt = undefined;
+    for (let box of boxesFromUnitCells()) {
+        let pt = ray.intersectBox(box, 0.001);
+        if (pt !== undefined) {
+            if (bestPt === undefined || ray.firstPoint([bestPt, pt]) === pt) {
+                bestBox = box;
+                bestPt = pt;
+            }
+        }
+    }
+    selectedBox = bestBox;
+    if (bestPt !== undefined) {
+        selectedDir = bestBox.facePointToDirection(bestPt);
+    }
 });
 
 function step(dx, dy, dz) {
     let viewMatrix = Mat4.rotation(camera_yaw, [0, 1, 0]).
         times(Mat4.rotation(camera_pitch, [1, 0, 0]));
-    let [x, y ,z] = viewMatrix.transformVector(dx, dy, dz);
-    camera_x += x;
-    camera_y += y;
-    camera_z += z;
+    let d = viewMatrix.transformVector(new Vector(dx, dy, dz));
+    camera_pos = camera_pos.plus(d);
 }
 canvas.addEventListener('mousewheel', ev => {
     let d = -ev.wheelDelta / 500.0;
