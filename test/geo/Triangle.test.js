@@ -98,3 +98,17 @@ suite.test("containsPoint", () => {
     assertFalse(t.containsPoint(new Point(0.1, 0.1, 0.5), 0.0001));
     assertTrue(t.containsPoint(new Point(0.1, 0.1, 0.5), 1.0));
 });
+
+suite.test("area", () => {
+    let t = new Triangle(
+        new Point(0, 0, 0),
+        new Point(1, 0, 0),
+        new Point(0, 1, 0));
+    assertThat(t.area()).isApproximatelyEqualTo(0.5);
+
+    let t2 = new Triangle(
+        new Point(0, 0, 0),
+        new Point(0, 1, 0),
+        new Point(0, 5, 1));
+    assertThat(t2.area()).isApproximatelyEqualTo(0.5);
+});

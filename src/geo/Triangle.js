@@ -81,7 +81,7 @@ class Triangle {
      * @returns {!string}
      */
     toString() {
-        return `Area(${this.area()}, Triangle(${this.a}, ${this.b}, ${this.c})`;
+        return `Triangle(${this.a}, ${this.b}, ${this.c})`;
     }
 }
 
