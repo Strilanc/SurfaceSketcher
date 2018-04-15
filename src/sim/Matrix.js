@@ -1171,33 +1171,33 @@ class Matrix {
 
         // Extract orthogonal components, adjusting for factors of i.
         let [a, b, c, d] = this._2x2Breakdown();
-        let wφ = a.plus(d);
-        let xφ = b.plus(c).dividedBy(Complex.I);
-        let yφ = b.minus(c);
-        let zφ = a.minus(d).dividedBy(Complex.I);
+        let wp = a.plus(d);
+        let xp = b.plus(c).dividedBy(Complex.I);
+        let yp = b.minus(c);
+        let zp = a.minus(d).dividedBy(Complex.I);
 
         // Cancel global phase factor, pushing all values onto the real line.
-        let φ = seq([wφ, xφ, yφ, zφ]).maxBy(e => e.abs()).unit().times(2);
-        let w = Math.min(1, Math.max(-1, wφ.dividedBy(φ).real));
-        let x = xφ.dividedBy(φ).real;
-        let y = yφ.dividedBy(φ).real;
-        let z = zφ.dividedBy(φ).real;
-        let θ = -2*Math.acos(w);
+        let p = seq([wp, xp, yp, zp]).maxBy(e => e.abs()).unit().times(2);
+        let w = Math.min(1, Math.max(-1, wp.dividedBy(p).real));
+        let x = xp.dividedBy(p).real;
+        let y = yp.dividedBy(p).real;
+        let z = zp.dividedBy(p).real;
+        let t = -2*Math.acos(w);
 
         // Normalize axis.
         let n = Math.sqrt(x*x + y*y + z*z);
         if (n < 0.0000001) {
             // There's an axis singularity near θ=0. Just default to no rotation around the X axis.
-            return {axis: [1, 0, 0], angle: 0, phase: φ.phase()};
+            return {axis: [1, 0, 0], angle: 0, phase: p.phase()};
         }
         x /= n;
         y /= n;
         z /= n;
 
         // Prefer θ in [-π, π].
-        if (θ <= -Math.PI) {
-            θ += 2*Math.PI;
-            φ = φ.times(-1);
+        if (t <= -Math.PI) {
+            t += 2*Math.PI;
+            p = p.times(-1);
         }
 
         // Prefer axes that point positive-ward.
@@ -1205,10 +1205,10 @@ class Matrix {
             x = -x;
             y = -y;
             z = -z;
-            θ = -θ;
+            t = -t;
         }
 
-        return {axis: [x, y, z], angle: θ, phase: φ.phase()};
+        return {axis: [x, y, z], angle: t, phase: p.phase()};
     }
 
     /**
