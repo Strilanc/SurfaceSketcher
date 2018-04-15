@@ -159,12 +159,12 @@ class SurfaceLogical {
             }
             table.push(row);
         }
-        for (let j = 1; j <= this.sim.height; j++) {
+        for (let j = 0; j <= this.sim.height + 1; j++) {
             for (let i of [-1, this.sim.width]) {
                 table[j][i + 1] = this.sim.is_x_col(i) ? x_hole : z_hole;
             }
         }
-        for (let i = 1; i <= this.sim.width; i++) {
+        for (let i = 0; i <= this.sim.width + 1; i++) {
             for (let j of [-1, this.sim.height]) {
                 table[j + 1][i] = this.sim.is_x_row(j) ? x_hole : z_hole;
             }
@@ -179,33 +179,40 @@ class SurfaceLogical {
                 let m = this.sim.last_measure(p);
 
                 if (in_hole) {
-                    if (table[i - 1][j] !== ' ') {
-                        table[i][j] = table[i - 1][j];
-                    } else if (table[i][j - 1] !== ' ') {
-                        table[i][j] = table[i][j - 1];
+                    if (table[j][i - 1] !== ' ') {
+                        table[j][i] = table[j][i - 1];
+                    } else if (table[j - 1][i] !== ' ') {
+                        table[j][i] = table[j - 1][i];
                     } else if (is_x) {
-                        table[i][j] = x_hole;
+                        table[j][i] = x_hole;
                     } else if (is_z) {
-                        table[i][j] = z_hole;
+                        table[j][i] = z_hole;
                     } else {
-                        table[i][j] = '?';
+                        table[j][i] = '?';
                     }
                 } else if (is_x || is_z) {
                     if (m.random) {
-                        table[i][j] = '!';
+                        table[j][i] = '!';
                     } else if (m.result) {
-                        table[i][j] = is_x ? 'X' : 'Z';
+                        table[j][i] = is_x ? 'X' : 'Z';
+                    }
+                }
+            }
+        }
+        for (let j = 1; j <= this.sim.height; j++) {
+            for (let i = 1; i <= this.sim.width; i++) {
+                let p = new XY(i - 1, j - 1);
+                if (table[j][i] === ' ') {
+                    if (this.sim.is_x(p)) {
+                        table[j][i] = '.';
+                    } else if (this.sim.is_z(p)) {
+                        table[j][i] = ',';
                     }
                 }
             }
         }
 
         return table.map(e => e.join('')).join('\n');
-    }
-
-    measure_stabilizers_and_print_state() {
-        this.measure_all_stabilizers();
-        console.log(this.toString());
     }
 
     /**

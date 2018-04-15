@@ -15,6 +15,8 @@ function normalize_diagram(text) {
     return text.split('\n').map(e => e.trim()).join('\n').trim();
 }
 
+const REPEATS = 1;
+
 let suite = new Suite("SurfaceLogical");
 
 suite.test('motion_constructor', () => {
@@ -78,7 +80,7 @@ const STATES_WITH_BLOCH_VECTORS = [
  */
 function sim_test(name, w, h, callback) {
     suite.test(name, () => {
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < REPEATS; i++) {
             let sim = new SurfaceLogical(new Surface(w, h));
             sim.clear_x_stabilizers();
             try {
@@ -125,19 +127,19 @@ sim_test('toString', 11, 11, sim => {
 
     sim.measure_all_stabilizers();
     assertThat(normalize_diagram(sim.toString())).isEqualTo(normalize_diagram(`
-         ########### 
-        #           #
-        #           #
-        #           #
-        #   #       #
-        #        @  #
-        #           #
-        #           #
-        #   #       #
-        #        @  #
-        #           #
-        #           #
-         ########### `));
+            #############
+            #, , , , , ,#
+            # . . . . . #
+            #, , , , , ,#
+            # . # . # . #
+            #, , , , , ,#
+            # . . . . . #
+            #, , , , , ,#
+            # . . . . . #
+            #, , @ , @ ,#
+            # . . . . . #
+            #, , , , , ,#
+            #############`));
 });
 
 qubit_state_test('init_logical', (sim, q, vec) => {
