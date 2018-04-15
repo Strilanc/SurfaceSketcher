@@ -82,9 +82,7 @@ module.exports = function(grunt) {
                     return '_gen_package_export(' + JSON.stringify(path) + ', ' + vals + ');'
                 });
 
-            content = content.replace(new RegExp(
-                /\bimport (.+) from (['"].+['"])/,
-                'g'),
+            content = content.replace(new RegExp(/\bimport\s*({[^}]+})\s*from (['"].+['"])/, 'gm'),
                 function(match, vals, key) {
                     return 'const ' + vals + ' = _gen_package_get(' + key + ');'
                 });

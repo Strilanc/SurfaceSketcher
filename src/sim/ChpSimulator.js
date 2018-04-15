@@ -119,6 +119,21 @@ class ChpSimulator extends SimulatorSpec {
         this._qubitSlots = [];
     }
 
+    /**
+     * @returns {!ChpSimulator}
+     */
+    clone() {
+        let result = new ChpSimulator(this._maxQubitCount);
+        result.destruct();
+        result._state = clone_state(this._state);
+        result._nextQubitId = this._nextQubitId;
+        for (let [k, v] of this._qubitToSlotMap.entries()) {
+            result._qubitToSlotMap.set(k, v);
+        }
+        result._qubitSlots = this._qubitSlots.slice();
+        return result;
+    }
+
     qalloc() {
         if (this._qubitSlots.length >= this._maxQubitCount) {
             throw new Error("Too many qubits");
@@ -189,9 +204,20 @@ class ChpSimulator extends SimulatorSpec {
     }
 
     measure(target) {
+        return (this.measure_peek(target) & 1) !== 0;
+    }
+
+    /**
+     * @param {!int} target
+     * @returns {!int}
+     *      0: deterministic off
+     *      1: deterministic on
+     *      2: random off
+     *      3: random on
+     */
+    measure_peek(target) {
         let a = this._slotFor(target);
-        let m = measure(this._state, a, 0, Math.random() < 0.5);
-        return (m & 1) !== 0;
+        return measure(this._state, a, 0, Math.random() < 0.5);
     }
 
     collapse(target, outcome) {
