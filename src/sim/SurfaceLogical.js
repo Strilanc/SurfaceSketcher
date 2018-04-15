@@ -662,9 +662,11 @@ class SurfaceLogical {
             this.extend_hole(e);
         }
         let c = new XY(m.start.x + m.dx, m.start.y + m.dy);
-        if (this.sim.is_x(p1) !== x_type) {
+        if (this.sim.is_x(p1) === x_type) {
             throw new DetailedError("randomized sqrt injection", {p1, p2, x_type});
-        } else if (x_type) {
+        }
+
+        if (x_type) {
             this.sim.hadamard(c);
             this.sim.phase(c);
             this.sim.hadamard(c);

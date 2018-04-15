@@ -78,12 +78,14 @@ const STATES_WITH_BLOCH_VECTORS = [
  */
 function sim_test(name, w, h, callback) {
     suite.test(name, () => {
-        let sim = new SurfaceLogical(new Surface(w, h));
-        sim.clear_x_stabilizers();
-        try {
-            callback(sim);
-        } finally {
-            sim.destruct();
+        for (let i = 0; i < 3; i++) {
+            let sim = new SurfaceLogical(new Surface(w, h));
+            sim.clear_x_stabilizers();
+            try {
+                callback(sim);
+            } finally {
+                sim.destruct();
+            }
         }
     });
 }
@@ -91,11 +93,20 @@ function sim_test(name, w, h, callback) {
 /**
  * @param {!string} name
  * @param {!function(!SurfaceLogical, !DoubleDefectQubit, !{x: !int, y: !int, z: !int})} callback
+ * @param {!boolean=} include_primal
+ * @param {!boolean=} include_dual
  */
-function qubit_state_test(name, callback) {
+function qubit_state_test(name, callback, include_primal=true, include_dual=true) {
     let primal = new DoubleDefectQubit(new XY(3, 3), new XY(7, 3));
     let dual = new DoubleDefectQubit(new XY(4, 4), new XY(8, 4));
-    for (let q of [primal, dual]) {
+    let qs = [];
+    if (include_primal) {
+        qs.push(primal);
+    }
+    if (include_dual) {
+        qs.push(dual);
+    }
+    for (let q of qs) {
         for (let {state, vector} of STATES_WITH_BLOCH_VECTORS) {
             sim_test(`${name}_${q === primal ? 'primal' : 'dual'}_${state}`, 11, 11, sim => {
                 sim.init_logical(q, state);
@@ -163,4 +174,23 @@ qubit_state_test('logical_z', (sim, q, {x, y, z}) => {
     y *= -1;
     sim.logical_z(q);
     assertThat(sim.peek_logical_bloch_vector(q)).isEqualTo({x, y, z});
+});
+
+qubit_state_test('logical_z', (sim, q, {x, y, z}) => {
+    x *= -1;
+    y *= -1;
+    sim.logical_z(q);
+    assertThat(sim.peek_logical_bloch_vector(q)).isEqualTo({x, y, z});
+});
+
+qubit_state_test('inject_s', (sim, q, {x, y, z}) => {
+    if (sim.is_dual(q)) {
+        assertThrows(() => sim.inject_s(q.a, q.b));
+    } else {
+        for (let i = 0; i < 4; i++) {
+            sim.inject_s(q.a, q.b);
+            [x, y] = [-y, x];
+            assertThat(sim.peek_logical_bloch_vector(q)).isEqualTo({x, y, z});
+        }
+    }
 });
