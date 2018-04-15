@@ -66,7 +66,10 @@ class SimulatorSpec {
      * @returns {!boolean} The measurement result.
      */
     measure(q) {
-        throw new Error(`measure(${q}) not implemented in ${this}`);
+        let p = this.probability(q);
+        let outcome = Math.random() < p;
+        this.collapse(q, outcome);
+        return outcome;
     }
 
     /**
@@ -144,6 +147,11 @@ class SimulatorSpec {
         this.cnot(a, b);
     }
 
+    /**
+     * Free's any manually-managed resources used by the instance.
+     */
+    destruct() {
+    }
 }
 
 export {SimulatorSpec}

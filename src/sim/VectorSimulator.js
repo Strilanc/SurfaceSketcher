@@ -108,13 +108,6 @@ class VectorSimulator extends SimulatorSpec {
         return t;
     }
 
-    measure(q) {
-        let p = this.probability(q);
-        let outcome = Math.random() < p;
-        this.collapse(q, outcome);
-        return outcome;
-    }
-
     collapse(q, outcome) {
         if (outcome) {
             this.x(q);

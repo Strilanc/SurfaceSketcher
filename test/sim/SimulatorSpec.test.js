@@ -15,16 +15,17 @@
 import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
 import {Matrix} from "src/sim/Matrix.js"
 
-import {Complex} from "src/sim/Complex.js"
-import {Controls} from "src/sim/Controls.js"
-import {Format} from "src/base/Format.js"
-import {Seq} from "src/base/Seq.js"
 import {VectorSimulator} from "src/sim/VectorSimulator.js"
+import {PauliFrame} from "src/sim/PauliFrame.js"
+import {ChpSimulator} from "src/sim/ChpSimulator.js"
 
-let suite = new Suite("Matrix");
+let suite = new Suite("SimularSpec");
 
 let simulators = [
-    {name: 'VectorSimulator', factory: () => new VectorSimulator()}
+    {name: 'VectorSimulator', factory: () => new VectorSimulator()},
+    {name: 'PauliFrame_VectorSimulator', factory: () => new PauliFrame(new VectorSimulator())},
+    {name: 'ChpSimulator', factory: () => new ChpSimulator()},
+    {name: 'PauliFrame_ChpSimulator', factory: () => new PauliFrame(new ChpSimulator())},
 ];
 
 /**
@@ -34,7 +35,12 @@ let simulators = [
 function sim_test(test_name, testFunc) {
     for (let {name, factory} of simulators) {
         suite.test(`${test_name}[${name}]`, () => {
-            testFunc(factory());
+            let sim = factory();
+            try {
+                testFunc(sim);
+            } finally {
+                sim.destruct();
+            }
         });
     }
 }
