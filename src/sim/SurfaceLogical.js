@@ -610,7 +610,7 @@ class SurfaceLogical {
      * @returns {!Measurement}
      */
     smash_hole_into(p1, p2) {
-        let m = Measurement(false, false);
+        let m = new Measurement(false, false);
         for (let motion of this.path_between(p1, p2)) {
             m = this.extend_hole(motion);
         }

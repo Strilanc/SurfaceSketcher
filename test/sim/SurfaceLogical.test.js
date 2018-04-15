@@ -9,7 +9,7 @@ import {
     STATE_PLUS,
     STATE_MINUS
 } from "src/sim/SurfaceLogical.js"
-import {Surface, XY} from "src/sim/Surface.js"
+import {Surface, XY, Measurement} from "src/sim/Surface.js"
 
 function normalize_diagram(text) {
     return text.split('\n').map(e => e.trim()).join('\n').trim();
@@ -57,7 +57,6 @@ suite.test('doubleDefectQubit_equality', () => {
     assertThat(a).isNotEqualTo(new DoubleDefectQubit(q, p));
     assertThat(a).isNotEqualTo('');
     assertThat(a).isNotEqualTo(undefined);
-    assertThat(a);
 });
 
 suite.test('doubleDefectQubit_toString', () => {
@@ -132,6 +131,24 @@ sim_test('toString', 11, 11, sim => {
 
 qubit_state_test('init_logical', (sim, q, vec) => {
     assertThat(sim.peek_logical_bloch_vector(q)).isEqualTo(vec);
+});
+
+qubit_state_test('measure_logical_x', (sim, q, vec) => {
+    let m = sim.measure_logical_x(q);
+    if (vec.x !== 0) {
+        assertThat(m).isEqualTo(new Measurement(vec.x === -1, false));
+    } else {
+        assertTrue(m.random);
+    }
+});
+
+qubit_state_test('measure_logical_z', (sim, q, vec) => {
+    let m = sim.measure_logical_z(q);
+    if (vec.z !== 0) {
+        assertThat(m).isEqualTo(new Measurement(vec.z === -1, false));
+    } else {
+        assertTrue(m.random);
+    }
 });
 
 qubit_state_test('logical_x', (sim, q, {x, y, z}) => {
