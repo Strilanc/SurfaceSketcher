@@ -59,7 +59,7 @@ class Camera {
      * @returns {!Mat4}
      */
     worldToScreenMatrix(canvas) {
-        let perspective = Mat4.perspective(Math.PI/4, canvas.clientWidth/canvas.clientHeight, 0.1, 100).transpose();
+        let perspective = Mat4.perspective(Math.PI/4, canvas.clientWidth/canvas.clientHeight, 0.1, 1000).transpose();
         let pitch = this._pitchMatrix().transpose();
         let yaw = this._yawMatrix().transpose();
         let {x, y, z} = this.cameraPosition();

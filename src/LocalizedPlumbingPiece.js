@@ -2,6 +2,8 @@ import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
 import {Point} from "src/geo/Point.js";
 
+const EXTENDER_SCALE_FACTOR = 0.3;
+
 class LocalizedPlumbingPiece {
     /**
      * @param {!PlumbingPiece} plumbingPiece
@@ -19,14 +21,16 @@ class LocalizedPlumbingPiece {
      */
     toBox(reduceExtenderSize=false) {
         let box = this.plumbingPiece.boxAt(this.cell);
-        const f = 0.2;
         if (reduceExtenderSize && this.extenderOffset !== undefined) {
             let ux = approximate_sign(this.extenderOffset.x);
             let uy = approximate_sign(this.extenderOffset.y);
             let uz = approximate_sign(this.extenderOffset.z);
             let v1 = new Vector(ux === -1 ? 1 : 0, uy === -1 ? 1 : 0, uz === -1 ? 1 : 0);
-            let v2 = new Vector(ux === 0 ? 1 : f, uy === 0 ? 1 : f, uz === 0 ? 1 : f);
-            box.baseCorner = box.baseCorner.plus(box.diagonal.pointwiseMultiply(v1.scaledBy(1 - f)));
+            let v2 = new Vector(ux === 0 ? 1 : EXTENDER_SCALE_FACTOR,
+                uy === 0 ? 1 : EXTENDER_SCALE_FACTOR,
+                uz === 0 ? 1 : EXTENDER_SCALE_FACTOR);
+            box.baseCorner = box.baseCorner.plus(
+                box.diagonal.pointwiseMultiply(v1.scaledBy(1 - EXTENDER_SCALE_FACTOR)));
             box.diagonal = box.diagonal.pointwiseMultiply(v2);
         }
         return box;

@@ -11,6 +11,19 @@ const GENERIC_COLOR = [0.5, 0.5, 0.5, 1.0];
 const PRIMAL_COLOR = [0.95, 0.95, 0.95, 1.0];
 const DUAL_COLOR = [0.3, 0.3, 0.3, 1.0];
 
+
+class PlumbingPieceVariant {
+    /**
+     * @param {!string} name
+     * @param {![!number, !number, !number, !number]} color
+     */
+    constructor(name, color) {
+        this.name = name;
+        this.color = color;
+    }
+}
+
+
 class PlumbingPiece {
     /**
      * @param {!string} name
@@ -18,13 +31,15 @@ class PlumbingPiece {
      * @param {![!number, !number, !number, !number]} color
      * @param {Array.<!{name: !string, offset: !Vector}>} implies
      * @param {!boolean} onlyImplied
+     * @param {!Array.<!PlumbingPieceVariant>} variants
      */
-    constructor(name, box, color, implies, onlyImplied) {
+    constructor(name, box, color, implies, onlyImplied, variants) {
         this.name = name;
         this.box = box;
         this.color = color;
         this.implies = implies;
         this.onlyImplied = onlyImplied;
+        this.variants = variants;
     }
 
     /**
@@ -50,7 +65,8 @@ function genericToPrimal(pp) {
         pp.box,
         PRIMAL_COLOR,
         pp.implies.map(({name, offset}) => ({name: name + 'Primal', offset})),
-        pp.onlyImplied)
+        pp.onlyImplied,
+        pp.variants);
 }
 
 /**
@@ -63,8 +79,13 @@ function genericToDual(pp) {
         new Box(pp.box.baseCorner.plus(new Vector(0.5, 0.5, 0.5)), pp.box.diagonal),
         DUAL_COLOR,
         pp.implies.map(({name, offset}) => ({name: name + 'Dual', offset})),
-        pp.onlyImplied)
+        pp.onlyImplied,
+        pp.variants);
 }
+
+let movePositiveWard = new PlumbingPieceVariant('+', [0, 0, 1, 1]);
+let moveNegativeWard = new PlumbingPieceVariant('-', [0, 1, 1, 1]);
+let injectS = new PlumbingPieceVariant('S', [1, 0, 1, 1]);
 
 let centerConnector = new PlumbingPiece(
     'Center',
@@ -73,7 +94,8 @@ let centerConnector = new PlumbingPiece(
         new Vector(SMALL_DIAMETER, SMALL_DIAMETER, SMALL_DIAMETER)),
     GENERIC_COLOR,
     [],
-    true);
+    true,
+    []);
 
 let xConnector = new PlumbingPiece(
     'X',
@@ -85,7 +107,8 @@ let xConnector = new PlumbingPiece(
         {name: 'Center', offset: new Vector(0, 0, 0)},
         {name: 'Center', offset: new Vector(1, 0, 0)},
     ],
-    false);
+    false,
+    [movePositiveWard, moveNegativeWard, injectS]);
 
 let yConnector = new PlumbingPiece(
     'Y',
@@ -97,7 +120,8 @@ let yConnector = new PlumbingPiece(
         {name: 'Center', offset: new Vector(0, 0, 0)},
         {name: 'Center', offset: new Vector(0, 1, 0)},
     ],
-    false);
+    false,
+    [movePositiveWard, moveNegativeWard, injectS]);
 
 let zConnector = new PlumbingPiece(
     'Z',
@@ -109,7 +133,8 @@ let zConnector = new PlumbingPiece(
         {name: 'Center', offset: new Vector(0, 0, 0)},
         {name: 'Center', offset: new Vector(0, 0, 1)},
     ],
-    false);
+    false,
+    []);
 
 let genericPieces = [centerConnector, xConnector, yConnector, zConnector];
 let primalPieces = genericPieces.map(genericToPrimal);

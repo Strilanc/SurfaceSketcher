@@ -46,9 +46,8 @@ function makeRenderData() {
 const canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 function main() {
     const canvasDiv = /** @type {!HTMLDivElement} */ document.getElementById('canvasDiv');
-    canvas.width = 1000;
-    canvas.height = 500;
     const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    document.body.style.overflow = "hidden";
 
     const vsSource = `
         attribute vec4 aVertexPosition;
@@ -113,8 +112,16 @@ function initBuffers(gl) {
  * @param {*} buffers
  */
 function drawScene(gl, programInfo, buffers) {
-    gl.clearColor(1.0, 1.0, 1.0, 1.0);
-    gl.clearDepth(1.0);
+    let w = window.innerWidth;
+    let h = window.innerHeight;
+    if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        gl.viewport(0, 0, w, h);
+    }
+
+    gl.clearColor(1, 1, 1, 1);
+    gl.clearDepth(1);
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
     // gl.enable(gl.BLEND);
