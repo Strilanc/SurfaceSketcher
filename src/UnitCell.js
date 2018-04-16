@@ -1,19 +1,15 @@
 import {DetailedError} from 'src/base/DetailedError.js'
-import {Box} from "src/geo/Box.js";
-import {Vector} from "src/geo/Vector.js";
 import {Point} from "src/geo/Point.js";
 import {Ray} from "src/geo/Ray.js";
 import {PLUMBING_PIECE_MAP, ALL_PLUMBING_PIECES} from "src/PlumbingPieces.js";
-
-const SMALL_DIAMETER = 0.2;
-const LONG_DIAMETER = 0.8;
+import {LocalizedPlumbingPiece} from "src/LocalizedPlumbingPiece.js";
 
 class UnitCell {
     /**
      * @param {!Set.<!string>} piece_names
      */
     constructor(piece_names = new Set()) {
-        this.piece_names = new Set();
+        this.piece_names = piece_names;
     }
 }
 
@@ -60,9 +56,9 @@ class UnitCellMap {
     }
 
     /**
-     * @returns {!Array.<![!Point, !PlumbingPiece]>}
+     * @returns {!Array.<!LocalizedPlumbingPiece>}
      */
-    piecesAndImpliedPiecesWithPotentialRepeats() {
+    _piecesAndImpliedPiecesWithPotentialRepeats() {
         let pieces = [];
         for (let key of this.cells.keys()) {
             let offset = UnitCellMap._keyToCell(key);
@@ -70,9 +66,11 @@ class UnitCellMap {
             let val = this.cells.get(key);
             for (let pp of ALL_PLUMBING_PIECES) {
                 if (val.piece_names.has(pp.name)) {
-                    pieces.push([offset, pp]);
+                    pieces.push(new LocalizedPlumbingPiece(pp, offset));
                     for (let imp of pp.implies) {
-                        pieces.push([offset.plus(imp.offset), PLUMBING_PIECE_MAP.get(imp.name)]);
+                        pieces.push(new LocalizedPlumbingPiece(
+                            PLUMBING_PIECE_MAP.get(imp.name),
+                            offset.plus(imp.offset)));
                     }
                 }
             }
@@ -81,32 +79,80 @@ class UnitCellMap {
     }
 
     /**
-     * @returns {!Array.<!RenderData>}
+     * @param {!Set.<!string>} seen
+     * @param {!Array.<!LocalizedPlumbingPiece>} pieces
+     * @returns {!Array.<!LocalizedPlumbingPiece>}
      */
-    renderData() {
-        let pieces = this.piecesAndImpliedPiecesWithPotentialRepeats();
-        let seen = new Set();
+    static _removeDuplicatePieces(pieces, seen = new Set()) {
         let result = [];
-        for (let [pt, pp] of pieces) {
-            let key = UnitCellMap._cellKey(pt) + ':' + pp.name;
+        for (let piece of pieces) {
+            let key = piece.key();
+            if (seen.has(key)) {
+                continue;
+            }
+            if (piece.extenderOffset !== undefined) {
+                key += ':' + piece.extenderOffset.toString();
+            }
             if (seen.has(key)) {
                 continue;
             }
             seen.add(key);
-            result.push(pp.boxAt(pt).toRenderData(pp.color));
+            result.push(piece);
         }
         return result;
     }
 
     /**
+     * @returns {!Array.<!LocalizedPlumbingPiece>}
+     */
+    piecesAndImpliedPieces() {
+        return UnitCellMap._removeDuplicatePieces(this._piecesAndImpliedPiecesWithPotentialRepeats());
+    }
+
+    /**
+     * @returns {!Array.<!LocalizedPlumbingPiece>}
+     */
+    piecesAndImpliedPiecesAndExtenderPieces() {
+        let pieces = this.piecesAndImpliedPieces();
+        let extras = [];
+        for (let piece of pieces) {
+            if (!piece.plumbingPiece.onlyImplied) {
+                continue;
+            }
+            for (let ex of ALL_PLUMBING_PIECES) {
+                for (let imp of ex.implies) {
+                    if (imp.name === piece.plumbingPiece.name) {
+                        let newCell = piece.cell.plus(imp.offset.scaledBy(-1));
+                        let impliedPos = piece.plumbingPiece.boxAt(piece.cell).center();
+                        let extendedPos = ex.boxAt(newCell).center();
+                        extras.push(new LocalizedPlumbingPiece(
+                            ex,
+                            newCell,
+                            extendedPos.minus(impliedPos)));
+                    }
+                }
+            }
+        }
+        pieces.push(...extras);
+        return UnitCellMap._removeDuplicatePieces(pieces);
+    }
+
+    /**
+     * @returns {!Array.<!RenderData>}
+     */
+    renderData() {
+        return this.piecesAndImpliedPieces().map(e => e.toRenderData());
+    }
+
+    /**
      * @param {!Ray} ray
-     * @returns {!{collisionPoint: !Point, plumbingPiece: !PlumbingPiece, cell: !Point}}
+     * @returns {!{collisionPoint: !Point, piece: !LocalizedPlumbingPiece}}
      */
     intersect(ray) {
         let bestPiece = undefined;
         let bestPt = undefined;
-        for (let piece of this.piecesAndImpliedPiecesWithPotentialRepeats()) {
-            let pt = ray.intersectBox(piece[1].boxAt(piece[0]), 0.001);
+        for (let piece of this.piecesAndImpliedPiecesAndExtenderPieces()) {
+            let pt = ray.intersectBox(piece.toBox(true), 0.001);
             if (pt !== undefined) {
                 if (bestPt === undefined || ray.firstPoint([bestPt, pt]) === pt) {
                     bestPiece = piece;
@@ -118,8 +164,7 @@ class UnitCellMap {
             return undefined;
         }
         return {
-            plumbingPiece: bestPiece[1],
-            cell: bestPiece[0],
+            piece: bestPiece,
             collisionPoint: bestPt
         };
     }

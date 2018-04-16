@@ -34,6 +34,10 @@ class PlumbingPiece {
     boxAt(offset) {
         return new Box(this.box.baseCorner.plus(offset.asVector()), this.box.diagonal);
     }
+
+    toString() {
+        return `PlumbingPiece(${this.name})`;
+    }
 }
 
 /**

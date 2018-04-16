@@ -36,8 +36,8 @@ function makeRenderData() {
     // let d = new Vector(1, 1, 1).scaledBy(0.1);
     // result.push(new Box(camera.focus_point, d));
 
-    if (selectedPlumbingPiece !== undefined) {
-        result.push(selectedPlumbingPiece.boxAt(selectedCell).toRenderData([1, 0, 0, 1]));
+    if (selectedPiece !== undefined) {
+        result.push(selectedPiece.toRenderData([1, 0, 0, 1]));
     }
 
     return result;
@@ -117,6 +117,8 @@ function drawScene(gl, programInfo, buffers) {
     gl.clearDepth(1.0);
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
+    // gl.enable(gl.BLEND);
+    // gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -187,28 +189,30 @@ function loadShader(gl, type, source) {
 main();
 
 canvas.addEventListener('click', ev => {
-    if (selectedPlumbingPiece === undefined || selectedDir === undefined) {
+    if (selectedPiece === undefined || selectedDir === undefined) {
         return;
     }
 
-    // let {x, y, z} = selectedBox.baseCorner;
-    // x = Math.round(x);
-    // y = Math.round(y);
-    // z = Math.round(z);
-    // let cell = cellMap.cell(new Point(x, y, z));
-    //
-
-    if (!selectedPlumbingPiece.onlyImplied) {
-        cellMap.cell(selectedCell).piece_names.delete(selectedPlumbingPiece.name);
+    if (!selectedPiece.plumbingPiece.onlyImplied) {
+        let s = cellMap.cell(selectedPiece.cell).piece_names;
+        if (s.has(selectedPiece.plumbingPiece.name)) {
+            s.delete(selectedPiece.plumbingPiece.name);
+        } else {
+            s.add(selectedPiece.plumbingPiece.name);
+        }
+        selectedPiece = undefined;
+        selectedDir = undefined;
         return;
     }
 
     for (let pp of ALL_PLUMBING_PIECES) {
         for (let imp of pp.implies) {
-            if (imp.name === selectedPlumbingPiece.name) {
-                let d = pp.box.center().minus(selectedPlumbingPiece.box.center()).minus(imp.offset).unit();
+            if (imp.name === selectedPiece.plumbingPiece.name) {
+                let d = pp.box.center().minus(selectedPiece.plumbingPiece.box.center()).minus(imp.offset).unit();
                 if (d.isApproximatelyEqualTo(selectedDir, 0.001)) {
-                    cellMap.cell(selectedCell.plus(imp.offset.scaledBy(-1))).piece_names.add(pp.name);
+                    cellMap.cell(selectedPiece.cell.plus(imp.offset.scaledBy(-1))).piece_names.add(pp.name);
+                    selectedPiece = undefined;
+                    selectedDir = undefined;
                     return;
                 }
             }
@@ -217,10 +221,8 @@ canvas.addEventListener('click', ev => {
 });
 
 let prevMouse = [0, 0];
-/** @type {undefined|!Point} */
-let selectedCell = undefined;
-/** @type {undefined|!PlumbingPiece} */
-let selectedPlumbingPiece = undefined;
+/** @type {undefined|!LocalizedPlumbingPiece} */
+let selectedPiece = undefined;
 /** @type {undefined|!Vector} */
 let selectedDir = undefined;
 canvas.addEventListener('mousemove', ev => {
@@ -243,13 +245,11 @@ canvas.addEventListener('mousemove', ev => {
     let ray = camera.screenPosToWorldRay(canvas, curMouse[0], curMouse[1]).ray;
     let collision = cellMap.intersect(ray);
     if (collision === undefined) {
-        selectedPlumbingPiece = undefined;
-        selectedCell = undefined;
+        selectedPiece = undefined;
         selectedDir = undefined;
     } else {
-        selectedPlumbingPiece = collision.plumbingPiece;
-        selectedCell = collision.cell;
-        let box = selectedPlumbingPiece.boxAt(selectedCell);
+        selectedPiece = collision.piece;
+        let box = selectedPiece.toBox(true);
         selectedDir = box.facePointToDirection(collision.collisionPoint);
     }
 });
