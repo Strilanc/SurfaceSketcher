@@ -76,6 +76,14 @@ class Vector {
 
     /**
      * @param {!Vector} other
+     * @returns {!number}
+     */
+    scalarProjectOnto(other) {
+        return this.dot(other) / other.length();
+    }
+
+    /**
+     * @param {!Vector} other
      * @returns {!Vector}
      */
     perpOnto(other) {
