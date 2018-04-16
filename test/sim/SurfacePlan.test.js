@@ -1,6 +1,6 @@
 import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
 
-import {SurfaceLogical} from "src/sim/SurfaceLogical.js"
+import {SurfaceLogical, DoubleDefectQubit} from "src/sim/SurfaceLogical.js"
 import {Surface, XY, Measurement} from "src/sim/Surface.js"
 import {SurfacePlan, SurfacePlanLayer} from "src/sim/SurfacePlan.js"
 
@@ -202,3 +202,162 @@ suite.test('split_and_flip_and_merge', () => {
     assertThat(results[3].get(new XY(4, 1).toString())).isEqualTo(new Measurement(true, false));
 });
 
+suite.test('wrap_sqrt_x_gate', () => {
+    let diagrams = [`
+        #################
+        #, , , , , , , ,#
+        # 0 . . . . . . #
+        #,v, , , , , , ,#
+        # >>>>>>> . . . #
+        #, , , , , , , ,#
+        # . . . . . . . #
+        #, , , , , , , ,#
+        #################
+    `, `
+        #################
+        #, , , , , , , ,#
+        # # . . . . . . #
+        #,^, , , , , , ,#
+        # ^0>>>># . . . #
+        #, , , , , , , ,#
+        # . . . . . . . #
+        #, , , , , , , ,#
+        #################
+    `, `
+        #################
+        #, , , , , , , ,#
+        # # . . . . . . #
+        #, , , , , , , ,#
+        # . . . # . . . #
+        #, , , , , , , ,#
+        # . . . . . . . #
+        #, , , , , , , ,#
+        #################
+    `, `
+        #################
+        #, , V<<<<<< , ,#
+        # # .V. . .^. . #
+        #, , V , , ^ , ,#
+        # . . . # .^. . #
+        #, , ^ , , 0 , ,#
+        # . .^. . .v. . #
+        #, , ^<<<<<< , ,#
+        #################
+    `, `
+        #################
+        #, , @@@@@@@ , ,#
+        # # .@. . .@. . #
+        #, , @ , , @ , ,#
+        # . ./. # .@. . #
+        #, , @ , , @ , ,#
+        # . .@. . .@. . #
+        #, , @@@@@@@ , ,#
+        #################
+    `, `
+        #################
+        #, , >>>>>>V , ,#
+        # # .^. . .V. . #
+        #, , ^ , , @ , ,#
+        # . . . # .^. . #
+        #, , V , , ^ , ,#
+        # . .V. . .^. . #
+        #, , >>>>>>^ , ,#
+        #################
+    `, `
+        #################
+        #, , , , , , , ,#
+        # # . . . . . . #
+        #, , , , , M , ,#
+        # . . . # . . . #
+        #, , , , , , , ,#
+        # . . . . . . . #
+        #, , , , , , , ,#
+        #################
+    `];
+    let plan = diagrams.map(e => SurfacePlanLayer.parseFrom(e));
+    let sim = new SurfaceLogical(new Surface(plan[0].width, plan[0].height));
+    sim.clear_x_stabilizers();
+    let q = new DoubleDefectQubit(new XY(1, 1), new XY(7, 3));
+    for (let i = 0; i < plan.length; i++) {
+        if (i === 1) {
+            assertThat(sim.peek_logical_bloch_vector(q)).isEqualTo({x: 0, y: 0, z: 1});
+        }
+        plan[i].apply_to(sim);
+    }
+    assertSameDiagram(sim.toString(), `
+        #################
+        #, , , , , , , ,#
+        # # . . . . . . #
+        #, , , , , , , ,#
+        # . . . # . . . #
+        #, , , , , , , ,#
+        # . . . . . . . #
+        #, , , , , , , ,#
+        #################
+    `);
+    assertThat(sim.peek_logical_bloch_vector(q)).isEqualTo({x: 0, y: -1, z: 0});
+});
+
+suite.test('inject_s_gate', () => {
+    let diagrams = [`
+        #########
+        #, , , ,#
+        # 0 . . #
+        #, , , ,#
+        # . . 0 #
+        #, , , ,#
+        #########
+    `, `
+        #########
+        #, , , ,#
+        # # . . #
+        #,v, , ,#
+        # v <<# #
+        #, , , ,#
+        #########
+    `, `
+        #########
+        #, , , ,#
+        # # . . #
+        #,#, , ,#
+        # #S### #
+        #, , , ,#
+        #########
+    `, `
+        #########
+        #, , , ,#
+        # # . . #
+        #,^, , ,#
+        # ^ >># #
+        #, , , ,#
+        #########
+    `, `
+        #########
+        #, , , ,#
+        # # . . #
+        #, , , ,#
+        # . . # #
+        #, , , ,#
+        #########
+    `];
+    let plan = diagrams.map(e => SurfacePlanLayer.parseFrom(e));
+    let sim = new SurfaceLogical(new Surface(plan[0].width, plan[0].height));
+    sim.clear_x_stabilizers();
+    let q = new DoubleDefectQubit(new XY(1, 1), new XY(5, 3));
+    for (let i = 0; i < plan.length; i++) {
+        if (i === 1) {
+            assertThat(sim.peek_logical_bloch_vector(q)).isEqualTo({x: 1, y: 0, z: 0});
+        }
+        plan[i].apply_to(sim);
+    }
+    assertSameDiagram(sim.toString(), `
+        #########
+        #, , , ,#
+        # # . . #
+        #, , , ,#
+        # . . # #
+        #, , , ,#
+        #########
+    `);
+    assertThat(sim.peek_logical_bloch_vector(q)).isEqualTo({x: 0, y: 1, z: 0});
+});

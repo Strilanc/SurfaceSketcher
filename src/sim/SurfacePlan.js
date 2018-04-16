@@ -203,6 +203,26 @@ class DoSGate extends PlanElement {
     }
 }
 
+class DoSqrtXGate extends PlanElement {
+    apply_at(sim, xy) {
+        if (!sim.sim.is_data(xy)) {
+            throw new DetailedError("Operations must be applied to data qubits.", {xy, sim});
+        }
+        sim.sim.hadamard(xy);
+        sim.sim.phase(xy);
+        sim.sim.hadamard(xy);
+    }
+
+    effect_directions() {
+        return [
+            {dx: 1, dy: 0},
+            {dx: -1, dy: 0},
+            {dx: 0, dy: 1},
+            {dx: 0, dy: -1},
+        ];
+    }
+}
+
 class SurfacePlan {
     /**
      * @param {!Array.<!SurfacePlanLayer>} layers
@@ -227,6 +247,7 @@ const CHARACTER_ELEMENT_MAP = new Map([
     ['x', new DoXGate()],
     ['z', new DoZGate()],
     ['s', new DoSGate()],
+    ['/', new DoSqrtXGate()],
     ['m', new DestroyHole()],
 ]);
 
