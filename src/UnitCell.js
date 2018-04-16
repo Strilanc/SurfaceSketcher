@@ -3,105 +3,17 @@ import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
 import {Point} from "src/geo/Point.js";
 import {Ray} from "src/geo/Ray.js";
+import {PLUMBING_PIECE_MAP, ALL_PLUMBING_PIECES} from "src/PlumbingPieces.js";
 
 const SMALL_DIAMETER = 0.2;
 const LONG_DIAMETER = 0.8;
 
 class UnitCell {
-    constructor() {
-        this.x_piece = false;
-        this.y_piece = false;
-        this.z_piece = false;
-    }
-
     /**
-     * @param {!int} xyz
-     * @returns {!boolean}
+     * @param {!Set.<!string>} piece_names
      */
-    xyz_piece(xyz) {
-        switch (xyz) {
-            case 0:
-                return this.x_piece;
-            case 1:
-                return this.y_piece;
-            case 2:
-                return this.z_piece;
-            default:
-                throw new DetailedError("Bad xyz_piece", {xyz});
-        }
-    }
-
-    /**
-     * @param {!Point} cell_origin
-     * @returns {!Box}
-     */
-    static x_box(cell_origin) {
-        return new Box(
-            cell_origin.plus(new Vector(SMALL_DIAMETER, 0, 0)),
-            new Vector(LONG_DIAMETER, SMALL_DIAMETER, SMALL_DIAMETER));
-    }
-
-    /**
-     * @param {!Point} cell_origin
-     * @returns {!Box}
-     */
-    static y_box(cell_origin) {
-        return new Box(
-            cell_origin.plus(new Vector(0, SMALL_DIAMETER, 0)),
-            new Vector(SMALL_DIAMETER, LONG_DIAMETER, SMALL_DIAMETER));
-    }
-
-    /**
-     * @param {!Point} cell_origin
-     * @returns {!Box}
-     */
-    static z_box(cell_origin) {
-        return new Box(
-            cell_origin.plus(new Vector(0, 0, SMALL_DIAMETER)),
-            new Vector(SMALL_DIAMETER, SMALL_DIAMETER, LONG_DIAMETER));
-    }
-
-    /**
-     * @param {!Point} cell_origin
-     * @returns {!Box}
-     */
-    static center_box(cell_origin) {
-        return new Box(cell_origin, new Vector(SMALL_DIAMETER, SMALL_DIAMETER, SMALL_DIAMETER));
-    }
-
-    /**
-     * @param {!Point} cell_origin
-     * @param {!int} xyz
-     * @returns {!Box}
-     */
-    static xyz_box(cell_origin, xyz) {
-        switch (xyz) {
-            case 0:
-                return this.x_box(cell_origin);
-            case 1:
-                return this.y_box(cell_origin);
-            case 2:
-                return this.z_box(cell_origin);
-            default:
-                throw new DetailedError("Bad xyz_box", {cell_origin, xyz});
-        }
-    }
-
-    /**
-     * @param {!int} xyz
-     * @returns {!Vector}
-     */
-    static xyz_unit(xyz) {
-        switch (xyz) {
-            case 0:
-                return new Vector(1, 0, 0);
-            case 1:
-                return new Vector(0, 1, 0);
-            case 2:
-                return new Vector(0, 0, 1);
-            default:
-                throw new DetailedError("Bad xyz_unit", {xyz});
-        }
+    constructor(piece_names = new Set()) {
+        this.piece_names = new Set();
     }
 }
 
@@ -148,53 +60,68 @@ class UnitCellMap {
     }
 
     /**
-     * @returns {!Array.<!Box>}
+     * @returns {!Array.<![!Point, !PlumbingPiece]>}
      */
-    boxes() {
-        let result = [];
-        let centers = new Set();
+    piecesAndImpliedPiecesWithPotentialRepeats() {
+        let pieces = [];
         for (let key of this.cells.keys()) {
             let offset = UnitCellMap._keyToCell(key);
 
             let val = this.cells.get(key);
-            for (let d = 0; d < 3; d++) {
-                if (val.xyz_piece(d)) {
-                    result.push(UnitCell.xyz_box(offset, d));
-                    centers.add(key);
-                    let u = offset.plus(UnitCell.xyz_unit(d));
-                    centers.add(`${u.x},${u.y},${u.z}`);
+            for (let pp of ALL_PLUMBING_PIECES) {
+                if (val.piece_names.has(pp.name)) {
+                    pieces.push([offset, pp]);
+                    for (let imp of pp.implies) {
+                        pieces.push([offset.plus(imp.offset), PLUMBING_PIECE_MAP.get(imp.name)]);
+                    }
                 }
             }
         }
+        return pieces;
+    }
 
-        for (let key of centers) {
-            let pt = UnitCellMap._keyToCell(key);
-            result.push(UnitCell.center_box(pt));
+    /**
+     * @returns {!Array.<!RenderData>}
+     */
+    renderData() {
+        let pieces = this.piecesAndImpliedPiecesWithPotentialRepeats();
+        let seen = new Set();
+        let result = [];
+        for (let [pt, pp] of pieces) {
+            let key = UnitCellMap._cellKey(pt) + ':' + pp.name;
+            if (seen.has(key)) {
+                continue;
+            }
+            seen.add(key);
+            result.push(pp.boxAt(pt).toRenderData(pp.color));
         }
-
         return result;
     }
 
     /**
      * @param {!Ray} ray
-     * @returns {!{collisionBox: !Box, collisionPoint: !Point}}
+     * @returns {!{collisionPoint: !Point, plumbingPiece: !PlumbingPiece, cell: !Point}}
      */
     intersect(ray) {
-        let bestBox = undefined;
+        let bestPiece = undefined;
         let bestPt = undefined;
-        for (let box of this.boxes()) {
-            let pt = ray.intersectBox(box, 0.001);
+        for (let piece of this.piecesAndImpliedPiecesWithPotentialRepeats()) {
+            let pt = ray.intersectBox(piece[1].boxAt(piece[0]), 0.001);
             if (pt !== undefined) {
                 if (bestPt === undefined || ray.firstPoint([bestPt, pt]) === pt) {
-                    bestBox = box;
+                    bestPiece = piece;
                     bestPt = pt;
                 }
             }
         }
-        if (bestBox === undefined) {
+        if (bestPiece === undefined) {
             return undefined;
         }
-        return {collisionBox: bestBox, collisionPoint: bestPt};
+        return {
+            plumbingPiece: bestPiece[1],
+            cell: bestPiece[0],
+            collisionPoint: bestPt
+        };
     }
 }
 

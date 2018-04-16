@@ -15,27 +15,29 @@ import {Point} from "src/geo/Point.js";
 import {Camera} from "src/camera.js";
 import {RenderData} from "src/geo/RenderData.js";
 import {UnitCellMap} from "src/UnitCell.js";
+import {ALL_PLUMBING_PIECES, PLUMBING_PIECE_MAP} from "src/PlumbingPieces.js";
 
 
 let camera = new Camera(new Point(0, 0, 0), 7, -Math.PI/3, Math.PI/4);
 
 let cellMap = new UnitCellMap();
-cellMap.cell(new Point(0, 0, 0)).x_piece = true;
-cellMap.cell(new Point(0, 0, 1)).x_piece = true;
-cellMap.cell(new Point(0, 0, 1)).y_piece = true;
-cellMap.cell(new Point(0, 1, 0)).z_piece = true;
+cellMap.cell(new Point(0, 0, 0)).piece_names.add('XPrimal');
+cellMap.cell(new Point(0, 0, 1)).piece_names.add('XPrimal');
+cellMap.cell(new Point(0, 0, 1)).piece_names.add('YPrimal');
+cellMap.cell(new Point(0, 1, 0)).piece_names.add('ZPrimal');
+cellMap.cell(new Point(0, 1, 0)).piece_names.add('ZDual');
 
 /**
  * @returns {!Array.<!RenderData>}
  */
 function makeRenderData() {
-    let result = cellMap.boxes().map(e => e.toRenderData(PRIMAL_COLOR));
+    let result = cellMap.renderData();
 
     // let d = new Vector(1, 1, 1).scaledBy(0.1);
     // result.push(new Box(camera.focus_point, d));
 
-    if (selectedBox !== undefined) {
-        result.push(selectedBox.toRenderData([1, 0, 0, 1]));
+    if (selectedPlumbingPiece !== undefined) {
+        result.push(selectedPlumbingPiece.boxAt(selectedCell).toRenderData([1, 0, 0, 1]));
     }
 
     return result;
@@ -103,16 +105,6 @@ function initBuffers(gl) {
         color: colorBuffer,
         indices: indexBuffer,
     };
-}
-
-const PRIMAL_COLOR = [0.95, 0.95, 0.95, 1.0];
-
-/**
- * @param {!Array.<!Box>} boxes
- * @returns {!Uint16Array}
- */
-function lineIndexData(boxes) {
-    return RenderData.allIndexData(boxes.map(e => e._wireframeRenderData()));
 }
 
 /**
@@ -195,53 +187,40 @@ function loadShader(gl, type, source) {
 main();
 
 canvas.addEventListener('click', ev => {
-    if (selectedBox === undefined || selectedDir === undefined) {
+    if (selectedPlumbingPiece === undefined || selectedDir === undefined) {
         return;
     }
 
-    let {x, y, z} = selectedBox.baseCorner;
-    x = Math.round(x);
-    y = Math.round(y);
-    z = Math.round(z);
-    let cell = cellMap.cell(new Point(x, y, z));
+    // let {x, y, z} = selectedBox.baseCorner;
+    // x = Math.round(x);
+    // y = Math.round(y);
+    // z = Math.round(z);
+    // let cell = cellMap.cell(new Point(x, y, z));
+    //
 
-    if (selectedBox.diagonal.length() >= 0.3*Math.sqrt(3)) {
-        // long box
-        if (selectedBox.diagonal.x > 0.4) {
-            cell.x_piece = false;
-        }
-        if (selectedBox.diagonal.y > 0.4) {
-            cell.y_piece = false;
-        }
-        if (selectedBox.diagonal.z > 0.4) {
-            cell.z_piece = false;
-        }
-    } else {
-        // joiner
-        if (selectedDir.x === 1) {
-            cell.x_piece = true;
-        }
-        if (selectedDir.y === 1) {
-            cell.y_piece = true;
-        }
-        if (selectedDir.z === 1) {
-            cell.z_piece = true;
-        }
-        if (selectedDir.x === -1) {
-            cellMap.cell(new Point(x - 1, y, z)).x_piece = true;
-        }
-        if (selectedDir.y === -1) {
-            cellMap.cell(new Point(x, y - 1, z)).y_piece = true;
-        }
-        if (selectedDir.z === -1) {
-            cellMap.cell(new Point(x, y, z - 1)).z_piece = true;
+    if (!selectedPlumbingPiece.onlyImplied) {
+        cellMap.cell(selectedCell).piece_names.delete(selectedPlumbingPiece.name);
+        return;
+    }
+
+    for (let pp of ALL_PLUMBING_PIECES) {
+        for (let imp of pp.implies) {
+            if (imp.name === selectedPlumbingPiece.name) {
+                let d = pp.box.center().minus(selectedPlumbingPiece.box.center()).minus(imp.offset).unit();
+                if (d.isApproximatelyEqualTo(selectedDir, 0.001)) {
+                    cellMap.cell(selectedCell.plus(imp.offset.scaledBy(-1))).piece_names.add(pp.name);
+                    return;
+                }
+            }
         }
     }
 });
 
 let prevMouse = [0, 0];
-/** @type {undefined|!Box} */
-let selectedBox = undefined;
+/** @type {undefined|!Point} */
+let selectedCell = undefined;
+/** @type {undefined|!PlumbingPiece} */
+let selectedPlumbingPiece = undefined;
 /** @type {undefined|!Vector} */
 let selectedDir = undefined;
 canvas.addEventListener('mousemove', ev => {
@@ -264,11 +243,14 @@ canvas.addEventListener('mousemove', ev => {
     let ray = camera.screenPosToWorldRay(canvas, curMouse[0], curMouse[1]).ray;
     let collision = cellMap.intersect(ray);
     if (collision === undefined) {
-        selectedBox = undefined;
+        selectedPlumbingPiece = undefined;
+        selectedCell = undefined;
         selectedDir = undefined;
     } else {
-        selectedBox = collision.collisionBox;
-        selectedDir = selectedBox.facePointToDirection(collision.collisionPoint);
+        selectedPlumbingPiece = collision.plumbingPiece;
+        selectedCell = collision.cell;
+        let box = selectedPlumbingPiece.boxAt(selectedCell);
+        selectedDir = box.facePointToDirection(collision.collisionPoint);
     }
 });
 
