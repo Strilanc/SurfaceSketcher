@@ -13,6 +13,7 @@ import {Box, BOX_TRIANGLE_INDICES} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
 import {Point} from "src/geo/Point.js";
 import {Camera} from "src/camera.js";
+import {RenderData} from "src/geo/RenderData.js";
 import {UnitCellMap} from "src/UnitCell.js";
 
 
@@ -25,16 +26,16 @@ cellMap.cell(new Point(0, 0, 1)).y_piece = true;
 cellMap.cell(new Point(0, 1, 0)).z_piece = true;
 
 /**
- * @returns {!Array.<!Box>}
+ * @returns {!Array.<!RenderData>}
  */
-function boxesFromUnitCells() {
-    let result = cellMap.boxes();
+function makeRenderData() {
+    let result = cellMap.boxes().map(e => e.toRenderData(PRIMAL_COLOR));
 
     // let d = new Vector(1, 1, 1).scaledBy(0.1);
     // result.push(new Box(camera.focus_point, d));
 
     if (selectedBox !== undefined) {
-        result.push(selectedBox);
+        result.push(selectedBox.toRenderData([1, 0, 0, 1]));
     }
 
     return result;
@@ -105,86 +106,20 @@ function initBuffers(gl) {
 }
 
 const PRIMAL_COLOR = [0.95, 0.95, 0.95, 1.0];
-/**
- * @param {!Array.<Box>} boxes
- * @returns {!Float32Array}
- */
-function triangleColorData(boxes) {
-    const selColors = [1.0,  0.8,  0.8,  1.0];
-    let colorData = [];
-    for (let i = 0; i < boxes.length * 8; i++) {
-        let isSelectedBox = boxes[i>>3].isEqualTo(selectedBox);
-        if (isSelectedBox) {
-            colorData.push(...selColors);
-        } else {
-            colorData.push(...PRIMAL_COLOR);
-        }
-    }
-    return new Float32Array(colorData);
-}
-
-/**
- * @param {!Array.<!Box>} boxes
- * @returns {!Float32Array}
- */
-function trianglePositionData(boxes) {
-    let positions = [];
-    for (let box of boxes) {
-        positions.push(...box.cornerCoords());
-    }
-    return new Float32Array(positions);
-}
-
-/**
- * @param {!Array.<!Box>} boxes
- * @returns {!Uint16Array}
- */
-function triangleIndexData(boxes) {
-    let indexData = [];
-    for (let i = 0; i < boxes.length; i++) {
-        for (let e of BOX_TRIANGLE_INDICES) {
-            indexData.push(8*i + e);
-        }
-    }
-    return new Uint16Array(indexData);
-}
-
-/**
- * @param {!Array.<Box>} boxes
- * @returns {!Float32Array}
- */
-function lineColorData(boxes) {
-    let colorData = [];
-    for (let i = 0; i < boxes.length*24; i++) {
-        colorData.push(0, 0, 0, 1);
-    }
-    return new Float32Array(colorData);
-}
-
-/**
- * @param {!Array.<!Box>} boxes
- * @returns {!Float32Array}
- */
-function linePositionData(boxes) {
-    let positions = [];
-    for (let box of boxes) {
-        positions.push(...box.lineCoords());
-    }
-    return new Float32Array(positions);
-}
 
 /**
  * @param {!Array.<!Box>} boxes
  * @returns {!Uint16Array}
  */
 function lineIndexData(boxes) {
-    let indexData = [];
-    for (let i = 0; i < boxes.length*24; i++) {
-        indexData.push(i);
-    }
-    return new Uint16Array(indexData);
+    return RenderData.allIndexData(boxes.map(e => e._wireframeRenderData()));
 }
 
+/**
+ * @param {!WebGLRenderingContext} gl
+ * @param {*} programInfo
+ * @param {*} buffers
+ */
 function drawScene(gl, programInfo, buffers) {
     gl.clearColor(1.0, 1.0, 1.0, 1.0);
     gl.clearDepth(1.0);
@@ -199,48 +134,34 @@ function drawScene(gl, programInfo, buffers) {
         false,
         camera.worldToScreenMatrix(canvas).transpose().raw);
 
-    let boxes = boxesFromUnitCells();
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
-    gl.bufferData(gl.ARRAY_BUFFER, trianglePositionData(boxes), gl.STATIC_DRAW);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
-    gl.bufferData(gl.ARRAY_BUFFER, triangleColorData(boxes), gl.STATIC_DRAW);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexColor, 4, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
-
-    let indexData = triangleIndexData(boxes);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indexData, gl.STATIC_DRAW);
-
-    gl.drawElements(gl.TRIANGLES, indexData.length, gl.UNSIGNED_SHORT, 0);
-    drawSceneWireframes(gl, programInfo, buffers, boxes);
+    let allRenderData = makeRenderData();
+    _drawSceneHelper(gl, programInfo, buffers, allRenderData, gl.TRIANGLES);
+    _drawSceneHelper(gl, programInfo, buffers, RenderData.allWireframes(allRenderData), gl.LINES);
 }
 
 /**
  * @param {!WebGLRenderingContext} gl
  * @param {*} programInfo
  * @param {*} buffers
- * @param {!Array.<!Box>} boxes
+ * @param {!Array.<!RenderData>} allRenderData
+ * @param {!number} mode
  */
-function drawSceneWireframes(gl, programInfo, buffers, boxes) {
+function _drawSceneHelper(gl, programInfo, buffers, allRenderData, mode) {
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
-    gl.bufferData(gl.ARRAY_BUFFER, linePositionData(boxes), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, RenderData.allCoordinateData(allRenderData), gl.STATIC_DRAW);
     gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
-    gl.bufferData(gl.ARRAY_BUFFER, lineColorData(boxes), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, RenderData.allColorData(allRenderData), gl.STATIC_DRAW);
     gl.vertexAttribPointer(programInfo.attribLocations.vertexColor, 4, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
 
-    let indexData = lineIndexData(boxes);
+    let indexData = RenderData.allIndexData(allRenderData);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indexData, gl.STATIC_DRAW);
 
-    gl.drawElements(gl.LINES, indexData.length, gl.UNSIGNED_SHORT, 0);
+    gl.drawElements(mode, indexData.length, gl.UNSIGNED_SHORT, 0);
 }
 
 function initShaderProgram(gl, vsSource, fsSource) {

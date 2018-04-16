@@ -1,4 +1,5 @@
 import {Point} from "src/geo/Point.js"
+import {RenderData} from "src/geo/RenderData.js"
 import {Vector} from "src/geo/Vector.js"
 
 /**
@@ -40,7 +41,47 @@ class Box {
         return result;
     }
 
-    lineCoords() {
+    /**
+     * @param {![!number, !number, !number, !number]} color
+     * @returns {!RenderData}
+     */
+    toRenderData(color) {
+        let positions = this.corners();
+        let colors = [];
+        for (let i = 0; i < 8; i++) {
+            colors.push(color);
+        }
+        return new RenderData(positions, colors, BOX_TRIANGLE_INDICES, this._wireframeRenderData());
+    }
+
+    /**
+     * @returns {!RenderData}
+     */
+    _wireframeRenderData() {
+        let positions = [];
+        for (let segment of this.lineSegments()) {
+            for (let e of segment) {
+                positions.push(e);
+            }
+        }
+
+        let colors = [];
+        while (colors.length < positions.length) {
+            colors.push([0, 0, 0, 1]);
+        }
+
+        let indexData = [];
+        while (indexData.length < positions.length) {
+            indexData.push(indexData.length);
+        }
+
+        return new RenderData(positions, colors, indexData, undefined);
+    }
+
+    /**
+     * @returns {!Array.<![!Point, !Point]>}
+     */
+    lineSegments() {
         let corners = this.corners();
         // 0-----1
         // |\    |\
@@ -49,17 +90,13 @@ class Box {
         //  \|    \|
         //   6-----7
 
-        let points = [];
+        let segments = [];
         for (let j = 0; j < 3; j++) {
             for (let i = 0; i < 4; i++) {
-                points.push(corners[rot3(2*i, j)], corners[rot3(2*i + 1, j)]);
+                segments.push([corners[rot3(2*i, j)], corners[rot3(2*i + 1, j)]]);
             }
         }
-        let coords = [];
-        for (let pt of points) {
-            coords.push(pt.x, pt.y, pt.z);
-        }
-        return coords;
+        return segments;
     }
 
     /**
