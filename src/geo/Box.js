@@ -2,6 +2,21 @@ import {Point} from "src/geo/Point.js"
 import {Vector} from "src/geo/Vector.js"
 
 /**
+ * @param {!int} v
+ * @param {!int} amount
+ * @returns {!int}
+ */
+function rot3(v, amount) {
+    let inverse_amount = (3 - amount) % 3;
+    let m = (1 << inverse_amount) - 1;
+    let low = v & m;
+    let high = v & ~m;
+    let new_high = low << amount;
+    let new_low = high >> inverse_amount;
+    return new_low | new_high;
+}
+
+/**
  * An axis-aligned box.
  */
 class Box {
@@ -23,6 +38,28 @@ class Box {
             result.push(corner.x, corner.y, corner.z);
         }
         return result;
+    }
+
+    lineCoords() {
+        let corners = this.corners();
+        // 0-----1
+        // |\    |\
+        // | 4-----5
+        // 2-|---3 |
+        //  \|    \|
+        //   6-----7
+
+        let points = [];
+        for (let j = 0; j < 3; j++) {
+            for (let i = 0; i < 4; i++) {
+                points.push(corners[rot3(2*i, j)], corners[rot3(2*i + 1, j)]);
+            }
+        }
+        let coords = [];
+        for (let pt of points) {
+            coords.push(pt.x, pt.y, pt.z);
+        }
+        return coords;
     }
 
     /**
@@ -114,4 +151,4 @@ for (let r = 0; r < 3; r++) {
     }
 }
 
-export {Box, BOX_TRIANGLE_INDICES}
+export {Box, BOX_TRIANGLE_INDICES, rot3}

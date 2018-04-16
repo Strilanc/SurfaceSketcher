@@ -2,7 +2,7 @@ import {Suite, assertThat, assertTrue, assertFalse} from "test/TestUtil.js"
 import {Point} from "src/geo/Point.js"
 import {Triangle} from "src/geo/Triangle.js"
 import {Vector} from "src/geo/Vector.js"
-import {Box} from "src/geo/Box.js"
+import {Box, rot3} from "src/geo/Box.js"
 
 let suite = new Suite("Triangle");
 
@@ -25,6 +25,20 @@ suite.test("isEqualTo", () => {
     assertFalse(b.isEqualTo(new Box(new Point(1, 1, 1), v)));
     assertFalse(b.isEqualTo(''));
     assertFalse(b.isEqualTo(undefined));
+});
+
+suite.test("rot3", () => {
+    assertThat(rot3(0b001, 0)).isEqualTo(0b001);
+    assertThat(rot3(0b010, 0)).isEqualTo(0b010);
+    assertThat(rot3(0b100, 0)).isEqualTo(0b100);
+
+    assertThat(rot3(0b001, 1)).isEqualTo(0b010);
+    assertThat(rot3(0b010, 1)).isEqualTo(0b100);
+    assertThat(rot3(0b100, 1)).isEqualTo(0b001);
+
+    assertThat(rot3(0b001, 2)).isEqualTo(0b100);
+    assertThat(rot3(0b010, 2)).isEqualTo(0b001);
+    assertThat(rot3(0b100, 2)).isEqualTo(0b010);
 });
 
 suite.test("isApproximatelyEqualTo", () => {

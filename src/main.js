@@ -10,7 +10,7 @@ window.onerror = function(msg, url, line, col, error) {
 import {DetailedError} from 'src/base/DetailedError.js'
 import {describe} from "src/base/Describe.js";
 import {Mat4} from "src/base/Mat4.js";
-import {Box, BOX_TRIANGLE_INDICES} from "src/geo/Box.js";
+import {Box, BOX_TRIANGLE_INDICES, BOX_LINE_INDICES} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
 import {Point} from "src/geo/Point.js";
 import {Ray} from "src/geo/Ray.js";
@@ -93,20 +93,14 @@ function main() {
     const vsSource = `
         attribute vec4 aVertexPosition;
         attribute vec4 aVertexColor;
-        attribute vec3 aBaryCoord;
-        attribute vec3 aSize;
 
         uniform mat4 uMatrix;
 
         varying lowp vec4 vColor;
-        varying lowp vec3 vBaryCoord;
-        varying lowp vec3 vSize;
 
         void main(void) {
             gl_Position = uMatrix * aVertexPosition;
             vColor = aVertexColor;
-            vBaryCoord = aBaryCoord;
-            vSize = aSize;
         }
     `;
 
@@ -114,25 +108,9 @@ function main() {
         precision highp float;
 
         varying lowp vec4 vColor;
-        varying lowp vec3 vBaryCoord;
-        varying lowp vec3 vSize;
 
         void main(void) {
-            vec3 b = min(vBaryCoord, 1.0 - vBaryCoord) * vSize;
-            if (b.x > b.y) {
-                b = vec3(b.y, b.x, b.z);
-            }
-            if (b.y > b.z) {
-                b = vec3(b.x, b.z, b.y);
-            }
-            if (b.x > b.y) {
-                b = vec3(b.y, b.x, b.z);
-            }
-            
-            float y = 2.0 - b.y * 750.0;
-            float edge = max(0.0, y);
-            vec4 e = vec4(vec3(1.0, 1.0, 1.0) - edge, 1.0);
-            gl_FragColor = vColor * e;
+            gl_FragColor = vColor;
         }
     `;
 
@@ -143,8 +121,6 @@ function main() {
         attribLocations: {
             vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
             vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
-            baryCoord: gl.getAttribLocation(shaderProgram, 'aBaryCoord'),
-            size: gl.getAttribLocation(shaderProgram, 'aSize'),
         },
         uniformLocations: {
             matrix: gl.getUniformLocation(shaderProgram, 'uMatrix'),
@@ -163,16 +139,93 @@ function main() {
 function initBuffers(gl) {
     const positionBuffer = gl.createBuffer();
     const colorBuffer = gl.createBuffer();
-    const barycentricIndexBuffer = gl.createBuffer();
     const indexBuffer = gl.createBuffer();
-    const sizeBuffer = gl.createBuffer();
     return {
         position: positionBuffer,
         color: colorBuffer,
         indices: indexBuffer,
-        baryCoords: barycentricIndexBuffer,
-        size: sizeBuffer,
     };
+}
+
+/**
+ * @param {!Array.<Box>} boxes
+ * @returns {!Float32Array}
+ */
+function triangleColorData(boxes) {
+    const faceColors = [0.8,  0.8,  0.8,  1.0];
+    const selColors = [1.0,  0.8,  0.8,  1.0];
+    let colorData = [];
+    for (let i = 0; i < boxes.length * 8; i++) {
+        let isSelectedBox = boxes[i>>3].isEqualTo(selectedBox);
+        if (isSelectedBox) {
+            colorData.push(...selColors);
+        } else {
+            colorData.push(...faceColors);
+        }
+    }
+    return new Float32Array(colorData);
+}
+
+/**
+ * @param {!Array.<!Box>} boxes
+ * @returns {!Float32Array}
+ */
+function trianglePositionData(boxes) {
+    let positions = [];
+    for (let box of boxes) {
+        positions.push(...box.cornerCoords());
+    }
+    return new Float32Array(positions);
+}
+
+/**
+ * @param {!Array.<!Box>} boxes
+ * @returns {!Uint16Array}
+ */
+function triangleIndexData(boxes) {
+    let indexData = [];
+    for (let i = 0; i < boxes.length; i++) {
+        for (let e of BOX_TRIANGLE_INDICES) {
+            indexData.push(8*i + e);
+        }
+    }
+    return new Uint16Array(indexData);
+}
+
+/**
+ * @param {!Array.<Box>} boxes
+ * @returns {!Float32Array}
+ */
+function lineColorData(boxes) {
+    let colorData = [];
+    for (let i = 0; i < boxes.length*24; i++) {
+        colorData.push(0, 0, 0, 1);
+    }
+    return new Float32Array(colorData);
+}
+
+/**
+ * @param {!Array.<!Box>} boxes
+ * @returns {!Float32Array}
+ */
+function linePositionData(boxes) {
+    let positions = [];
+    for (let box of boxes) {
+        positions.push(...box.lineCoords());
+    }
+    return new Float32Array(positions);
+}
+
+/**
+ * @param {!Array.<!Box>} boxes
+ * @returns {!Uint16Array}
+ */
+function lineIndexData(boxes) {
+    let indexData = [];
+    for (let i = 0; i < boxes.length*24; i++) {
+        indexData.push(i);
+    }
+    return new Uint16Array(indexData);
 }
 
 function drawScene(gl, programInfo, buffers) {
@@ -192,62 +245,45 @@ function drawScene(gl, programInfo, buffers) {
     let boxes = boxesFromUnitCells();
 
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
-    let positions = [];
-    for (let box of boxes) {
-        positions.push(...box.cornerCoords());
-    }
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, trianglePositionData(boxes), gl.STATIC_DRAW);
     gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.baryCoords);
-    let baryData = new Float32Array(boxes.length*8*3);
-    for (let i = 0; i < boxes.length*8; i++) {
-        for (let j = 0; j < 3; j++) {
-            baryData[i*3 + j] = (i >> j) & 1;
-        }
-    }
-    gl.bufferData(gl.ARRAY_BUFFER, baryData, gl.STATIC_DRAW);
-    gl.vertexAttribPointer(programInfo.attribLocations.baryCoord, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(programInfo.attribLocations.baryCoord);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.size);
-    let sizeData = new Float32Array(boxes.length*8*3);
-    for (let i = 0; i < boxes.length*8; i++) {
-        sizeData[i*3] = boxes[i >> 3].diagonal.z;
-        sizeData[i*3 + 1] = boxes[i >> 3].diagonal.y;
-        sizeData[i*3 + 2] = boxes[i >> 3].diagonal.x;
-    }
-    gl.bufferData(gl.ARRAY_BUFFER, sizeData, gl.STATIC_DRAW);
-    gl.vertexAttribPointer(programInfo.attribLocations.size, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(programInfo.attribLocations.size);
-
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
-    const faceColors = [0.8,  0.8,  0.8,  1.0];
-    const selColors = [1.0,  0.8,  0.8,  1.0];
-    let colorData = [];
-    for (let i = 0; i < boxes.length * 8; i++) {
-        let isSelectedBox = boxes[i>>3].isEqualTo(selectedBox);
-        if (isSelectedBox) {
-            colorData.push(...selColors);
-        } else {
-            colorData.push(...faceColors);
-        }
-    }
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colorData), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, triangleColorData(boxes), gl.STATIC_DRAW);
     gl.vertexAttribPointer(programInfo.attribLocations.vertexColor, 4, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
 
+    let indexData = triangleIndexData(boxes);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-    let indexData = [];
-    for (let i = 0; i < boxes.length; i++) {
-        for (let e of BOX_TRIANGLE_INDICES) {
-            indexData.push(8*i + e);
-        }
-    }
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), gl.STATIC_DRAW);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indexData, gl.STATIC_DRAW);
 
     gl.drawElements(gl.TRIANGLES, indexData.length, gl.UNSIGNED_SHORT, 0);
+    drawSceneWireframes(gl, programInfo, buffers, boxes);
+}
+
+/**
+ * @param {!WebGLRenderingContext} gl
+ * @param {*} programInfo
+ * @param {*} buffers
+ * @param {!Array.<!Box>} boxes
+ */
+function drawSceneWireframes(gl, programInfo, buffers, boxes) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
+    gl.bufferData(gl.ARRAY_BUFFER, linePositionData(boxes), gl.STATIC_DRAW);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
+    gl.bufferData(gl.ARRAY_BUFFER, lineColorData(boxes), gl.STATIC_DRAW);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexColor, 4, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
+
+    let indexData = lineIndexData(boxes);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indexData, gl.STATIC_DRAW);
+
+    gl.drawElements(gl.LINES, indexData.length, gl.UNSIGNED_SHORT, 0);
 }
 
 function initShaderProgram(gl, vsSource, fsSource) {
