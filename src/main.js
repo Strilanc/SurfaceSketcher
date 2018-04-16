@@ -9,77 +9,34 @@ window.onerror = function(msg, url, line, col, error) {
 
 import {DetailedError} from 'src/base/DetailedError.js'
 import {describe} from "src/base/Describe.js";
-import {Mat4} from "src/base/Mat4.js";
-import {Box, BOX_TRIANGLE_INDICES, BOX_LINE_INDICES} from "src/geo/Box.js";
+import {Box, BOX_TRIANGLE_INDICES} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
 import {Point} from "src/geo/Point.js";
-import {Ray} from "src/geo/Ray.js";
 import {Camera} from "src/camera.js";
+import {UnitCellMap} from "src/UnitCell.js";
 
 
-let camera = new Camera(new Point(0, 0, 0), 2, -Math.PI/3, Math.PI/4);
+let camera = new Camera(new Point(0, 0, 0), 7, -Math.PI/3, Math.PI/4);
 
-class UnitCell {
-    constructor() {
-        this.x_piece = false;
-        this.y_piece = false;
-        this.z_piece = false;
-    }
-}
+let cellMap = new UnitCellMap();
+cellMap.cell(new Point(0, 0, 0)).x_piece = true;
+cellMap.cell(new Point(0, 0, 1)).x_piece = true;
+cellMap.cell(new Point(0, 0, 1)).y_piece = true;
+cellMap.cell(new Point(0, 1, 0)).z_piece = true;
 
-let cells = /** @type {!Map.<!string, !UnitCell>} */ new Map();
-cells.set("0,0,0", new UnitCell());
-cells.get("0,0,0").x_piece = true;
-
-cells.set("0,0,1", new UnitCell());
-cells.get("0,0,1").x_piece = true;
-cells.get("0,0,1").y_piece = true;
-
-cells.set("0,1,0", new UnitCell());
-cells.get("0,1,0").z_piece = true;
-
+/**
+ * @returns {!Array.<!Box>}
+ */
 function boxesFromUnitCells() {
-    let result = [];
-    let centers = new Set();
-    for (let key of cells.keys()) {
-        let [x, y, z] = key.split(",");
-        x = parseInt(x);
-        y = parseInt(y);
-        z = parseInt(z);
-
-        let val = cells.get(key);
-        if (val.x_piece) {
-            result.push(new Box(new Point(x + 0.1, y, z), new Vector(0.9, 0.1, 0.1)));
-            centers.add(key);
-            centers.add(`${x+1},${y},${z}`);
-        }
-        if (val.y_piece) {
-            result.push(new Box(new Point(x, y + 0.1, z), new Vector(0.1, 0.9, 0.1)));
-            centers.add(key);
-            centers.add(`${x},${y+1},${z}`);
-        }
-        if (val.z_piece) {
-            result.push(new Box(new Point(x, y, z + 0.1), new Vector(0.1, 0.1, 0.9)));
-            centers.add(key);
-            centers.add(`${x},${y},${z+1}`);
-        }
-    }
-    for (let key of centers) {
-        let [x, y, z] = key.split(",");
-        x = parseInt(x);
-        y = parseInt(y);
-        z = parseInt(z);
-        result.push(new Box(new Point(x, y, z), new Vector(0.1, 0.1, 0.1)));
-    }
+    let result = cellMap.boxes();
 
     // let d = new Vector(1, 1, 1).scaledBy(0.1);
     // result.push(new Box(camera.focus_point, d));
 
-    if (selectedDir !== undefined && selectedBox !== undefined) {
-        let shift = selectedDir.pointwiseMultiply(
-            selectedBox.diagonal.scaledBy(0.5).plus(new Vector(0.01, 0.01, 0.01)));
-        result.push(new Box(selectedBox.center().plus(shift), new Vector(0.01, 0.01, 0.01)));
+    if (selectedBox !== undefined) {
+        result.push(selectedBox);
     }
+
     return result;
 }
 
@@ -147,12 +104,12 @@ function initBuffers(gl) {
     };
 }
 
+const PRIMAL_COLOR = [0.95, 0.95, 0.95, 1.0];
 /**
  * @param {!Array.<Box>} boxes
  * @returns {!Float32Array}
  */
 function triangleColorData(boxes) {
-    const faceColors = [0.8,  0.8,  0.8,  1.0];
     const selColors = [1.0,  0.8,  0.8,  1.0];
     let colorData = [];
     for (let i = 0; i < boxes.length * 8; i++) {
@@ -160,7 +117,7 @@ function triangleColorData(boxes) {
         if (isSelectedBox) {
             colorData.push(...selColors);
         } else {
-            colorData.push(...faceColors);
+            colorData.push(...PRIMAL_COLOR);
         }
     }
     return new Float32Array(colorData);
@@ -316,34 +273,26 @@ function loadShader(gl, type, source) {
 
 main();
 
-function getCell(x, y, z) {
-    let key = `${x},${y},${z}`;
-    if (!cells.has(key)) {
-        cells.set(key, new UnitCell());
-    }
-    return cells.get(key);
-}
-
 canvas.addEventListener('click', ev => {
     if (selectedBox === undefined || selectedDir === undefined) {
         return;
     }
 
     let {x, y, z} = selectedBox.baseCorner;
-    x = Math.floor(x);
-    y = Math.floor(y);
-    z = Math.floor(z);
-    let cell = getCell(x, y, z);
+    x = Math.round(x);
+    y = Math.round(y);
+    z = Math.round(z);
+    let cell = cellMap.cell(new Point(x, y, z));
 
-    if (selectedBox.diagonal.length() >= 0.15*Math.sqrt(3)) {
+    if (selectedBox.diagonal.length() >= 0.3*Math.sqrt(3)) {
         // long box
-        if (selectedBox.diagonal.x > 0.2) {
+        if (selectedBox.diagonal.x > 0.4) {
             cell.x_piece = false;
         }
-        if (selectedBox.diagonal.y > 0.2) {
+        if (selectedBox.diagonal.y > 0.4) {
             cell.y_piece = false;
         }
-        if (selectedBox.diagonal.z > 0.2) {
+        if (selectedBox.diagonal.z > 0.4) {
             cell.z_piece = false;
         }
     } else {
@@ -358,19 +307,21 @@ canvas.addEventListener('click', ev => {
             cell.z_piece = true;
         }
         if (selectedDir.x === -1) {
-            getCell(x - 1, y, z).x_piece = true;
+            cellMap.cell(new Point(x - 1, y, z)).x_piece = true;
         }
         if (selectedDir.y === -1) {
-            getCell(x, y - 1, z).y_piece = true;
+            cellMap.cell(new Point(x, y - 1, z)).y_piece = true;
         }
         if (selectedDir.z === -1) {
-            getCell(x, y, z - 1).z_piece = true;
+            cellMap.cell(new Point(x, y, z - 1)).z_piece = true;
         }
     }
 });
 
 let prevMouse = [0, 0];
+/** @type {undefined|!Box} */
 let selectedBox = undefined;
+/** @type {undefined|!Vector} */
 let selectedDir = undefined;
 canvas.addEventListener('mousemove', ev => {
     let b = canvas.getBoundingClientRect();
@@ -390,20 +341,13 @@ canvas.addEventListener('mousemove', ev => {
     prevMouse = curMouse;
 
     let ray = camera.screenPosToWorldRay(canvas, curMouse[0], curMouse[1]).ray;
-    let bestBox = undefined;
-    let bestPt = undefined;
-    for (let box of boxesFromUnitCells()) {
-        let pt = ray.intersectBox(box, 0.001);
-        if (pt !== undefined) {
-            if (bestPt === undefined || ray.firstPoint([bestPt, pt]) === pt) {
-                bestBox = box;
-                bestPt = pt;
-            }
-        }
-    }
-    selectedBox = bestBox;
-    if (bestPt !== undefined) {
-        selectedDir = bestBox.facePointToDirection(bestPt);
+    let collision = cellMap.intersect(ray);
+    if (collision === undefined) {
+        selectedBox = undefined;
+        selectedDir = undefined;
+    } else {
+        selectedBox = collision.collisionBox;
+        selectedDir = selectedBox.facePointToDirection(collision.collisionPoint);
     }
 });
 
