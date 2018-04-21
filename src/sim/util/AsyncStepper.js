@@ -23,6 +23,14 @@ class AsyncStepper {
         return this._promiseSteps.get(step).promise;
     }
 
+    /**
+     * @param {!int} stepDelta
+     * @returns {!Promise.<!int>}
+     */
+    awaitDelay(stepDelta) {
+        return this.awaitStep(this._step + stepDelta);
+    }
+
     advanceStep() {
         this._step += 1;
         if (this._promiseSteps.has(this._step)) {

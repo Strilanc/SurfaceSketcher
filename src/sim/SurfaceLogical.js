@@ -1,5 +1,7 @@
 import {DetailedError} from "src/base/DetailedError.js";
-import {Surface, XY, Measurement} from "src/sim/Surface.js";
+import {Surface} from "src/sim/Surface.js"
+import {Measurement} from "src/sim/Measurement.js"
+import {XY} from "src/sim/XY.js"
 
 
 class Motion {

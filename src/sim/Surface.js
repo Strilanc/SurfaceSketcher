@@ -1,64 +1,6 @@
 import {ChpSimulator} from "src/sim/ChpSimulator.js";
-
-
-class XY {
-    /**
-     * @param {!int} x
-     * @param {!int} y
-     * @param {!boolean=} must_be_active
-     */
-    constructor(x, y, must_be_active=false) {
-        this.x = x;
-        this.y = y;
-        this.must_be_active = must_be_active;
-    }
-
-    /**
-     * @returns {!string}
-     */
-    toString() {
-        return `(${this.x}, ${this.y})` + (this.must_be_active ? ' [must be active]' : '');
-    }
-
-    /**
-     * @param {!XY|*} other
-     * @returns {!boolean}
-     */
-    isEqualTo(other) {
-        return other instanceof XY &&
-            this.x === other.x &&
-            this.y === other.y &&
-            this.must_be_active === other.must_be_active;
-    }
-}
-
-
-
-class Measurement {
-    /**
-     * @param {!boolean} result
-     * @param {!boolean} random
-     */
-    constructor(result, random) {
-        this.result = result;
-        this.random = random;
-    }
-
-    /**
-     * @returns {!string}
-     */
-    toString() {
-        return `${this.result} (${this.random ? 'random' : 'determined'})`;
-    }
-
-    /**
-     * @param {!Measurement|*} other
-     * @returns {!boolean}
-     */
-    isEqualTo(other) {
-        return other instanceof Measurement && this.result === other.result && this.random === other.random;
-    }
-}
+import {Measurement} from "src/sim/Measurement.js";
+import {XY} from "src/sim/XY.js";
 
 
 class Surface {
@@ -353,4 +295,4 @@ class Surface {
     }
 }
 
-export {XY, Measurement, Surface}
+export {Surface}
