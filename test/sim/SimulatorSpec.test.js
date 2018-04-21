@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
-import {Matrix} from "src/sim/Matrix.js"
+import {Matrix} from "src/sim/util/Matrix.js"
 
 import {VectorSimulator} from "src/sim/VectorSimulator.js"
 import {PauliFrame} from "src/sim/PauliFrame.js"

@@ -1,12 +1,15 @@
 import {DetailedError} from "src/base/DetailedError.js"
 import {Format, UNICODE_FRACTIONS} from "src/base/Format.js"
 import {Util} from "src/base/Util.js"
-import {Matrix} from "src/sim/Matrix.js"
-import {Complex} from "src/sim/Complex.js"
+import {Matrix} from "src/sim/util/Matrix.js"
+import {Complex} from "src/sim/util/Complex.js"
 import {Controls} from "src/sim/Controls.js";
 import {SimulatorSpec} from "src/sim/SimulatorSpec.js";
 
 class PauliFrame extends SimulatorSpec {
+    /**
+     * @param {!SimulatorSpec} sub
+     */
     constructor(sub) {
         super();
         this._sub = sub;

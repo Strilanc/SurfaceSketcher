@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {Complex} from "src/sim/Complex.js"
+import {Complex} from "src/sim/util/Complex.js"
 import {DetailedError} from "src/base/DetailedError.js"
 import {Format} from "src/base/Format.js"
 import {seq, Seq} from "src/base/Seq.js"

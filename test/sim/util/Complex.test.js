@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import {Suite, assertThat, assertThrows, assertTrue} from "test/TestUtil.js"
-import {Complex} from "src/sim/Complex.js"
+import {Complex} from "src/sim/util/Complex.js"
 
 import {Format} from "src/base/Format.js"
 

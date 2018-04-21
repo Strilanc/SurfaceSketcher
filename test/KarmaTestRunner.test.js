@@ -91,7 +91,7 @@ __karma__.start = () => {
         chain = chain.then(() => new Promise(resolver => setTimeout(() => {
             let suiteResult = Promise.all(suite.tests.map(e => promiseRunTest(suite, e[0], e[1])));
             suiteResult.catch(() => console.error(`${suite.name} suite failed`));
-            resolver();
+            suiteResult.then(() => resolver());
         }, 0)));
     }
 

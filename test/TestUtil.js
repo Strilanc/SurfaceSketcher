@@ -249,6 +249,44 @@ class AssertionSubject {
             this._failExpected('to NOT approximately equal', other);
         }
     }
+
+    /**
+     * @returns {Promise.<void>}
+     */
+    async asyncIsPendingPromise() {
+        let {resolved, rejected, value} = await asyncPeekPromiseStatus(this.subject);
+        if (resolved || rejected) {
+            let descActual = describePromise(resolved, rejected, value);
+            let descExpected = describePromise(false, false, undefined);
+            this._fail(`Got <${descActual}> but expected a <${descExpected}>.`);
+        }
+    }
+
+    /**
+     * @param {*} expectedResult
+     * @returns {Promise.<void>}
+     */
+    async asyncIsPromiseWithResult(expectedResult) {
+        let {resolved, rejected, value} = await asyncPeekPromiseStatus(this.subject);
+        if (!resolved) {
+            let descActual = describePromise(resolved, rejected, value);
+            let descExpected = describePromise(true, false, expectedResult);
+            this._fail(`Got <${descActual}> but expected a <${descExpected}>.`);
+        }
+    }
+
+    /**
+     * @param {*} expectedError
+     * @returns {Promise.<void>}
+     */
+    async asyncIsPromiseWithError(expectedError) {
+        let {resolved, rejected, value} = await asyncPeekPromiseStatus(this.subject);
+        if (!rejected) {
+            let descActual = describePromise(resolved, rejected, value);
+            let descExpected = describePromise(false, true, expectedError);
+            this._fail(`Got <${descActual}> but expected a <${descExpected}>.`);
+        }
+    }
 }
 
 /**
@@ -300,9 +338,9 @@ class Suite {
      */
     constructor(name) {
         Suite.suites.push(this);
-        /** @type {!(!function(!{ warn_only: !boolean|!string })[])} */
+        /** @type {!Array.<[!string, !function(!{warn_only: !boolean|!string}) : (undefined|!Promise)]>} */
         this.tests = [];
-        /** @type {!(!function(!{ warn_only: !boolean|!string })[])} */
+        /** @type {!Array.<[!string, !function(!{warn_only: !boolean|!string}) : (undefined|!Promise)]>} */
         this.later_tests = [];
          /** @type {!string} */
         this.name = name;
@@ -310,7 +348,7 @@ class Suite {
 
     /**
      * @param {!string} name
-     * @param {!function(!{ warn_only: !boolean|!string })} method
+     * @param {!function(!{warn_only: !boolean|!string}) : (undefined|!Promise)} method
      * @param {!boolean=false} later
      */
     test(name, method, later=false) {
@@ -326,5 +364,43 @@ class Suite {
 }
 
 Suite.suites = [];
+
+/**
+ * @param {!Promise.<*>} promise
+ * @returns {Promise.<!{resolved: !boolean, rejected: !boolean, value: *}>}
+ */
+async function asyncPeekPromiseStatus(promise) {
+    if (!(promise instanceof Promise)) {
+        throw new Error(`Not a promise: <${describe(promise)}>.`);
+    }
+    let resolved = false;
+    let rejected = false;
+    let value = undefined;
+    promise.then(e => { resolved = true; value = e; });
+    promise.catch(e => { rejected = true; value = e; });
+
+    // Cycle the event loop a few times to allow promises to resolve.
+    for (let i = 0; i < 10; i++) {
+        await new Promise(resolve => resolve());
+    }
+
+    return {resolved, rejected, value};
+}
+
+/**
+ * @param {!boolean} resolved
+ * @param {!boolean} rejected
+ * @param {*} value
+ * @returns {!string}
+ */
+function describePromise(resolved, rejected, value) {
+    if (resolved) {
+        return `ResolvedPromise(${describe(value)})`;
+    }
+    if (rejected) {
+        return `RejectedPromise(${describe(value)})`;
+    }
+    return 'Pending Promise';
+}
 
 export {fail, assertThrows, assertTrue, assertFalse, assertThat, AssertionSubject, Suite}

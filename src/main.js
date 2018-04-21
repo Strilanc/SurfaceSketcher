@@ -45,7 +45,6 @@ function makeRenderData() {
 
 const canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 function main() {
-    const canvasDiv = /** @type {!HTMLDivElement} */ document.getElementById('canvasDiv');
     const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
     document.body.style.overflow = "hidden";
 

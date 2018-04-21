@@ -13,9 +13,9 @@
 // limitations under the License.
 
 import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
-import {Matrix} from "src/sim/Matrix.js"
+import {Matrix} from "src/sim/util/Matrix.js"
 
-import {Complex} from "src/sim/Complex.js"
+import {Complex} from "src/sim/util/Complex.js"
 import {Controls} from "src/sim/Controls.js"
 import {Format} from "src/base/Format.js"
 import {Seq} from "src/base/Seq.js"
