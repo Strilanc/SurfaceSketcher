@@ -1,4 +1,4 @@
-import {Suite, assertThat} from "test/TestUtil.js"
+import {Suite, assertThat, EqualsTester} from "test/TestUtil.js"
 
 import {XY} from "src/sim/XY.js"
 
@@ -12,17 +12,23 @@ suite.test('constructor', () => {
 });
 
 suite.test('equality', () => {
-    let a = new XY(1, 2, true);
-    assertThat(a).isEqualTo(a);
-    assertThat(a).isEqualTo(new XY(1, 2, true));
-    assertThat(a).isNotEqualTo(new XY(5, 2, true));
-    assertThat(a).isNotEqualTo(new XY(1, 5, true));
-    assertThat(a).isNotEqualTo(new XY(1, 2, false));
-    assertThat(a).isNotEqualTo('');
-    assertThat(a).isNotEqualTo(undefined);
+    let eq = new EqualsTester();
+    eq.assertAddGeneratedPair(() => new XY(1, 2, true));
+    eq.assertAddGroup(new XY(5, 2, true));
+    eq.assertAddGroup(new XY(1, 5, true));
+    eq.assertAddGroup(new XY(1, 2, false));
 });
 
 suite.test('toString', () => {
     assertThat(new XY(1, 2).toString()).isEqualTo('(1, 2)');
     assertThat(new XY(1, 2, true).toString()).isEqualTo('(1, 2) [must be active]');
+});
+
+suite.test('neighbors', () => {
+    assertThat(new XY(2, 5).neighbors()).isEqualTo([
+        new XY(3, 5),
+        new XY(1, 5),
+        new XY(2, 6),
+        new XY(2, 4),
+    ])
 });

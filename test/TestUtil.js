@@ -387,6 +387,62 @@ async function asyncPeekPromiseStatus(promise) {
     return {resolved, rejected, value};
 }
 
+class TypeUnknownToObjectUnderTest {
+    toString() {
+        return 'TypeUnknownToObjectUnderTest';
+    }
+}
+
+/**
+ * A utility for easily testing equality methods.
+ */
+class EqualsTester {
+    constructor() {
+        this._equivalence_groups = [
+            [new TypeUnknownToObjectUnderTest()],
+            [undefined],
+            [null],
+        ];
+    }
+
+    /**
+     * Produces two items from the given factory then attempts to add them as a disjoint equivalence group.
+     * @param {!function(): *} factory
+     */
+    assertAddGeneratedPair(factory) {
+        this.assertAddGroup(factory(), factory());
+    }
+
+    /**
+     * Attempts to add what should be a disjoint equivalence group to the equals tester.
+     * @param {...*} group
+     */
+    assertAddGroup(...group) {
+        let k = assertionSubjectIndexForNextTest;
+        assertionSubjectIndexForNextTest += 1;
+
+        for (let e1 of group) {
+            for (let e2 of group) {
+                if (!equate(e1, e2)) {
+                    fail(`<${e1}> doesn't equal <${e2}> from same equivalence group. (assertAddGroup #${k})`);
+                }
+            }
+        }
+
+        for (let other of this._equivalence_groups) {
+            for (let e1 of group) {
+                for (let e2 of other) {
+                    if (equate(e1, e2)) {
+                        fail(`<${e1}> equals <${e2}> from disjoint equivalence group. (assertAddGroup #${k})`);
+                    }
+                }
+            }
+        }
+
+        this._equivalence_groups.push(group);
+    }
+}
+
 /**
  * @param {!boolean} resolved
  * @param {!boolean} rejected
@@ -403,4 +459,4 @@ function describePromise(resolved, rejected, value) {
     return 'Pending Promise';
 }
 
-export {fail, assertThrows, assertTrue, assertFalse, assertThat, AssertionSubject, Suite}
+export {fail, assertThrows, assertTrue, assertFalse, assertThat, AssertionSubject, Suite, EqualsTester}

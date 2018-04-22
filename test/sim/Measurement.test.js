@@ -1,4 +1,4 @@
-import {Suite, assertThat} from "test/TestUtil.js"
+import {Suite, assertThat, EqualsTester} from "test/TestUtil.js"
 
 import {Measurement} from "src/sim/Measurement.js"
 
@@ -10,13 +10,11 @@ suite.test('constructor', () => {
     assertThat(m.random).isEqualTo(true);
 });
 suite.test('equality', () => {
-    let m = new Measurement(false, false);
-    assertThat(m).isEqualTo(m);
-    assertThat(m).isEqualTo(new Measurement(false, false));
-    assertThat(m).isNotEqualTo(new Measurement(false, true));
-    assertThat(m).isNotEqualTo(new Measurement(true, false));
-    assertThat(m).isNotEqualTo('');
-    assertThat(m).isNotEqualTo(undefined);
+    let eq = new EqualsTester();
+    eq.assertAddGeneratedPair(() => new Measurement(false, false));
+    eq.assertAddGroup(new Measurement(false, true));
+    eq.assertAddGroup(new Measurement(true, true));
+    eq.assertAddGroup(new Measurement(true, false));
 });
 
 suite.test('toString', () => {
