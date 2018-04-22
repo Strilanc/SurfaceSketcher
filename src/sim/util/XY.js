@@ -1,3 +1,5 @@
+import {DetailedError} from "src/base/DetailedError.js"
+
 class XY {
     /**
      * @param {!int} x
@@ -26,6 +28,18 @@ class XY {
             this.x === other.x &&
             this.y === other.y &&
             this.must_be_active === other.must_be_active;
+    }
+
+    /**
+     * @param {!string} text
+     * @returns {!XY}
+     */
+    static parseFrom(text) {
+        if (!text.match(/\(\d+,\s*\d+\)/)) {
+            throw new DetailedError('Invalid.', {text});
+        }
+        let [x, y] = text.substring(1, text.length - 1).split(',');
+        return new XY(Number.parseInt(x.trim()), Number.parseInt(y.trim()));
     }
 
     /**

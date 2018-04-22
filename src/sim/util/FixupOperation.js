@@ -1,5 +1,6 @@
 import {equate_Sets} from "src/base/Equate.js";
 import {seq} from "src/base/Seq.js";
+import {Axis} from "src/sim/util/Axis.js";
 import {XY} from "src/sim/util/XY.js";
 import {DetailedError} from "src/base/DetailedError.js";
 import {setMembershipInOfTo, toggleMembership} from "src/sim/util/Util.js";
@@ -52,6 +53,33 @@ class FixupOperation {
         }
         if (this.z_targets.has(target_key)) {
             toggleMembership(this.z_targets, control_key);
+        }
+    }
+
+    /**
+     * @param {!XY} target
+     * @param {!Axis} axis
+     */
+    measure(target, axis=Axis.Z) {
+        let k = target.toString();
+        if (axis.is_x()) {
+            this.x_targets.delete(k);
+        } else {
+            this.z_targets.delete(k);
+        }
+    }
+
+    /**
+     * @param {!XY} target
+     * @param {!Axis} axis
+     * @returns {!boolean}
+     */
+    has(target, axis) {
+        let k = target.toString();
+        if (axis.is_x()) {
+            return this.x_targets.has(k);
+        } else {
+            return this.z_targets.has(k);
         }
     }
 

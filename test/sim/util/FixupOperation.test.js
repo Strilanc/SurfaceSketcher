@@ -1,5 +1,6 @@
-import {Suite, assertThat, assertTrue, EqualsTester} from "test/TestUtil.js"
+import {Suite, assertThat, assertTrue, assertFalse, EqualsTester} from "test/TestUtil.js"
 import {FixupOperation} from "src/sim/util/FixupOperation.js"
+import {Axis} from "src/sim/util/Axis.js"
 import {XY} from "src/sim/util/XY.js"
 import {XYT} from "src/sim/util/XYT.js"
 
@@ -43,6 +44,7 @@ suite.test("clone", () => {
     let s = new FixupOperation(new XYT(1, 2, 3), [new XY(4, 5)], [new XY(6, 7)]);
     let s2 = s.clone();
     assertThat(s2).isEqualTo(s);
+    assertTrue(s2 !== s);
     assertTrue(s.x_targets !== s2.x_targets);
     assertTrue(s.z_targets !== s2.z_targets);
     s.z_targets.add(new XY(8, 9).toString());
@@ -86,4 +88,37 @@ suite.test("cnot", () => {
     assertThat(s).isEqualTo(new FixupOperation(undefined, [x, z], [x, z]));
     s.cnot(x, z);
     assertThat(s).isEqualTo(new FixupOperation(undefined, [x], [z]));
+});
+
+suite.test("has", () => {
+    let s = new FixupOperation(undefined, [new XY(4, 5)], [new XY(6, 7)]);
+    assertTrue(s.has(new XY(4, 5), Axis.X));
+    assertTrue(s.has(new XY(6, 7), Axis.Z));
+
+    assertFalse(s.has(new XY(4, 5), Axis.Z));
+    assertFalse(s.has(new XY(6, 7), Axis.X));
+
+    assertFalse(s.has(new XY(1, 1), Axis.X));
+    assertFalse(s.has(new XY(1, 1), Axis.Z));
+});
+
+suite.test("measure", () => {
+    let a = new XY(4, 5);
+    let b = new XY(6, 7);
+    let c = new XY(2, 2);
+    let s = new FixupOperation(undefined, [a, c], [b]);
+    s.measure(new XY(1, 1));
+    assertThat(s).isEqualTo(new FixupOperation(undefined, [a, c], [b]));
+    s.measure(b, Axis.X);
+    assertThat(s).isEqualTo(new FixupOperation(undefined, [a, c], [b]));
+    s.measure(a, Axis.X);
+    assertThat(s).isEqualTo(new FixupOperation(undefined, [c], [b]));
+    s.measure(c, Axis.Z);
+    assertThat(s).isEqualTo(new FixupOperation(undefined, [c], [b]));
+    s.measure(b, Axis.Z);
+    assertThat(s).isEqualTo(new FixupOperation(undefined, [c], []));
+    s.measure(c);
+    assertThat(s).isEqualTo(new FixupOperation(undefined, [c], []));
+    s.measure(c, Axis.X);
+    assertThat(s).isEqualTo(new FixupOperation(undefined, [], []));
 });
