@@ -1,18 +1,19 @@
 import {ChpSimulator} from "src/sim/ChpSimulator.js";
 import {Measurement} from "src/sim/Measurement.js";
-import {XY} from "src/sim/XY.js";
+import {XY} from "src/sim/util/XY.js";
 
 
 class Surface {
     /**
      * @param {!int} width
      * @param {!int} height
+     * @param {!SimulatorSpec} simulator
      */
-    constructor(width, height) {
+    constructor(width, height, simulator=undefined) {
         this.width = width;
         this.height = height;
         let n = width * height;
-        this.state = new ChpSimulator(n);
+        this.state = simulator !== undefined ? simulator : new ChpSimulator(n);
         for (let i = 0; i < n; i++) {
             this.state.qalloc();
         }
@@ -200,13 +201,7 @@ class Surface {
      * @returns {![!XY, !XY, !XY, !XY]}
      */
     neighbors(xy) {
-        let x = xy.x;
-        let y = xy.y;
-        let n1 = new XY(x + 1, y, xy.must_be_active);
-        let n2 = new XY(x - 1, y, xy.must_be_active);
-        let n3 = new XY(x, y + 1, xy.must_be_active);
-        let n4 = new XY(x, y - 1, xy.must_be_active);
-        return [n1, n2, n3, n4];
+        return xy.neighbors();
     }
 
 

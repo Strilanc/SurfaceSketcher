@@ -1,6 +1,6 @@
 import {Suite, assertThat, EqualsTester} from "test/TestUtil.js"
 
-import {XY} from "src/sim/XY.js"
+import {XY} from "src/sim/util/XY.js"
 
 let suite = new Suite("XY");
 

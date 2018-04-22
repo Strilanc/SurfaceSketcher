@@ -11,7 +11,7 @@ import {
 } from "src/sim/SurfaceLogical.js"
 import {Surface} from "src/sim/Surface.js"
 import {Measurement} from "src/sim/Measurement.js"
-import {XY} from "src/sim/XY.js"
+import {XY} from "src/sim/util/XY.js"
 
 function normalize_diagram(text) {
     return text.split('\n').map(e => e.trim()).join('\n').trim();

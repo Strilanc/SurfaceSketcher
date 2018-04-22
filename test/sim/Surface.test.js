@@ -1,7 +1,7 @@
 import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
 
 import {Surface} from "src/sim/Surface.js"
-import {XY} from "src/sim/XY.js";
+import {XY} from "src/sim/util/XY.js";
 import {Measurement} from "src/sim/Measurement.js";
 
 let suite = new Suite("Surface");

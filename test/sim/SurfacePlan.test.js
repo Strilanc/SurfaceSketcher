@@ -3,7 +3,7 @@ import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from "test/Tes
 import {SurfaceLogical, DoubleDefectQubit} from "src/sim/SurfaceLogical.js"
 import {Surface} from "src/sim/Surface.js"
 import {Measurement} from "src/sim/Measurement.js"
-import {XY} from "src/sim/XY.js"
+import {XY} from "src/sim/util/XY.js"
 import {SurfacePlan, SurfacePlanLayer} from "src/sim/SurfacePlan.js"
 
 let suite = new Suite("SurfacePlan");
