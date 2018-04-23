@@ -7,6 +7,7 @@ import {GeneralSet} from "src/base/GeneralSet.js"
 import {GeneralMap} from "src/base/GeneralMap.js"
 import {DetailedError} from "src/base/DetailedError.js";
 import {setMembershipInOfTo, xorSetInto, makeArrayGrid} from "src/sim/util/Util.js";
+import {MeasurementAdjustment} from "src/sim/util/MeasurementAdjustment.js";
 
 
 class FixupLayer {
@@ -127,16 +128,20 @@ class FixupLayer {
     /**
      * @param {!XY} target
      * @param {!Axis} axis
-     * @returns {!Array.<undefined|!XYT>}
+     * @returns {!MeasurementAdjustment}
      */
     measure(target, axis=Axis.Z) {
-        let result = [];
+        let result = new MeasurementAdjustment();
         for (let i of this._relevantIds(target)) {
             let op = this._ops[i - this._time];
             op.measure(target, axis);
             this._syncInvolvedIds(target, i);
             if (op.has(target, axis.opposite())) {
-                result.push(op.condition);
+                if (op.condition === undefined) {
+                    result.toggleConstant = !result.toggleConstant;
+                } else {
+                    result.toggleConditions.add(op.condition);
+                }
             }
         }
         return result;
