@@ -5,6 +5,8 @@ import {Suite, assertThat, assertTrue, EqualsTester} from "test/TestUtil.js"
 import {FixupLayer} from "src/sim/FixupLayer.js"
 import {Axis} from "src/sim/util/Axis.js"
 import {FixupOperation} from "src/sim/util/FixupOperation.js"
+import {GeneralSet} from "src/base/GeneralSet.js"
+import {GeneralMap} from "src/base/GeneralMap.js"
 import {XY} from "src/sim/util/XY.js"
 import {XYT} from "src/sim/util/XYT.js"
 
@@ -29,11 +31,11 @@ suite.test("constructor", () => {
     assertThat(layer.width).isEqualTo(3);
     assertThat(layer.height).isEqualTo(3);
     assertThat(layer._involvedIds).isEqualTo([
-        [new Set(), new Set(), new Set()],
-        [new Set(), new Set([5]), new Set()],
-        [new Set(), new Set(), new Set([5])],
+        [new GeneralSet(), new GeneralSet(), new GeneralSet()],
+        [new GeneralSet(), new GeneralSet(5), new GeneralSet()],
+        [new GeneralSet(), new GeneralSet(), new GeneralSet(5)],
     ]);
-    assertThat(layer._eventMap).isEqualTo(new Map([['(1, 2) @ 3', 5]]));
+    assertThat(layer._eventMap).isEqualTo(new GeneralMap([new XYT(1, 2, 3), 5]));
     assertIsConsistent(layer);
 });
 

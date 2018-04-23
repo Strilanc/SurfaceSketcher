@@ -1,6 +1,7 @@
 import {Suite, assertThat, assertTrue, assertFalse, EqualsTester} from "test/TestUtil.js"
 import {FixupOperation} from "src/sim/util/FixupOperation.js"
 import {Axis} from "src/sim/util/Axis.js"
+import {GeneralSet} from "src/base/GeneralSet.js"
 import {XY} from "src/sim/util/XY.js"
 import {XYT} from "src/sim/util/XYT.js"
 
@@ -12,8 +13,8 @@ suite.test("constructor", () => {
         [new XY(4, 5)],
         [new XY(6, 7)]);
     assertThat(s.condition).isEqualTo(new XYT(1, 2, 3));
-    assertThat(s.x_targets).isEqualTo(new Set([new XY(4, 5).toString()]));
-    assertThat(s.z_targets).isEqualTo(new Set([new XY(6, 7).toString()]));
+    assertThat(s.x_targets).isEqualTo(new GeneralSet(new XY(4, 5)));
+    assertThat(s.z_targets).isEqualTo(new GeneralSet(new XY(6, 7)));
 });
 
 suite.test("equals", () => {
@@ -21,7 +22,7 @@ suite.test("equals", () => {
     eq.assertAddGroup(new FixupOperation(), new FixupOperation(undefined, [], []));
     eq.assertAddGroup(
         new FixupOperation(new XYT(1, 2, 3), [new XY(4, 5)], [new XY(6, 7)]),
-        new FixupOperation(new XYT(1, 2, 3), [new XY(4, 5).toString()], [new XY(6, 7).toString()]));
+        new FixupOperation(new XYT(1, 2, 3), [new XY(4, 5)], [new XY(6, 7)]));
     eq.assertAddGroup(new FixupOperation(new XYT(1, 2, 9), [new XY(4, 5)], [new XY(6, 7)]));
     eq.assertAddGroup(new FixupOperation(new XYT(1, 2, 3), [], [new XY(6, 7)]));
     eq.assertAddGroup(new FixupOperation(new XYT(1, 2, 3), [new XY(4, 5)], []));
@@ -40,14 +41,13 @@ suite.test("toString", () => {
 });
 
 suite.test("clone", () => {
-    assertThat(new FixupOperation().toString()).isEqualTo('I');
     let s = new FixupOperation(new XYT(1, 2, 3), [new XY(4, 5)], [new XY(6, 7)]);
     let s2 = s.clone();
     assertThat(s2).isEqualTo(s);
     assertTrue(s2 !== s);
     assertTrue(s.x_targets !== s2.x_targets);
     assertTrue(s.z_targets !== s2.z_targets);
-    s.z_targets.add(new XY(8, 9).toString());
+    s.z_targets.add(new XY(8, 9));
     assertThat(s2).isNotEqualTo(s);
 });
 

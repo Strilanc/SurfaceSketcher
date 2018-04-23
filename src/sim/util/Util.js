@@ -23,7 +23,7 @@ function makeArrayGrid(width, height, generator) {
 
 /**
  * Forces a set to contain or not contain an item, based on a boolean parameter.
- * @param {!Set.<T>} set The set the caller wants to contain (or not contain) the given item.
+ * @param {!Set.<T>|!GeneralSet.<T>} set The set the caller wants to contain (or not contain) the given item.
  * @param {T} item The item that the caller wants to be in (or not in) the given set.
  * @param {!boolean} membership Whether or not to include the item in the set.
  * @template T
@@ -38,7 +38,7 @@ function setMembershipInOfTo(set, item, membership) {
 
 /**
  * Flips whether or not a set contains an item.
- * @param {!Set.<T>} set The set to update.
+ * @param {!Set.<T>|!GeneralSet.<T>} set The set to update.
  * @param {T} item The item to add xor remove from the set.
  * @template T
  */
@@ -47,8 +47,8 @@ function toggleMembership(set, item) {
 }
 
 /**
- * @param {!Set.<T>} src
- * @param {!Set.<T>} dst
+ * @param {!Set.<T>|!!GeneralSet.<T>} src
+ * @param {!Set.<T>|!!GeneralSet.<T>} dst
  * @template T
  */
 function xorSetInto(src, dst) {

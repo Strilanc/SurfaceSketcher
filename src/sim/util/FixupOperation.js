@@ -1,4 +1,4 @@
-import {equate_Sets} from "src/base/Equate.js";
+import {GeneralSet} from "src/base/GeneralSet.js";
 import {seq} from "src/base/Seq.js";
 import {Axis} from "src/sim/util/Axis.js";
 import {XY} from "src/sim/util/XY.js";
@@ -11,14 +11,14 @@ import {setMembershipInOfTo, toggleMembership} from "src/sim/util/Util.js";
  */
 class FixupOperation {
     /**
-     * @param {!Iterable.<!XY>} x_targets Locations of qubits to hit with X operations when applying the fixup.
-     * @param {!Iterable.<!XY>} z_targets Locations of qubits to hit with Z operations when applying the fixup.
      * @param {undefined|!XYT} condition The measurement event that determines if the fixup is applied or not.
+     * @param {!GeneralSet.<!XY>|Iterable.<!XY>} x_targets Locations of qubits to hit with X operations during fixup.
+     * @param {!GeneralSet.<!XY>|Iterable.<!XY>} z_targets Locations of qubits to hit with Z operations during fixup.
      */
     constructor(condition=undefined, x_targets=[], z_targets=[]) {
         this.condition = condition;
-        this.x_targets = seq(x_targets).map(e => e instanceof XY ? e.toString() : e).toSet();
-        this.z_targets = seq(z_targets).map(e => e instanceof XY ? e.toString() : e).toSet();
+        this.x_targets = new GeneralSet(...x_targets);
+        this.z_targets = new GeneralSet(...z_targets);
     }
 
     /**
@@ -32,12 +32,11 @@ class FixupOperation {
      * @param {!XY} target
      */
     hadamard(target) {
-        let k = target.toString();
-        let hasX = this.x_targets.has(k);
-        let hasZ = this.z_targets.has(k);
+        let hasX = this.x_targets.has(target);
+        let hasZ = this.z_targets.has(target);
         if (hasX !== hasZ) {
-            setMembershipInOfTo(this.x_targets, k, hasZ);
-            setMembershipInOfTo(this.z_targets, k, hasX);
+            setMembershipInOfTo(this.x_targets, target, hasZ);
+            setMembershipInOfTo(this.z_targets, target, hasX);
         }
     }
 
@@ -46,13 +45,11 @@ class FixupOperation {
      * @param {!XY} target
      */
     cnot(control, target) {
-        let control_key = control.toString();
-        let target_key = target.toString();
-        if (this.x_targets.has(control_key)) {
-            toggleMembership(this.x_targets, target_key);
+        if (this.x_targets.has(control)) {
+            toggleMembership(this.x_targets, target);
         }
-        if (this.z_targets.has(target_key)) {
-            toggleMembership(this.z_targets, control_key);
+        if (this.z_targets.has(target)) {
+            toggleMembership(this.z_targets, control);
         }
     }
 
@@ -61,11 +58,10 @@ class FixupOperation {
      * @param {!Axis} axis
      */
     measure(target, axis=Axis.Z) {
-        let k = target.toString();
         if (axis.is_x()) {
-            this.x_targets.delete(k);
+            this.x_targets.delete(target);
         } else {
-            this.z_targets.delete(k);
+            this.z_targets.delete(target);
         }
     }
 
@@ -75,11 +71,10 @@ class FixupOperation {
      * @returns {!boolean}
      */
     has(target, axis) {
-        let k = target.toString();
         if (axis.is_x()) {
-            return this.x_targets.has(k);
+            return this.x_targets.has(target);
         } else {
-            return this.z_targets.has(k);
+            return this.z_targets.has(target);
         }
     }
 
@@ -89,8 +84,8 @@ class FixupOperation {
      */
     isEqualTo(other) {
         return other instanceof FixupOperation &&
-            equate_Sets(this.x_targets, other.x_targets) &&
-            equate_Sets(this.z_targets, other.z_targets) &&
+            this.x_targets.isEqualTo(other.x_targets) &&
+            this.z_targets.isEqualTo(other.z_targets) &&
             (this.condition === undefined ? other.condition === undefined : this.condition.isEqualTo(other.condition));
     }
 

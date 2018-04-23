@@ -3,6 +3,8 @@ import {seq} from "src/base/Seq.js";
 import {XY} from "src/sim/util/XY.js";
 import {FixupOperation} from "src/sim/util/FixupOperation.js";
 import {Axis} from "src/sim/util/Axis.js";
+import {GeneralSet} from "src/base/GeneralSet.js"
+import {GeneralMap} from "src/base/GeneralMap.js"
 import {DetailedError} from "src/base/DetailedError.js";
 import {setMembershipInOfTo, xorSetInto, makeArrayGrid} from "src/sim/util/Util.js";
 
@@ -32,12 +34,11 @@ class FixupLayer {
 
         let c = op.condition;
         if (c !== undefined) {
-            this._eventMap.set(c.toString(), i + this._time);
+            this._eventMap.set(c, i + this._time);
         }
 
         for (let targets of [op.x_targets, op.z_targets]) {
-            for (let k of targets) {
-                let q = XY.parseFrom(k);
+            for (let q of targets) {
                 this._involvedIds[q.y][q.x].add(i + this._time);
             }
         }
@@ -51,30 +52,29 @@ class FixupLayer {
     }
 
     /**
-     * @returns {!Map.<!XYT, !int>}
+     * @returns {!GeneralMap.<!XYT, !int>}
      * @private
      */
     _regeneratedEventMap() {
-        let result = new Map();
+        let result = new GeneralMap();
         for (let i = 0; i < this._ops.length; i++) {
             let c = this._ops[i].condition;
             if (c !== undefined) {
-                result.set(c.toString(), i + this._time);
+                result.set(c, i + this._time);
             }
         }
         return result;
     }
 
     /**
-     * @returns {!Array.<!Array.<!Set.<!int>>>}
+     * @returns {!Array.<!Array.<!GeneralSet.<!int>>>}
      * @private
      */
     _regeneratedInvolvedIds() {
-        let result = makeArrayGrid(this.width, this.height, () => new Set());
+        let result = makeArrayGrid(this.width, this.height, () => new GeneralSet());
         for (let i = 0; i < this._ops.length; i++) {
             for (let targets of [this._ops[i].x_targets, this._ops[i].z_targets]) {
-                for (let k of targets) {
-                    let q = XY.parseFrom(k);
+                for (let q of targets) {
                     result[q.y][q.x].add(i + this._time);
                 }
             }
@@ -88,9 +88,8 @@ class FixupLayer {
      * @private
      */
     _syncInvolvedIds(xy, index) {
-        let k = xy.toString();
         let op = this._ops[index - this._time];
-        setMembershipInOfTo(this._involvedIds[xy.y][xy.x], index, op.x_targets.has(k) || op.z_targets.has(k));
+        setMembershipInOfTo(this._involvedIds[xy.y][xy.x], index, op.x_targets.has(xy) || op.z_targets.has(xy));
     }
 
     /**
@@ -150,8 +149,7 @@ class FixupLayer {
     _syncClearInvolvedIdLayer(i) {
         let op = this._ops[i - this._time];
         for (let targets of [op.x_targets, op.z_targets]) {
-            for (let kt of targets) {
-                let xy = XY.parseFrom(kt);
+            for (let xy of targets) {
                 this._involvedIds[xy.y][xy.x].delete(i);
             }
         }
@@ -162,12 +160,11 @@ class FixupLayer {
      * @param {!boolean} result
      */
     updateWithMeasurementResult(event, result) {
-        let k = event.toString();
-        if (!this._eventMap.has(k)) {
+        if (!this._eventMap.has(event)) {
             return;
         }
-        let i = this._eventMap.get(k);
-        this._eventMap.delete(k);
+        let i = this._eventMap.get(event);
+        this._eventMap.delete(event);
         let op = this._ops[i - this._time];
         op.condition = undefined;
         if (!result) {

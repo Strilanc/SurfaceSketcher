@@ -43,15 +43,38 @@ class XY {
     }
 
     /**
+     * @returns {!XY}
+     */
+    rightNeighbor() {
+        return new XY(this.x + 1, this.y, this.must_be_active);
+    }
+
+    /**
+     * @returns {!XY}
+     */
+    leftNeighbor() {
+        return new XY(this.x - 1, this.y, this.must_be_active);
+    }
+
+    /**
+     * @returns {!XY}
+     */
+    aboveNeighbor() {
+        return new XY(this.x, this.y - 1, this.must_be_active);
+    }
+
+    /**
+     * @returns {!XY}
+     */
+    belowNeighbor() {
+        return new XY(this.x, this.y + 1, this.must_be_active);
+    }
+
+    /**
      * @returns {![!XY, !XY, !XY, !XY]}
      */
     neighbors() {
-        let {x, y, must_be_active: b} = this;
-        let n1 = new XY(x + 1, y, b);
-        let n2 = new XY(x - 1, y, b);
-        let n3 = new XY(x, y + 1, b);
-        let n4 = new XY(x, y - 1, b);
-        return [n1, n2, n3, n4];
+        return [this.rightNeighbor(), this.leftNeighbor(), this.belowNeighbor(), this.aboveNeighbor()];
     }
 }
 
