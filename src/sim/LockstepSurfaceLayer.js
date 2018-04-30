@@ -1,3 +1,7 @@
+/**
+ * @param {!string} c
+ * @returns {undefined|!XY}
+ */
 import {seq, Seq} from "src/base/Seq.js";
 import {XY} from "src/sim/util/XY.js";
 import {Axis} from "src/sim/util/Axis.js";
@@ -10,7 +14,7 @@ import {Point} from "src/geo/Point.js";
 import {Sphere} from "src/geo/Sphere.js";
 import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
-
+import {codeDistanceUnitCellSize, codeDistanceToPipeSize} from "src/braid/PlumbingPieces.js";
 
 let INIT_0 = '0';
 let INIT_PLUS = '+';
@@ -23,10 +27,31 @@ let X_LEFT = '>';
 let X_UP = 'v';
 let X_DOWN = '^';
 
-/**
- * @param {!string} c
- * @returns {undefined|!XY}
- */
+function qubitPosition(codeDistance, row, col, intraLayer, interLayer) {
+    let {w: uw, h: uh} = codeDistanceUnitCellSize(codeDistance);
+    let {w: pw, h: ph} = codeDistanceToPipeSize(codeDistance);
+    let blockX = Math.floor(col / uw);
+    let blockY = Math.floor(row / uh);
+    let subX = col % uw;
+    let subY = row % uh;
+    let sw = Math.floor((uw - 2*pw)/4) * 2;
+    let sh = Math.floor((uh - 2*ph)/4) * 2;
+    let x = keyFrameLerp(subX, [0, 0], [pw, 0.2], [pw + sw, 0.5], [pw*2 + sw, 0.7], [uw, 1]);
+    let y = keyFrameLerp(subY, [0, 0], [ph, 0.2], [ph + sh, 0.5], [ph*2 + sh, 0.7], [uh, 1]);
+    return new Point(x + blockX, intraLayer*0.03 + interLayer*0.5, y + blockY)
+}
+
+function keyFrameLerp(k, ...keyframes) {
+    for (let i = 0; i < keyframes.length - 1; i++) {
+        let [k0, x0] = keyframes[i];
+        let [k1, x1] = keyframes[i + 1];
+        if (k0 <= k && k < k1) {
+            return x0 + (k - k0 + 1) / (k1 - k0 + 1) * (x1 - x0);
+        }
+    }
+    throw new DetailedError("Not covered.", {k, keyframes});
+}
+
 function x_dir(c) {
     switch (c) {
         case X_RIGHT:
@@ -60,10 +85,61 @@ class LockstepSurfaceLayer {
     }
 
     /**
+     * @param {!int} k
+     * @param {!int} codeDistance
      * @returns {!Array.<!RenderData>}
      */
-    toRenderDatas(layer, k) {
-        let pos = (row, col) => new Point(col * 0.1, layer*0.03 + k*0.5, row * 0.1);
+    toInterLayerRenderDatas(k, codeDistance) {
+        let pos = (row, col, layer) => qubitPosition(codeDistance, row, col, layer, k);
+
+        let positions = [];
+        let colors = [];
+        let triangleIndices = [];
+
+        let wirePositions = [];
+        let wireColors = [];
+        let wireIndices = [];
+
+        let subRenders = [];
+        let d = this.depth();
+
+        for (let x = 0; x < this.fixup.width; x++) {
+            for (let y = 0; y < this.fixup.height; y++) {
+                if (!this.grid[y][x].every(e => e === undefined)) {
+                    wirePositions.push(pos(y, x, 0));
+                    wirePositions.push(pos(y, x, d - 1));
+                    let color = [0, 0, 0, 1];
+                    if (this.grid[y][x][0] === INIT_0) {
+                        color = [0, 1, 0, 1];
+                    } else if (this.grid[y][x][0] === INIT_PLUS) {
+                        color = [0, 0, 1, 1];
+                    }
+                    wireColors.push(color, color);
+                    wireIndices.push(wirePositions.length - 2, wirePositions.length - 1);
+                }
+            }
+        }
+
+        return [...subRenders,
+            new RenderData(
+                positions,
+                colors,
+                triangleIndices,
+                new RenderData(
+                    wirePositions,
+                    wireColors,
+                    wireIndices,
+                    undefined))];
+    }
+
+    /**
+     * @param {!int} layer
+     * @param {!int} k
+     * @param {!int} codeDistance
+     * @returns {!Array.<!RenderData>}
+     */
+    toIntraLayerRenderDatas(layer, k, codeDistance) {
+        let pos = (row, col) => qubitPosition(codeDistance, row, col, layer, k);
 
         let positions = [];
         let colors = [];
@@ -81,7 +157,11 @@ class LockstepSurfaceLayer {
                 let target = x_dir(c);
                 if (target !== undefined) {
                     let {x: dx, y: dy} = target;
-                    subRenders.push(new Sphere(pos(y, x), 0.02).toRenderData([0.5, 0.5, 0.5, 1]));
+                    subRenders.push(flatCrossedCircleRenderData(
+                        pos(y, x),
+                        0.006,
+                        [0.8, 0.8, 0.8, 1],
+                        [0, 0, 0, 1]));
                     wirePositions.push(pos(y, x));
                     wirePositions.push(pos(y + dy, x + dx));
                     wireColors.push([0, 0, 0, 1]);
@@ -91,19 +171,19 @@ class LockstepSurfaceLayer {
 
                 switch (c) {
                     case CONTROL:
-                        subRenders.push(new Sphere(pos(y, x), 0.01).toRenderData([0, 0, 0, 1]));
+                        subRenders.push(new Sphere(pos(y, x), 0.003).toRenderData([0, 0, 0, 1]));
                         break;
                     case INIT_0:
-                        subRenders.push(new Sphere(pos(y, x), 0.01).toRenderData([1, 0, 0, 1]));
+                        subRenders.push(pyramidRenderData(pos(y, x), -0.01, [0, 1, 0, 1]));
                         break;
                     case INIT_PLUS:
-                        subRenders.push(new Sphere(pos(y, x), 0.01).toRenderData([1, 1, 0, 1]));
+                        subRenders.push(pyramidRenderData(pos(y, x), -0.01, [0, 0, 1, 1]));
                         break;
                     case MEASURE_Z:
-                        subRenders.push(new Sphere(pos(y, x), 0.01).toRenderData([0, 1, 0, 1]));
+                        subRenders.push(pyramidRenderData(pos(y, x), +0.01, [0, 1, 0, 1]));
                         break;
                     case MEASURE_X:
-                        subRenders.push(new Sphere(pos(y, x), 0.01).toRenderData([0, 1, 1, 1]));
+                        subRenders.push(pyramidRenderData(pos(y, x), +0.01, [0, 0, 1, 1]));
                         break;
                     case HADAMARD:
                         subRenders.push(new Sphere(pos(y, x), 0.01).toRenderData([0, 0, 1, 1]));
@@ -341,6 +421,72 @@ function padPush(array1, array2, item1, item2, pad=undefined) {
     }
     array1.push(item1);
     array2.push(item2);
+}
+
+/**
+ * @param {!Point} tip
+ * @param {!number} height
+ * @param {![!number, !number, !number, !number]} color
+ * @returns {!RenderData}
+ */
+function pyramidRenderData(tip, height, color) {
+    let points = [
+        tip,
+        tip.plus(new Vector(height, height, height)),
+        tip.plus(new Vector(height, height, -height)),
+        tip.plus(new Vector(-height, height, -height)),
+        tip.plus(new Vector(-height, height, height)),
+    ];
+    let colors = [color, color, color, color, color];
+    let indices = [
+        0, 1, 2,
+        0, 2, 3,
+        0, 3, 4,
+        0, 4, 1,
+    ];
+    return new RenderData(points, colors, indices, new RenderData([], [], [], undefined));
+}
+
+function flatCrossedCircleRenderData(center, radius, centerColor, borderColor) {
+    const divisions = 16;
+
+    let triPositions = [center];
+    let triColors = [centerColor];
+    let triIndices = [];
+    let wirePositions = [];
+    let wireColors = [];
+    let wireIndices = [];
+    for (let i = 0; i < divisions; i++) {
+        let theta = i / divisions * Math.PI * 2;
+        let x = Math.cos(theta);
+        let z = Math.sin(theta);
+        let pt = center.plus(new Vector(x, 0, z).scaledBy(radius));
+        wirePositions.push(pt);
+        triPositions.push(pt);
+        wireIndices.push(i, (i + 1) % divisions);
+        triIndices.push(0, 1 + i, 1 + (i + 1) % divisions);
+        wireColors.push(borderColor);
+        triColors.push(centerColor);
+    }
+
+    wirePositions.push(center.plus(new Vector(radius, 0, 0)));
+    wirePositions.push(center.plus(new Vector(-radius, 0, 0)));
+    wireColors.push(borderColor);
+    wireColors.push(borderColor);
+    wireIndices.push(wirePositions.length - 2, wirePositions.length - 1);
+
+    wirePositions.push(center.plus(new Vector(0, 0, radius)));
+    wirePositions.push(center.plus(new Vector(0, 0, -radius)));
+    wireColors.push(borderColor);
+    wireColors.push(borderColor);
+    wireIndices.push(wirePositions.length - 2, wirePositions.length - 1);
+
+    return new RenderData(triPositions, triColors, triIndices,
+        new RenderData(
+            wirePositions,
+            wireColors,
+            wireIndices,
+            undefined));
 }
 
 export {LockstepSurfaceLayer}

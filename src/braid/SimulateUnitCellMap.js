@@ -56,19 +56,22 @@ function timeSlice(map, t) {
 }
 
 /**
+ * @param {!int} codeDistance
  * @param {!UnitCellMap} map
  * @returns {!Array.<!LockstepSurfaceLayer>}
  */
-function simulate_map(map) {
-    let surface = new Surface(20, 20);
+function simulate_map(codeDistance, map) {
+    let w = 20;
+    let h = 20;
+    let surface = new Surface(w, h);
     let layers = [];
     for (let t = 0; t < 100; t++) {
         let slice = [...timeSlice(map, t)];
         if (slice.length === 0) {
             continue;
         }
-        let layer = new LockstepSurfaceLayer(new FixupLayer(20, 20));
-        let block = blockOut(5, 20, 20, slice);
+        let layer = new LockstepSurfaceLayer(new FixupLayer(w, h));
+        let block = blockOut(codeDistance, w, h, slice);
         layer.measureEnabledStabilizers(surface, block.mask);
         layers.push(layer);
     }

@@ -20,23 +20,10 @@ class Sphere {
      * @returns {!RenderData}
      */
     toRenderData(color) {
-        // let surfacePoint = (y_i, t) => {
-        //     let y = y_i / divisions;
-        //     let theta = t * Math.PI * 2;
-        //     let s = Math.sqrt(1 - y*y);
-        //     return this.center.plus(
-        //         new Vector(s * Math.cos(theta), y, s * Math.sin(theta)).scaledBy(this.radius));
-        // };
-
-        // for (let k = -divisions; k <= divisions; k++) {
-        //     for (let t = 0; t < divisions; t++) {
-        //         let pos = surfacePoint(k, t);
-        //     }
-        // }
-        
         let positions = IcosahedronVertices.map(e => this.center.plus(e.scaledBy(this.radius)));
         let colors = IcosahedronVertices.map(e => color);
-        return new RenderData(positions, colors, IcosahedronIndices, new RenderData([], [], [], undefined));
+        return new RenderData(positions, colors, IcosahedronIndices,
+            new RenderData([], [], [], undefined));
     }
 
     /**

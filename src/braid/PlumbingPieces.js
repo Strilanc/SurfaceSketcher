@@ -9,8 +9,8 @@ const SMALL_DIAMETER = 0.2;
 const LONG_DIAMETER = 0.8;
 
 const GENERIC_COLOR = [0.5, 0.5, 0.5, 1.0];
-const PRIMAL_COLOR = [0.95, 0.95, 0.95, 1.0];
-const DUAL_COLOR = [0.3, 0.3, 0.3, 1.0];
+const PRIMAL_COLOR = [0.8, 0.8, 1.0, 1.0];
+const DUAL_COLOR = [0.7, 1.0, 0.7, 1.0];
 
 
 class PlumbingPieceVariant {
@@ -92,8 +92,8 @@ class PlumbingPiece {
 function codeDistanceToPipeSize(codeDistance) {
     let w = Math.ceil(codeDistance / 4);
     let h = Math.ceil((codeDistance - 2) / 4);
-    w = Math.max(w, 1);
-    h = Math.max(h, 1);
+    w = Math.max(w*2 - 1, 1);
+    h = Math.max(h*2 - 1, 1);
     return {w, h};
 }
 
@@ -102,7 +102,7 @@ function codeDistanceToPipeSize(codeDistance) {
  * @returns {!int}
  */
 function codeDistanceToPipeSeparation(codeDistance) {
-    return codeDistance * 2;
+    return codeDistance * 2 - 1;
 }
 
 /**
@@ -235,4 +235,5 @@ export {
     codeDistanceToPipeSize,
     codeDistanceUnitCellSize,
     PlumbingPieceFootprint,
+    codeDistanceToPipeSeparation,
 }

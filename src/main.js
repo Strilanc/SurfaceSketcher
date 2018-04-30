@@ -19,6 +19,7 @@ import {simulate_map} from "src/braid/SimulateUnitCellMap.js"
 
 
 let camera = new Camera(new Point(0, 0, 0), 7, -Math.PI/3, Math.PI/4);
+const codeDistance = 5;
 
 let cellMap = new UnitCellMap();
 cellMap.cell(new Point(0, 0, 0)).piece_names.add('XPrimal');
@@ -39,6 +40,9 @@ function makeRenderData() {
     if (drawBraids) {
         result.push(...cellMap.renderData());
 
+    }
+
+    if (!drawOps && drawBraids) {
         if (selectedPiece !== undefined) {
             result.push(selectedPiece.toRenderData([1, 0, 0, 1]));
         }
@@ -51,8 +55,9 @@ function makeRenderData() {
     if (drawOps) {
         for (let i = 0; i < simulated_layers.length; i++) {
             for (let j = 0; j < simulated_layers[i].grid.length; j++) {
-                result.push(...simulated_layers[i].toRenderDatas(j, i));
+                result.push(...simulated_layers[i].toIntraLayerRenderDatas(j, i, codeDistance));
             }
+            result.push(...simulated_layers[i].toInterLayerRenderDatas(i, codeDistance));
         }
     }
 
@@ -132,7 +137,7 @@ let simulated_layers = /** @type {!Array.<!LockstepSurfaceLayer>} */ [];
 function drawScene(gl, programInfo, buffers) {
     if (!last_simulation_map.isEqualTo(cellMap)) {
         last_simulation_map = cellMap.clone();
-        simulated_layers = simulate_map(last_simulation_map);
+        simulated_layers = simulate_map(codeDistance, last_simulation_map);
         for (let e of simulated_layers) {
             console.log(e.toString());
         }
