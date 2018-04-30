@@ -1,17 +1,32 @@
+import {seq} from "src/base/Seq.js";
 import {Point} from "src/geo/Point.js";
+import {DetailedError} from "src/base/DetailedError.js";
 
 
 class RenderData {
     /**
-     * @param {!Array.<!Point>} points
+     * @param {!Array.<!Point>} points Point data that the indices list indexes into.
      * @param {!Array.<![!number, !number, !number, !number]>} colors
-     * @param {!Array.<!int>} indices
-     * @param {!RenderData} wireframe
+     *     Each entry in this list specifies the color to of a point in the points list.
+     * @param {!Array.<!Array.<!int>>} indices Points identified by index from the points list.
+     * @param {undefined|!RenderData} wireframe
+     *     Render data for the same thing, but reformated for drawing wireframes.
      */
     constructor(points, colors, indices, wireframe) {
         this.points = points;
         this.colors = colors;
         this.indices = indices;
+
+        if (points.length !== colors.length) {
+            throw new DetailedError("Number of colors doesn't match number of points.",
+                {colorCount: this.colors.length, pointCount: this.points.length});
+        }
+        for (let index of this.indices) {
+            if (!Number.isInteger(index) || index < 0 || index >= this.points.length) {
+                throw new DetailedError("Out of range vertex index.", {index, pointLen: 3 * this.points.length});
+            }
+        }
+
         this.wireframe = wireframe === undefined ? this : wireframe;
     }
 
@@ -37,6 +52,7 @@ class RenderData {
                 this.wireframe.withColorsReplacedByGradient(color1, color2, pt1, pt2));
         }
     }
+
     /**
      * @param {!Array.<!RenderData>} renderData
      * @returns {!Float32Array}
@@ -49,6 +65,30 @@ class RenderData {
             }
         }
         return new Float32Array(coords);
+    }
+
+    /**
+     * @param {!Array.<!RenderData>} renderData
+     * @returns {!Array.<!Array.<!RenderData>>}
+     */
+    static splitIntoCallsThatFit(renderData) {
+        let results = [];
+        let curChunk = [];
+        let n = 0;
+        for (let e of renderData) {
+            let d = e.points.length;
+            if (n + d >= (1 << 16)) {
+                results.push(curChunk);
+                n = 0;
+                curChunk = [];
+            }
+            curChunk.push(e);
+            n += d;
+        }
+        if (curChunk.length > 0) {
+            results.push(curChunk);
+        }
+        return results;
     }
 
     /**

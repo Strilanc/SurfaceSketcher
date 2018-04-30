@@ -71,8 +71,8 @@ class Box {
         }
 
         let indexData = [];
-        while (indexData.length < positions.length) {
-            indexData.push(indexData.length);
+        for (let n = 0; n < positions.length; n += 2) {
+            indexData.push(n, n + 1);
         }
 
         return new RenderData(positions, colors, indexData, undefined);

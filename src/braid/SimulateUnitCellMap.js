@@ -57,6 +57,7 @@ function timeSlice(map, t) {
 
 /**
  * @param {!UnitCellMap} map
+ * @returns {!Array.<!LockstepSurfaceLayer>}
  */
 function simulate_map(map) {
     let surface = new Surface(20, 20);
@@ -69,7 +70,6 @@ function simulate_map(map) {
         let layer = new LockstepSurfaceLayer(new FixupLayer(20, 20));
         let block = blockOut(5, 20, 20, slice);
         layer.measureEnabledStabilizers(surface, block.mask);
-        console.log(layer.toString());
         layers.push(layer);
     }
     return layers;

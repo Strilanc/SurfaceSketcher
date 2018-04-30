@@ -5,7 +5,7 @@ import {UnitCell} from 'src/braid/UnitCell.js'
 import {Point} from "src/geo/Point.js";
 import {Ray} from "src/geo/Ray.js";
 import {PLUMBING_PIECE_MAP, ALL_PLUMBING_PIECES} from "src/braid/PlumbingPieces.js";
-import {LocalizedPlumbingPiece} from "src/LocalizedPlumbingPiece.js";
+import {LocalizedPlumbingPiece} from "src/braid/LocalizedPlumbingPiece.js";
 
 class UnitCellMap {
     /**

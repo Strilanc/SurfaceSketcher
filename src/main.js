@@ -9,7 +9,6 @@ window.onerror = function(msg, url, line, col, error) {
 
 import {DetailedError} from 'src/base/DetailedError.js'
 import {describe} from "src/base/Describe.js";
-import {Box, BOX_TRIANGLE_INDICES} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
 import {Point} from "src/geo/Point.js";
 import {Camera} from "src/geo/Camera.js";
@@ -28,17 +27,33 @@ cellMap.cell(new Point(0, 0, 1)).piece_names.add('YPrimal');
 cellMap.cell(new Point(0, 1, 0)).piece_names.add('ZPrimal');
 cellMap.cell(new Point(0, 1, 0)).piece_names.add('ZDual');
 
+let drawBraids = true;
+let drawOps = false;
+
 /**
  * @returns {!Array.<!RenderData>}
  */
 function makeRenderData() {
-    let result = cellMap.renderData();
+    let result = [];
+
+    if (drawBraids) {
+        result.push(...cellMap.renderData());
+
+        if (selectedPiece !== undefined) {
+            result.push(selectedPiece.toRenderData([1, 0, 0, 1]));
+        }
+    }
 
     // let d = new Vector(1, 1, 1).scaledBy(0.1);
     // result.push(new Box(camera.focus_point, d));
 
-    if (selectedPiece !== undefined) {
-        result.push(selectedPiece.toRenderData([1, 0, 0, 1]));
+
+    if (drawOps) {
+        for (let i = 0; i < simulated_layers.length; i++) {
+            for (let j = 0; j < simulated_layers[i].grid.length; j++) {
+                result.push(...simulated_layers[i].toRenderDatas(j, i));
+            }
+        }
     }
 
     return result;
@@ -108,6 +123,7 @@ function initBuffers(gl) {
     };
 }
 
+let simulated_layers = /** @type {!Array.<!LockstepSurfaceLayer>} */ [];
 /**
  * @param {!WebGLRenderingContext} gl
  * @param {*} programInfo
@@ -116,7 +132,10 @@ function initBuffers(gl) {
 function drawScene(gl, programInfo, buffers) {
     if (!last_simulation_map.isEqualTo(cellMap)) {
         last_simulation_map = cellMap.clone();
-        simulate_map(last_simulation_map);
+        simulated_layers = simulate_map(last_simulation_map);
+        for (let e of simulated_layers) {
+            console.log(e.toString());
+        }
     }
 
     let w = window.innerWidth;
@@ -155,21 +174,23 @@ function drawScene(gl, programInfo, buffers) {
  * @param {!number} mode
  */
 function _drawSceneHelper(gl, programInfo, buffers, allRenderData, mode) {
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
-    gl.bufferData(gl.ARRAY_BUFFER, RenderData.allCoordinateData(allRenderData), gl.STATIC_DRAW);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+    for (let chunk of RenderData.splitIntoCallsThatFit(allRenderData)) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
+        gl.bufferData(gl.ARRAY_BUFFER, RenderData.allCoordinateData(chunk), gl.STATIC_DRAW);
+        gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
-    gl.bufferData(gl.ARRAY_BUFFER, RenderData.allColorData(allRenderData), gl.STATIC_DRAW);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexColor, 4, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
+        gl.bufferData(gl.ARRAY_BUFFER, RenderData.allColorData(chunk), gl.STATIC_DRAW);
+        gl.vertexAttribPointer(programInfo.attribLocations.vertexColor, 4, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
 
-    let indexData = RenderData.allIndexData(allRenderData);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indexData, gl.STATIC_DRAW);
+        let indexData = RenderData.allIndexData(chunk);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indexData, gl.STATIC_DRAW);
 
-    gl.drawElements(mode, indexData.length, gl.UNSIGNED_SHORT, 0);
+        gl.drawElements(mode, indexData.length, gl.UNSIGNED_SHORT, 0);
+    }
 }
 
 function initShaderProgram(gl, vsSource, fsSource) {
@@ -287,6 +308,21 @@ canvas.addEventListener('mousewheel', ev => {
 });
 
 document.addEventListener('keydown', ev => {
+    if (ev.keyCode === '1'.charCodeAt(0)) {
+        drawBraids = true;
+        drawOps = false;
+    }
+
+    if (ev.keyCode === '2'.charCodeAt(0)) {
+        drawBraids = false;
+        drawOps = true;
+    }
+
+    if (ev.keyCode === '3'.charCodeAt(0)) {
+        drawBraids = true;
+        drawOps = true;
+    }
+
     if (ev.keyCode === 'A'.charCodeAt(0) || ev.keyCode === 37) {
         step(-0.1, 0, 0);
         ev.preventDefault();
