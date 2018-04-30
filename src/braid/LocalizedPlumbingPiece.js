@@ -1,14 +1,17 @@
 import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
 import {Point} from "src/geo/Point.js";
+import {codeDistanceUnitCellSize} from "src/braid/PlumbingPieces.js";
 
 const EXTENDER_SCALE_FACTOR = 0.3;
 
 class LocalizedPlumbingPiece {
     /**
-     * @param {!PlumbingPiece} plumbingPiece
-     * @param {!Point} cell
-     * @param {undefined|!Vector} extenderOffset
+     * @param {!PlumbingPiece} plumbingPiece What kind of piece is it?
+     * @param {!Point} cell Which unit cell is it in?
+     * @param {undefined|!Vector} extenderOffset If this piece is an extension of another piece (e.g. used when
+     *     hinting where pieces can be added) this vector is the displacement from the root piece to this
+     *     extender piece.
      */
     constructor(plumbingPiece, cell, extenderOffset=undefined) {
         this.plumbingPiece = plumbingPiece;
@@ -34,6 +37,15 @@ class LocalizedPlumbingPiece {
             box.diagonal = box.diagonal.pointwiseMultiply(v2);
         }
         return box;
+    }
+
+    /**
+     * @param {!int} codeDistance
+     * @returns {!PlumbingPieceFootprint}
+     */
+    toFootprint(codeDistance) {
+        let {w, h} = codeDistanceUnitCellSize(codeDistance);
+        return this.plumbingPiece.footprint(codeDistance).offsetBy(w * this.cell.x, h * this.cell.z);
     }
 
     /**

@@ -131,18 +131,44 @@ class LockstepSurfaceLayer {
     }
 
     /**
-     * @param {!Array.<!XY>} xTargets
-     * @param {!Array.<!XY>} zTargets
+     * @param {!Surface} surface
+     * @param {!Array.<!Array.<!boolean>>} disables
      * @returns {!GeneralMap.<!XY, !MeasurementAdjustment>}
      */
-    measureStabilizers(xTargets, zTargets) {
+    measureEnabledStabilizers(surface, disables) {
+        let xTargets = [];
+        let zTargets = [];
+        for (let row = 0; row < disables.length; row++) {
+            for (let col = 0; col < disables[row].length; col++) {
+                let xy = new XY(col, row);
+                if (surface.is_x(xy)) {
+                    xTargets.push(xy);
+                }
+                if (surface.is_z(xy)) {
+                    zTargets.push(xy);
+                }
+            }
+        }
+        return this.measureStabilizers(xTargets, zTargets, xy => !disables[xy.y][xy.x]);
+    }
+
+    /**
+     * @param {!Array.<!XY>} xTargets
+     * @param {!Array.<!XY>} zTargets
+     * @param {!function(!XY): !boolean} isEnabled
+     * @returns {!GeneralMap.<!XY, !MeasurementAdjustment>}
+     */
+    measureStabilizers(xTargets, zTargets, isEnabled=() => true) {
         this.resetAll(xTargets, Axis.X);
         this.resetAll(zTargets, Axis.Z);
 
         for (let i = 0; i < 4; i++) {
             for (let xTarget of xTargets) {
+                if (!isEnabled(xTarget)) {
+                    continue;
+                }
                 let n = xTarget.neighbors()[i];
-                if (this._inRange(n)) {
+                if (this._inRange(n) && isEnabled(n)) {
                     this.cnot(xTarget, n);
                 }
             }
@@ -152,8 +178,11 @@ class LockstepSurfaceLayer {
         }
         for (let i = 0; i < 4; i++) {
             for (let zTarget of zTargets) {
+                if (!isEnabled(zTarget)) {
+                    continue;
+                }
                 let n = zTarget.neighbors()[i ^ 2];
-                if (this._inRange(n)) {
+                if (this._inRange(n) && isEnabled(n)) {
                     this.cnot(n, zTarget);
                 }
             }
@@ -207,8 +236,8 @@ class LockstepSurfaceLayer {
             planes.push(rows.join('\n'));
         }
 
-        planes.push(this.fixup.toString());
-        return planes.join('\n\n');
+        let r = planes.join('\n\n').split('\n').join('\n    ');
+        return `LockstepSurfaceLayer(grid=\n    ${r},\n\n    fixup=${this.fixup.toString()})`;
     }
 }
 

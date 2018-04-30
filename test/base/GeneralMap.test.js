@@ -65,6 +65,12 @@ suite.test("entries", () => {
     ]);
 });
 
+suite.test("get", () => {
+    let m = new GeneralMap([new Custom(1, 1), 'a']);
+    assertThat(m.get(new Custom(1, 1))).isEqualTo('a');
+    assertThat(m.get(new Custom(1, 2))).isEqualTo(undefined);
+});
+
 suite.test("set", () => {
     let m = new GeneralMap();
     m.set(new Custom(1, 1), 'a');

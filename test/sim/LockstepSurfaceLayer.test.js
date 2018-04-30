@@ -5,6 +5,10 @@ import {XY} from "src/sim/util/XY.js"
 
 let suite = new Suite("LockstepSurfaceLayer");
 
+function normalize_diagram(text) {
+    return text.split('\n').map(e => e.trim()).join('\n').trim();
+}
+
 suite.test('multiple', () => {
     let layer = new LockstepSurfaceLayer(new FixupLayer(6, 6));
     let xStabilizers = [];
@@ -20,80 +24,81 @@ suite.test('multiple', () => {
         }
     }
     layer.measureStabilizers(xStabilizers, zStabilizers);
-    assertThat(layer.toString()).isEqualTo(`
-        ########
-        #+ + + #
-        # 0 0 0#
-        #+ + + #
-        # 0 0 0#
-        #+ + + #
-        # 0 0 0#
-        ########
+    assertThat(normalize_diagram(layer.toString())).isEqualTo(normalize_diagram(`
+        LockstepSurfaceLayer(grid=
+            ########
+            #+ + + #
+            # 0 0 0#
+            #+ + + #
+            # 0 0 0#
+            #+ + + #
+            # 0 0 0#
+            ########
+            
+            ########
+            #C>C>C>#
+            #      #
+            #C>C>C>#
+            #      #
+            #C>C>C>#
+            #      #
+            ########
+            
+            ########
+            # <C<C #
+            #      #
+            # <C<C #
+            #      #
+            # <C<C #
+            #      #
+            ########
+            
+            ########
+            #C C C #
+            #v^v^v^#
+            #CCCCCC#
+            #v^v^v^#
+            #CCCCCC#
+            #v v v #
+            ########
+            
+            ########
+            # C C C#
+            #^v^v^v#
+            #CCCCCC#
+            #^v^v^v#
+            #CCCCCC#
+            # v v v#
+            ########
+            
+            ########
+            #      #
+            # <C<C #
+            #      #
+            # <C<C #
+            #      #
+            # <C<C #
+            ########
+            
+            ########
+            #      #
+            #C>C>C>#
+            #      #
+            #C>C>C>#
+            #      #
+            #C>C>C>#
+            ########
+            
+            ########
+            #E E E #
+            # M M M#
+            #E E E #
+            # M M M#
+            #E E E #
+            # M M M#
+            ########,
         
-        ########
-        #C>C>C>#
-        #      #
-        #C>C>C>#
-        #      #
-        #C>C>C>#
-        #      #
-        ########
-        
-        ########
-        # <C<C #
-        #      #
-        # <C<C #
-        #      #
-        # <C<C #
-        #      #
-        ########
-        
-        ########
-        #C C C #
-        #v^v^v^#
-        #CCCCCC#
-        #v^v^v^#
-        #CCCCCC#
-        #v v v #
-        ########
-        
-        ########
-        # C C C#
-        #^v^v^v#
-        #CCCCCC#
-        #^v^v^v#
-        #CCCCCC#
-        # v v v#
-        ########
-        
-        ########
-        #      #
-        # <C<C #
-        #      #
-        # <C<C #
-        #      #
-        # <C<C #
-        ########
-        
-        ########
-        #      #
-        #C>C>C>#
-        #      #
-        #C>C>C>#
-        #      #
-        #C>C>C>#
-        ########
-        
-        ########
-        #E E E #
-        # M M M#
-        #E E E #
-        # M M M#
-        #E E E #
-        # M M M#
-        ########
-        
-        FixupLayer(size=6x6, t=0, ops=[
-        ])
-    `.split('\n').map(e => e.trim()).join('\n').trim());
+            fixup=FixupLayer(size=6x6, t=0, ops=[
+            ]))
+    `));
 });

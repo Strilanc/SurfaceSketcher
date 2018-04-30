@@ -58,7 +58,8 @@ class GeneralMap {
      * @returns {*}
      */
     get(key) {
-        return this._items.get(key.toString())[1];
+        let r = this._items.get(key.toString());
+        return r === undefined ? undefined : r[1];
     }
 
     //noinspection ReservedWordAsName

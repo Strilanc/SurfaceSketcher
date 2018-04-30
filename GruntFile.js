@@ -75,9 +75,8 @@ module.exports = function(grunt) {
         var wrappedContent = sourceFiles.map(function(path) {
             var content = grunt.file.read(path);
 
-            content = content.replace(new RegExp(
-                /\bexport\s*(\{.+\})/,
-                'g'),
+            content = content.replace(
+                new RegExp(/\bexport\s*({[^}]+})/, 'gm'),
                 function (match, vals) {
                     return '_gen_package_export(' + JSON.stringify(path) + ', ' + vals + ');'
                 });

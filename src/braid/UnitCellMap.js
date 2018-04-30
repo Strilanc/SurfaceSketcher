@@ -1,58 +1,34 @@
 import {DetailedError} from 'src/base/DetailedError.js'
+import {GeneralMap} from 'src/base/GeneralMap.js'
+import {GeneralSet} from 'src/base/GeneralSet.js'
+import {UnitCell} from 'src/braid/UnitCell.js'
 import {Point} from "src/geo/Point.js";
 import {Ray} from "src/geo/Ray.js";
-import {PLUMBING_PIECE_MAP, ALL_PLUMBING_PIECES} from "src/PlumbingPieces.js";
+import {PLUMBING_PIECE_MAP, ALL_PLUMBING_PIECES} from "src/braid/PlumbingPieces.js";
 import {LocalizedPlumbingPiece} from "src/LocalizedPlumbingPiece.js";
-
-class UnitCell {
-    /**
-     * @param {!Set.<!string>} piece_names
-     */
-    constructor(piece_names = new Set()) {
-        this.piece_names = piece_names;
-    }
-}
 
 class UnitCellMap {
     /**
-     * @param {!Map.<!string, !UnitCell>} cells
+     * @param {!GeneralMap.<!Point, !UnitCell>} cells
      */
-    constructor(cells = new Map()) {
+    constructor(cells = new GeneralMap()) {
         this.cells = cells;
     }
 
     /**
      * @param {!Point} pt
+     * @param {!boolean} do_not_modify
      * @returns {!UnitCell}
      */
-    cell(pt) {
-        let key = UnitCellMap._cellKey(pt);
-        if (!this.cells.has(key)) {
-            this.cells.set(key, new UnitCell());
+    cell(pt, do_not_modify=false) {
+        let result = this.cells.get(pt);
+        if (result === undefined) {
+            result = new UnitCell();
+            if (!do_not_modify) {
+                this.cells.set(pt, result);
+            }
         }
-        return this.cells.get(key);
-    }
-
-    /**
-     * @param {!Point} pt
-     * @returns {!string}
-     * @private
-     */
-    static _cellKey(pt) {
-        return `${pt.x},${pt.y},${pt.z}`;
-    }
-
-    /**
-     * @param {!string} key
-     * @returns {!Point}
-     * @private
-     */
-    static _keyToCell(key) {
-        let [x, y, z] = key.split(",");
-        x = parseInt(x);
-        y = parseInt(y);
-        z = parseInt(z);
-        return new Point(x, y, z);
+        return result;
     }
 
     /**
@@ -60,10 +36,7 @@ class UnitCellMap {
      */
     _piecesAndImpliedPiecesWithPotentialRepeats() {
         let pieces = [];
-        for (let key of this.cells.keys()) {
-            let offset = UnitCellMap._keyToCell(key);
-
-            let val = this.cells.get(key);
+        for (let [offset, val] of this.cells.entries()) {
             for (let pp of ALL_PLUMBING_PIECES) {
                 if (val.piece_names.has(pp.name)) {
                     pieces.push(new LocalizedPlumbingPiece(pp, offset));
@@ -168,6 +141,33 @@ class UnitCellMap {
             collisionPoint: bestPt
         };
     }
+
+    /**
+     * @returns {!UnitCellMap}
+     */
+    clone() {
+        let cells = new GeneralMap();
+        for (let [key, val] of this.cells.entries()) {
+            cells.set(key, val.clone());
+        }
+        return new UnitCellMap(cells);
+    }
+
+    /**
+     * @param {!UnitCellMap|*} other
+     * @returns {!boolean}
+     */
+    isEqualTo(other) {
+        if (!(other instanceof UnitCellMap)) {
+            return false;
+        }
+        for (let k of [...this.cells.keys(), ...other.cells.keys()]) {
+            if (!this.cell(k, true).isEqualTo(other.cell(k, true))) {
+                return false;
+            }
+        }
+        return true;
+    }
 }
 
-export {UnitCell, UnitCellMap}
+export {UnitCellMap}

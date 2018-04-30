@@ -12,10 +12,11 @@ import {describe} from "src/base/Describe.js";
 import {Box, BOX_TRIANGLE_INDICES} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
 import {Point} from "src/geo/Point.js";
-import {Camera} from "src/camera.js";
+import {Camera} from "src/geo/Camera.js";
 import {RenderData} from "src/geo/RenderData.js";
-import {UnitCellMap} from "src/UnitCell.js";
-import {ALL_PLUMBING_PIECES, PLUMBING_PIECE_MAP} from "src/PlumbingPieces.js";
+import {UnitCellMap} from "src/braid/UnitCellMap.js";
+import {ALL_PLUMBING_PIECES, PLUMBING_PIECE_MAP} from "src/braid/PlumbingPieces.js";
+import {simulate_map} from "src/braid/SimulateUnitCellMap.js"
 
 
 let camera = new Camera(new Point(0, 0, 0), 7, -Math.PI/3, Math.PI/4);
@@ -42,6 +43,8 @@ function makeRenderData() {
 
     return result;
 }
+
+let last_simulation_map = new UnitCellMap();
 
 const canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 function main() {
@@ -111,6 +114,11 @@ function initBuffers(gl) {
  * @param {*} buffers
  */
 function drawScene(gl, programInfo, buffers) {
+    if (!last_simulation_map.isEqualTo(cellMap)) {
+        last_simulation_map = cellMap.clone();
+        simulate_map(last_simulation_map);
+    }
+
     let w = window.innerWidth;
     let h = window.innerHeight;
     if (canvas.width !== w || canvas.height !== h) {

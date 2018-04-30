@@ -3,6 +3,7 @@ import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
 import {Point} from "src/geo/Point.js";
 import {seq} from "src/base/Seq.js";
+import {makeArrayGrid} from "src/sim/util/Util.js";
 
 const SMALL_DIAMETER = 0.2;
 const LONG_DIAMETER = 0.8;
@@ -24,18 +25,47 @@ class PlumbingPieceVariant {
 }
 
 
+class PlumbingPieceFootprint {
+    /**
+     * @param {!int} offsetX
+     * @param {!int} offsetY
+     * @param {!Array.<!Array.<!boolean>>} mask
+     */
+    constructor(offsetX, offsetY, mask) {
+        this.offsetX = offsetX;
+        this.offsetY = offsetY;
+        this.mask = mask;
+    }
+
+    /**
+     * @param {!int} x
+     * @param {!int} y
+     * @returns {!PlumbingPieceFootprint}
+     */
+    offsetBy(x, y) {
+        return new PlumbingPieceFootprint(this.offsetX + x, this.offsetY + y, this.mask);
+    }
+
+    toString() {
+        let content = this.mask.map(row => row.map(cell => cell ? '#' : ' ').join('')).join('\n    ');
+        return `PlumbingPieceFootprint(offsetX=${this.offsetX}, offsetY=${this.offsetY}, mask=\n    ${content}\n)`;
+    }
+}
+
 class PlumbingPiece {
     /**
      * @param {!string} name
      * @param {!Box} box
+     * @param {!function(codeDistance: !int) : !PlumbingPieceFootprint} footprint
      * @param {![!number, !number, !number, !number]} color
      * @param {Array.<!{name: !string, offset: !Vector}>} implies
      * @param {!boolean} onlyImplied
      * @param {!Array.<!PlumbingPieceVariant>} variants
      */
-    constructor(name, box, color, implies, onlyImplied, variants) {
+    constructor(name, box, footprint, color, implies, onlyImplied, variants) {
         this.name = name;
         this.box = box;
+        this.footprint = footprint;
         this.color = color;
         this.implies = implies;
         this.onlyImplied = onlyImplied;
@@ -56,6 +86,38 @@ class PlumbingPiece {
 }
 
 /**
+ * @param {!int} codeDistance
+ * @returns {{w: !int, h: !int}}
+ */
+function codeDistanceToPipeSize(codeDistance) {
+    let w = Math.ceil(codeDistance / 4);
+    let h = Math.ceil((codeDistance - 2) / 4);
+    w = Math.max(w, 1);
+    h = Math.max(h, 1);
+    return {w, h};
+}
+
+/**
+ * @param {!int} codeDistance
+ * @returns {!int}
+ */
+function codeDistanceToPipeSeparation(codeDistance) {
+    return codeDistance * 2;
+}
+
+/**
+ * @param {!int} codeDistance
+ * @returns {{w: !int, h: !int}}
+ */
+function codeDistanceUnitCellSize(codeDistance) {
+    let {w, h} = codeDistanceToPipeSize(codeDistance);
+    let s = codeDistanceToPipeSeparation(codeDistance);
+    w += s;
+    h += s;
+    return {w, h};
+}
+
+/**
  * @param {!PlumbingPiece} pp
  * @returns {!PlumbingPiece}
  */
@@ -63,6 +125,7 @@ function genericToPrimal(pp) {
     return new PlumbingPiece(
         pp.name + 'Primal',
         pp.box,
+        codeDistance => pp.footprint(codeDistance),
         PRIMAL_COLOR,
         pp.implies.map(({name, offset}) => ({name: name + 'Primal', offset})),
         pp.onlyImplied,
@@ -77,6 +140,7 @@ function genericToDual(pp) {
     return new PlumbingPiece(
         pp.name + 'Dual',
         new Box(pp.box.baseCorner.plus(new Vector(0.5, 0.5, 0.5)), pp.box.diagonal),
+        codeDistance => pp.footprint(codeDistance).offsetBy(codeDistance, codeDistance),
         DUAL_COLOR,
         pp.implies.map(({name, offset}) => ({name: name + 'Dual', offset})),
         pp.onlyImplied,
@@ -92,6 +156,10 @@ let centerConnector = new PlumbingPiece(
     new Box(
         new Point(0, 0, 0),
         new Vector(SMALL_DIAMETER, SMALL_DIAMETER, SMALL_DIAMETER)),
+    codeDistance => {
+        let {w, h} = codeDistanceToPipeSize(codeDistance);
+        return new PlumbingPieceFootprint(0, 0, makeArrayGrid(w, h, () => true));
+    },
     GENERIC_COLOR,
     [],
     true,
@@ -102,6 +170,12 @@ let xConnector = new PlumbingPiece(
     new Box(
         new Point(SMALL_DIAMETER, 0, 0),
         new Vector(LONG_DIAMETER, SMALL_DIAMETER, SMALL_DIAMETER)),
+    codeDistance => {
+        let {w, h} = codeDistanceToPipeSize(codeDistance);
+        w *= 2;
+        w += codeDistanceToPipeSeparation(codeDistance);
+        return new PlumbingPieceFootprint(0, 0, makeArrayGrid(w, h, () => true));
+    },
     GENERIC_COLOR,
     [
         {name: 'Center', offset: new Vector(0, 0, 0)},
@@ -115,6 +189,10 @@ let yConnector = new PlumbingPiece(
     new Box(
         new Point(0, SMALL_DIAMETER, 0),
         new Vector(SMALL_DIAMETER, LONG_DIAMETER, SMALL_DIAMETER)),
+    codeDistance => {
+        let {w, h} = codeDistanceToPipeSize(codeDistance);
+        return new PlumbingPieceFootprint(0, 0, makeArrayGrid(w, h, () => true));
+    },
     GENERIC_COLOR,
     [
         {name: 'Center', offset: new Vector(0, 0, 0)},
@@ -128,6 +206,12 @@ let zConnector = new PlumbingPiece(
     new Box(
         new Point(0, 0, SMALL_DIAMETER),
         new Vector(SMALL_DIAMETER, SMALL_DIAMETER, LONG_DIAMETER)),
+    codeDistance => {
+        let {w, h} = codeDistanceToPipeSize(codeDistance);
+        h *= 2;
+        h += codeDistanceToPipeSeparation(codeDistance);
+        return new PlumbingPieceFootprint(0, 0, makeArrayGrid(w, h, () => true));
+    },
     GENERIC_COLOR,
     [
         {name: 'Center', offset: new Vector(0, 0, 0)},
@@ -144,4 +228,11 @@ const ALL_PLUMBING_PIECES = [...primalPieces, ...dualPieces];
 /** @type {!Map.<!string, !PlumbingPiece>} */
 const PLUMBING_PIECE_MAP = seq(ALL_PLUMBING_PIECES).keyedBy(e => e.name);
 
-export {PlumbingPiece, ALL_PLUMBING_PIECES, PLUMBING_PIECE_MAP}
+export {
+    PlumbingPiece,
+    ALL_PLUMBING_PIECES,
+    PLUMBING_PIECE_MAP,
+    codeDistanceToPipeSize,
+    codeDistanceUnitCellSize,
+    PlumbingPieceFootprint,
+}
