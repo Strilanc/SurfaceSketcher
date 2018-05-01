@@ -140,7 +140,12 @@ function genericToDual(pp) {
     return new PlumbingPiece(
         pp.name + 'Dual',
         new Box(pp.box.baseCorner.plus(new Vector(0.5, 0.5, 0.5)), pp.box.diagonal),
-        codeDistance => pp.footprint(codeDistance).offsetBy(codeDistance, codeDistance),
+        codeDistance => {
+            let unitSize = codeDistanceUnitCellSize(codeDistance);
+            let dw = Math.floor((unitSize.w - 1) / 4) * 2 + 1;
+            let dh = Math.floor((unitSize.h - 1) / 4) * 2 + 1;
+            return pp.footprint(codeDistance).offsetBy(dw, dh);
+        },
         DUAL_COLOR,
         pp.implies.map(({name, offset}) => ({name: name + 'Dual', offset})),
         pp.onlyImplied,

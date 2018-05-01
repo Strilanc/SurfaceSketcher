@@ -19,7 +19,7 @@ import {simulate_map} from "src/braid/SimulateUnitCellMap.js"
 
 
 let camera = new Camera(new Point(0, 0, 0), 7, -Math.PI/3, Math.PI/4);
-const codeDistance = 5;
+let codeDistance = 1;
 
 let cellMap = new UnitCellMap();
 cellMap.cell(new Point(0, 0, 0)).piece_names.add('XPrimal');
@@ -138,9 +138,6 @@ function drawScene(gl, programInfo, buffers) {
     if (!last_simulation_map.isEqualTo(cellMap)) {
         last_simulation_map = cellMap.clone();
         simulated_layers = simulate_map(codeDistance, last_simulation_map);
-        for (let e of simulated_layers) {
-            console.log(e.toString());
-        }
     }
 
     let w = window.innerWidth;
@@ -326,6 +323,18 @@ document.addEventListener('keydown', ev => {
     if (ev.keyCode === '3'.charCodeAt(0)) {
         drawBraids = true;
         drawOps = true;
+    }
+
+    if (ev.keyCode === 187) {
+        codeDistance += 1;
+        last_simulation_map = new UnitCellMap();
+        ev.preventDefault();
+    }
+
+    if (ev.keyCode === 189) {
+        codeDistance = Math.max(codeDistance - 1, 1);
+        last_simulation_map = new UnitCellMap();
+        ev.preventDefault();
     }
 
     if (ev.keyCode === 'A'.charCodeAt(0) || ev.keyCode === 37) {
