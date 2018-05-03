@@ -37,6 +37,17 @@ function blockOut(codeDistance, width, height, pieces) {
 }
 
 /**
+ * @param {!FixupLayer} fixupLayer
+ * @param {!int} codeDistance
+ * @param {!Array.<!LocalizedPlumbingPiece>} pieces
+ */
+function fixOut(fixupLayer, codeDistance, pieces) {
+    for (let piece of pieces) {
+        piece.doSignalPropagation(codeDistance, fixupLayer);
+    }
+}
+
+/**
  * @param {!UnitCellMap} map
  * @param {!int} t
  * @returns {!Array.<!LocalizedPlumbingPiece>}
@@ -71,6 +82,7 @@ function simulate_map(codeDistance, map) {
             continue;
         }
         let layer = new LockstepSurfaceLayer(new FixupLayer(w, h));
+        fixOut(layer.fixup, codeDistance, slice);
         let block = blockOut(codeDistance, w, h, slice);
         layer.measureEnabledStabilizers(surface, block.mask);
         layers.push(layer);

@@ -120,6 +120,17 @@ class LockstepSurfaceLayer {
             }
         }
 
+        for (let op of this.fixup._ops) {
+            if (op.condition !== undefined) {
+                for (let t of op.x_targets) {
+                    wirePositions.push(pos(t.y, t.x, d - 1));
+                    wirePositions.push(pos(op.condition.y, op.condition.x, d + 1));
+                    wireColors.push([1, 0, 0, 1], [1, 0, 0, 1]);
+                    wireIndices.push(wirePositions.length - 2, wirePositions.length - 1);
+                }
+            }
+        }
+
         return [...subRenders,
             new RenderData(
                 positions,
@@ -151,46 +162,46 @@ class LockstepSurfaceLayer {
 
         let subRenders = [];
 
-        for (let x = 0; x < this.fixup.width; x++) {
-            for (let y = 0; y < this.fixup.height; y++) {
-                let c = this.grid[y][x][layer];
-                let target = x_dir(c);
-                if (target !== undefined) {
-                    let {x: dx, y: dy} = target;
-                    subRenders.push(flatCrossedCircleRenderData(
-                        pos(y, x),
-                        0.006,
-                        [0.8, 0.8, 0.8, 1],
-                        [0, 0, 0, 1]));
-                    wirePositions.push(pos(y, x));
-                    wirePositions.push(pos(y + dy, x + dx));
-                    wireColors.push([0, 0, 0, 1]);
-                    wireColors.push([0, 0, 0, 1]);
-                    wireIndices.push(wirePositions.length - 2, wirePositions.length - 1);
-                }
-
-                switch (c) {
-                    case CONTROL:
-                        subRenders.push(new Sphere(pos(y, x), 0.003).toRenderData([0, 0, 0, 1]));
-                        break;
-                    case INIT_0:
-                        subRenders.push(pyramidRenderData(pos(y, x), -0.01, [0, 1, 0, 1]));
-                        break;
-                    case INIT_PLUS:
-                        subRenders.push(pyramidRenderData(pos(y, x), -0.01, [0, 0, 1, 1]));
-                        break;
-                    case MEASURE_Z:
-                        subRenders.push(pyramidRenderData(pos(y, x), +0.01, [0, 1, 0, 1]));
-                        break;
-                    case MEASURE_X:
-                        subRenders.push(pyramidRenderData(pos(y, x), +0.01, [0, 0, 1, 1]));
-                        break;
-                    case HADAMARD:
-                        subRenders.push(new Sphere(pos(y, x), 0.01).toRenderData([0, 0, 1, 1]));
-                        break;
-                }
-            }
-        }
+        // for (let x = 0; x < this.fixup.width; x++) {
+        //     for (let y = 0; y < this.fixup.height; y++) {
+        //         let c = this.grid[y][x][layer];
+        //         let target = x_dir(c);
+        //         if (target !== undefined) {
+        //             let {x: dx, y: dy} = target;
+        //             subRenders.push(flatCrossedCircleRenderData(
+        //                 pos(y, x),
+        //                 0.006,
+        //                 [0.8, 0.8, 0.8, 1],
+        //                 [0, 0, 0, 1]));
+        //             wirePositions.push(pos(y, x));
+        //             wirePositions.push(pos(y + dy, x + dx));
+        //             wireColors.push([0, 0, 0, 1]);
+        //             wireColors.push([0, 0, 0, 1]);
+        //             wireIndices.push(wirePositions.length - 2, wirePositions.length - 1);
+        //         }
+        //
+        //         switch (c) {
+        //             case CONTROL:
+        //                 subRenders.push(new Sphere(pos(y, x), 0.003).toRenderData([0, 0, 0, 1]));
+        //                 break;
+        //             case INIT_0:
+        //                 subRenders.push(pyramidRenderData(pos(y, x), -0.01, [0, 1, 0, 1]));
+        //                 break;
+        //             case INIT_PLUS:
+        //                 subRenders.push(pyramidRenderData(pos(y, x), -0.01, [0, 0, 1, 1]));
+        //                 break;
+        //             case MEASURE_Z:
+        //                 subRenders.push(pyramidRenderData(pos(y, x), +0.01, [0, 1, 0, 1]));
+        //                 break;
+        //             case MEASURE_X:
+        //                 subRenders.push(pyramidRenderData(pos(y, x), +0.01, [0, 0, 1, 1]));
+        //                 break;
+        //             case HADAMARD:
+        //                 subRenders.push(new Sphere(pos(y, x), 0.01).toRenderData([0, 0, 1, 1]));
+        //                 break;
+        //         }
+        //     }
+        // }
 
         return [...subRenders,
             new RenderData(
