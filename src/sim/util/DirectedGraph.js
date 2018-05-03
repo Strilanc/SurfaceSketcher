@@ -45,8 +45,7 @@ class DirectedNode {
 }
 
 /**
- * A phase-insensitive set of Pauli operations to apply to various targets, along with utility methods for modifying
- * the Pauli operations being applied using Clifford operations.
+ * It's a directed graph.
  */
 class DirectedGraph {
     /**
@@ -62,13 +61,17 @@ class DirectedGraph {
      */
     static fromEdgeList(edges) {
         let result = new DirectedGraph();
-        for (let n of seq(edges).flatten().distinct()) {
-            result.addSingleton(n);
-        }
         for (let [src, dst] of edges) {
             result.includeEdge(src, dst);
         }
         return result;
+    }
+
+    /**
+     * @param {*} key
+     */
+    includeNode(key) {
+        this._forceGetNode(key);
     }
 
     /**
@@ -91,7 +94,7 @@ class DirectedGraph {
         let src = this.nodes.get(srcKey);
         let dst = this.nodes.get(dstKey);
         if (src === undefined || dst === undefined) {
-            throw new DetailedError('Not a node pair.', {srcKey, dstKey, src, dst});
+            return false;
         }
         return src.outs.has(dstKey);
     }
@@ -113,11 +116,8 @@ class DirectedGraph {
      * @param {*} dstKey
      */
     includeEdge(srcKey, dstKey) {
-        let src = this.nodes.get(srcKey);
-        let dst = this.nodes.get(dstKey);
-        if (src === undefined || dst === undefined) {
-            throw new DetailedError('Not a node pair.', {srcKey, dstKey, src, dst});
-        }
+        let src = this._forceGetNode(srcKey);
+        let dst = this._forceGetNode(dstKey);
         src.outs.add(dstKey);
         dst.ins.add(srcKey);
     }
@@ -130,7 +130,7 @@ class DirectedGraph {
         let src = this.nodes.get(srcKey);
         let dst = this.nodes.get(dstKey);
         if (src === undefined || dst === undefined) {
-            throw new DetailedError('Not a node pair.', {srcKey, dstKey, src, dst});
+            return; // Already doesn't exist.
         }
         src.outs.delete(dstKey);
         dst.ins.delete(srcKey);
@@ -138,12 +138,14 @@ class DirectedGraph {
 
     //noinspection ReservedWordAsName
     /**
+     * Removes a node, and all its edges, from the graph.
+     *
      * @param {*} key
      */
-    delete(key) {
+    deleteNode(key) {
         let src = this.nodes.get(key);
         if (src === undefined) {
-            throw new DetailedError('Not a node.', {key});
+            return; // Already doesn't exist.
         }
         for (let k2 of src.outs) {
             this.deleteEdge(key, k2);
@@ -155,10 +157,14 @@ class DirectedGraph {
     }
 
     /**
+     * Retrieves a node for the given key, bringing it into being if there is no associated node.
      * @param {*} key
      */
-    addSingleton(key) {
-        this.nodes.set(key, new DirectedNode(key));
+    _forceGetNode(key) {
+        if (!this.nodes.has(key)) {
+            this.nodes.set(key, new DirectedNode(key));
+        }
+        return this.nodes.get(key);
     }
 
     /**
@@ -184,7 +190,7 @@ class DirectedGraph {
                     result.push(k2);
                 }
             }
-            clone.delete(k);
+            clone.deleteNode(k);
         }
         if (clone.nodes.size > 0) {
             throw new DetailedError('Not a directed acyclic graph.', {cycle: clone});

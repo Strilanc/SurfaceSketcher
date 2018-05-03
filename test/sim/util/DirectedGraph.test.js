@@ -91,11 +91,6 @@ suite.test("graph_toEdgeList", () => {
 
 suite.test("graph_hasIncludeDeleteToggleEdge", () => {
     let g = new DirectedGraph();
-    g.addSingleton('a');
-    g.addSingleton('b');
-    g.addSingleton('c');
-    g.addSingleton(1);
-    g.addSingleton(3);
 
     assertFalse(g.hasEdge('a', 'b'));
     g.includeEdge('a', 'b');
@@ -127,9 +122,9 @@ suite.test("graph_hasIncludeDeleteToggleEdge", () => {
 suite.test("graph_topologicalOrder", () => {
     let g = new DirectedGraph();
     assertThat(g.topologicalOrder()).isEqualTo([]);
-    g.addSingleton('r');
+    g.includeNode('r');
     assertThat(g.topologicalOrder()).isEqualTo(['r']);
-    g.addSingleton('a');
+    g.includeNode('a');
     assertThat(g.topologicalOrder()).isEqualTo(['a', 'r']);
     g.includeEdge('r', 'a');
     assertThat(g.topologicalOrder()).isEqualTo(['r', 'a']);

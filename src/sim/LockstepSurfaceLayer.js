@@ -15,11 +15,8 @@ import {Sphere} from "src/geo/Sphere.js";
 import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
 import {codeDistanceUnitCellSize, codeDistanceToPipeSize} from "src/braid/PlumbingPieces.js";
+import {DirectedGraph} from "src/sim/util/DirectedGraph.js";
 
-let INIT_0 = '0';
-let INIT_PLUS = '+';
-let MEASURE_Z = 'M';
-let MEASURE_X = 'E';
 let HADAMARD = 'H';
 let CONTROL = 'C';
 let X_RIGHT = '<';
@@ -74,6 +71,8 @@ class LockstepSurfaceLayer {
         this.fixup = fixup;
         this.grid = /** @type {!Array.<!Array.<!Array.<undefined|!string>>>} */ makeArrayGrid(
             fixup.width, fixup.height, () => []);
+        this.initializations = /** @type {!GeneralMap.<!XY, !Axis>} */ new GeneralMap();
+        this.measurements = /** @type {!GeneralMap.<!XY, !Axis>} */ new GeneralMap();
     }
 
     get width() {
@@ -82,6 +81,19 @@ class LockstepSurfaceLayer {
 
     get height() {
         return this.fixup.height;
+    }
+
+    /**
+     * @returns {!Array.<!XY>}
+     */
+    xys() {
+        let result = [];
+        for (let x = 0; x < this.fixup.width; x++) {
+            for (let y = 0; y < this.fixup.height; y++) {
+                result.push(new XY(x, y));
+            }
+        }
+        return result;
     }
 
     /**
@@ -103,21 +115,47 @@ class LockstepSurfaceLayer {
         let subRenders = [];
         let d = this.depth();
 
-        for (let x = 0; x < this.fixup.width; x++) {
-            for (let y = 0; y < this.fixup.height; y++) {
-                if (!this.grid[y][x].every(e => e === undefined)) {
-                    wirePositions.push(pos(y, x, 0));
-                    wirePositions.push(pos(y, x, d - 1));
-                    let color = [0, 0, 0, 1];
-                    if (this.grid[y][x][0] === INIT_0) {
-                        color = [0, 1, 0, 1];
-                    } else if (this.grid[y][x][0] === INIT_PLUS) {
-                        color = [0, 0, 1, 1];
-                    }
-                    wireColors.push(color, color);
-                    wireIndices.push(wirePositions.length - 2, wirePositions.length - 1);
+        // Draw initializations.
+        for (let xy of this.xys()) {
+            let init = this.initializations.get(xy);
+            if (init !== undefined) {
+                if (init.is_z()) {
+                    subRenders.push(pyramidRenderData(pos(xy.y, xy.x, -1), -0.01, [0, 1, 0, 1]));
+                } else {
+                    subRenders.push(pyramidRenderData(pos(xy.y, xy.x, -1), -0.01, [0, 0, 1, 1]));
                 }
             }
+
+            let measure = this.measurements.get(xy);
+            if (measure !== undefined) {
+                if (measure.is_z()) {
+                    subRenders.push(pyramidRenderData(pos(xy.y, xy.x, d), +0.01, [0, 1, 0, 1]));
+                } else {
+                    subRenders.push(pyramidRenderData(pos(xy.y, xy.x, d), +0.01, [0, 0, 1, 1]));
+                }
+            }
+        }
+
+        for (let {x, y} of this.xys()) {
+            if (this.grid[y][x].every(e => e === undefined)) {
+                continue;
+            }
+
+            wirePositions.push(pos(y, x, -1));
+            wirePositions.push(pos(y, x, d));
+            let color;
+            let initVal = this.initializations.get(new XY(x, y));
+            if (initVal === undefined) {
+                color = [0, 0, 0, 1];
+            } else if (initVal.is_z()) {
+                color = [0, 1, 0, 1];
+            } else if (initVal.is_x()) {
+                color = [0, 0, 1, 1];
+            } else  {
+                color = [1, 0, 0, 1];
+            }
+            wireColors.push(color, color);
+            wireIndices.push(wirePositions.length - 2, wirePositions.length - 1);
         }
 
         for (let op of this.fixup._ops) {
@@ -162,46 +200,41 @@ class LockstepSurfaceLayer {
 
         let subRenders = [];
 
-        // for (let x = 0; x < this.fixup.width; x++) {
-        //     for (let y = 0; y < this.fixup.height; y++) {
-        //         let c = this.grid[y][x][layer];
-        //         let target = x_dir(c);
-        //         if (target !== undefined) {
-        //             let {x: dx, y: dy} = target;
-        //             subRenders.push(flatCrossedCircleRenderData(
-        //                 pos(y, x),
-        //                 0.006,
-        //                 [0.8, 0.8, 0.8, 1],
-        //                 [0, 0, 0, 1]));
-        //             wirePositions.push(pos(y, x));
-        //             wirePositions.push(pos(y + dy, x + dx));
-        //             wireColors.push([0, 0, 0, 1]);
-        //             wireColors.push([0, 0, 0, 1]);
-        //             wireIndices.push(wirePositions.length - 2, wirePositions.length - 1);
-        //         }
-        //
-        //         switch (c) {
-        //             case CONTROL:
-        //                 subRenders.push(new Sphere(pos(y, x), 0.003).toRenderData([0, 0, 0, 1]));
-        //                 break;
-        //             case INIT_0:
-        //                 subRenders.push(pyramidRenderData(pos(y, x), -0.01, [0, 1, 0, 1]));
-        //                 break;
-        //             case INIT_PLUS:
-        //                 subRenders.push(pyramidRenderData(pos(y, x), -0.01, [0, 0, 1, 1]));
-        //                 break;
-        //             case MEASURE_Z:
-        //                 subRenders.push(pyramidRenderData(pos(y, x), +0.01, [0, 1, 0, 1]));
-        //                 break;
-        //             case MEASURE_X:
-        //                 subRenders.push(pyramidRenderData(pos(y, x), +0.01, [0, 0, 1, 1]));
-        //                 break;
-        //             case HADAMARD:
-        //                 subRenders.push(new Sphere(pos(y, x), 0.01).toRenderData([0, 0, 1, 1]));
-        //                 break;
-        //         }
-        //     }
-        // }
+        for (let {x, y} of this.xys()) {
+            let c = this.grid[y][x][layer];
+            let target = x_dir(c);
+            if (target !== undefined) {
+                let {x: dx, y: dy} = target;
+
+                subRenders.push(flatCrossedCircleRenderData(
+                    pos(y, x),
+                    target.x,
+                    target.y,
+                    0.006,
+                    [0.9, 0.9, 0.9, 1],
+                    [0, 0, 0, 1]));
+
+                subRenders.push(flatCrossedCircleRenderData(
+                    pos(y + target.y, x + target.x),
+                    -target.x,
+                    -target.y,
+                    0.002,
+                    [0, 0, 0, 1],
+                    undefined));
+
+                wirePositions.push(pos(y, x));
+                wirePositions.push(pos(y + dy, x + dx));
+                wireColors.push([0, 0, 0, 1]);
+                wireColors.push([0, 0, 0, 1]);
+                wireIndices.push(wirePositions.length - 2, wirePositions.length - 1);
+            }
+
+            switch (c) {
+                case HADAMARD:
+                    subRenders.push(new Sphere(pos(y, x), 0.01).toRenderData([0, 0, 1, 1]));
+                    break;
+            }
+        }
 
         return [...subRenders,
             new RenderData(
@@ -248,13 +281,10 @@ class LockstepSurfaceLayer {
     /**
      * @param {!XY} target
      * @param {!Axis} axis
-     * @returns {!MeasurementAdjustment}
      */
     measure(target, axis=Axis.Z) {
-        let result = this.fixup.measure(target, axis);
-        let t = this.grid[target.y][target.x];
-        t.push(axis.is_x() ? MEASURE_X : MEASURE_Z);
-        return result;
+        this.fixup.measure(target, axis);
+        this.measurements.set(target, axis);
     }
 
     /**
@@ -279,32 +309,20 @@ class LockstepSurfaceLayer {
     /**
      * @param {!Array.<!XY>} targets
      * @param {!Axis} axis
-     * @returns {!GeneralMap.<!XY, !MeasurementAdjustment>}
      */
     measureAll(targets, axis=Axis.Z) {
-        let result = new GeneralMap();
         for (let target of targets) {
-            result.set(target, this.measure(target, axis));
+            this.measure(target, axis);
         }
-        return result;
-    }
-
-    /**
-     * @param {!XY} target
-     * @param {!Axis} axis
-     */
-    reset(target, axis=Axis.Z) {
-        let t = this.grid[target.y][target.x];
-        t.push(axis.is_x() ? INIT_PLUS : INIT_0);
     }
 
     /**
      * @param {!Array.<!XY>} targets
      * @param {!Axis} axis
      */
-    resetAll(targets, axis=Axis.Z) {
+    initAll(targets, axis=Axis.Z) {
         for (let target of targets) {
-            this.reset(target, axis);
+            this.initializations.set(target, axis);
         }
     }
 
@@ -336,11 +354,10 @@ class LockstepSurfaceLayer {
      * @param {!Array.<!XY>} xTargets
      * @param {!Array.<!XY>} zTargets
      * @param {!function(!XY): !boolean} isEnabled
-     * @returns {!GeneralMap.<!XY, !MeasurementAdjustment>}
      */
     measureStabilizers(xTargets, zTargets, isEnabled=() => true) {
-        this.resetAll(xTargets, Axis.X);
-        this.resetAll(zTargets, Axis.Z);
+        this.initAll(xTargets, Axis.X);
+        this.initAll(zTargets, Axis.Z);
 
         for (let i = 0; i < 4; i++) {
             for (let xTarget of xTargets) {
@@ -365,9 +382,8 @@ class LockstepSurfaceLayer {
             }
         }
 
-        let map1 = this.measureAll(xTargets, Axis.X);
-        let map2 = this.measureAll(zTargets, Axis.Z);
-        return new GeneralMap(...map1.entries(), ...map2.entries());
+        this.measureAll(xTargets, Axis.X);
+        this.measureAll(zTargets, Axis.Z);
     }
 
     padAllToDepth() {
@@ -389,30 +405,62 @@ class LockstepSurfaceLayer {
         return seq(this.grid).flatten().map(e => e.length).max();
     }
 
+    /**
+     * @returns {!string}
+     */
     toString() {
         let m = seq(this.grid).flatten().map(e => e.length).max();
-        let rail = Seq.repeat('#', this.width + 2).join('');
         let planes = [];
-        for (let z = 0; z < m; z++) {
-            let rows = [rail];
-            for (let row = 0; row < this.height; row++) {
-                let cells = [];
-                for (let col = 0; col < this.width; col++) {
-                    let v = this.grid[row][col][z];
-                    if (v === undefined) {
-                        v = ' ';
-                    }
-                    cells.push(v === undefined ? ' ' : v);
-                }
-                rows.push('#' + cells.join('') + '#');
+        planes.push(planeToString(this, (row, col) => {
+            let init = this.initializations.get(new XY(col, row));
+            if (init === undefined) {
+                return ' ';
+            } else if (init.is_z()) {
+                return '0';
+            } else {
+                return '+';
             }
-            rows.push(rail);
-            planes.push(rows.join('\n'));
+        }));
+        for (let z = 0; z < m; z++) {
+            planes.push(planeToString(this, (row, col) => this.grid[row][col][z]));
         }
+        planes.push(planeToString(this, (row, col) => {
+            let init = this.measurements.get(new XY(col, row));
+            if (init === undefined) {
+                return ' ';
+            } else if (init.is_z()) {
+                return 'M';
+            } else {
+                return 'E';
+            }
+        }));
 
         let r = planes.join('\n\n').split('\n').join('\n    ');
         return `LockstepSurfaceLayer(grid=\n    ${r},\n\n    fixup=${this.fixup.toString()})`;
     }
+}
+
+/**
+ * @param {!LockstepSurfaceLayer} layer
+ * @param {!function(row: !int, col: !int): !string} func
+ * @returns {string}
+ */
+function planeToString(layer, func) {
+    let rail = Seq.repeat('#', layer.width + 2).join('');
+    let rows = [rail];
+    for (let row = 0; row < layer.height; row++) {
+        let cells = [];
+        for (let col = 0; col < layer.width; col++) {
+            let v = func(row, col);
+            if (v === undefined) {
+                v = ' ';
+            }
+            cells.push(v === undefined ? ' ' : v);
+        }
+        rows.push('#' + cells.join('') + '#');
+    }
+    rows.push(rail);
+    return rows.join('\n');
 }
 
 /**
@@ -458,7 +506,16 @@ function pyramidRenderData(tip, height, color) {
     return new RenderData(points, colors, indices, new RenderData([], [], [], undefined));
 }
 
-function flatCrossedCircleRenderData(center, radius, centerColor, borderColor) {
+/**
+ * @param {!Point} center
+ * @param {!int} dx
+ * @param {!int} dz
+ * @param {!number} radius
+ * @param {![!number, !number, !number, !number]} centerColor
+ * @param {![!number, !number, !number, !number]}borderColor
+ * @returns {!RenderData}
+ */
+function flatCrossedCircleRenderData(center, dx, dz, radius, centerColor, borderColor) {
     const divisions = 16;
 
     let triPositions = [center];
@@ -469,28 +526,33 @@ function flatCrossedCircleRenderData(center, radius, centerColor, borderColor) {
     let wireIndices = [];
     for (let i = 0; i < divisions; i++) {
         let theta = i / divisions * Math.PI * 2;
-        let x = Math.cos(theta);
-        let z = Math.sin(theta);
-        let pt = center.plus(new Vector(x, 0, z).scaledBy(radius));
-        wirePositions.push(pt);
+        let y = Math.cos(theta);
+        let xz = Math.sin(theta);
+        let pt = center.plus(new Vector(xz*dx, y, xz*dz).scaledBy(radius));
         triPositions.push(pt);
-        wireIndices.push(i, (i + 1) % divisions);
         triIndices.push(0, 1 + i, 1 + (i + 1) % divisions);
-        wireColors.push(borderColor);
         triColors.push(centerColor);
+
+        if (borderColor !== undefined) {
+            wirePositions.push(pt);
+            wireIndices.push(i, (i + 1) % divisions);
+            wireColors.push(borderColor);
+        }
     }
 
-    wirePositions.push(center.plus(new Vector(radius, 0, 0)));
-    wirePositions.push(center.plus(new Vector(-radius, 0, 0)));
-    wireColors.push(borderColor);
-    wireColors.push(borderColor);
-    wireIndices.push(wirePositions.length - 2, wirePositions.length - 1);
+    if (borderColor !== undefined) {
+        wirePositions.push(center.plus(new Vector(radius * dx, 0, radius * dz)));
+        wirePositions.push(center.plus(new Vector(-radius * dx, 0, -radius * dz)));
+        wireColors.push(borderColor);
+        wireColors.push(borderColor);
+        wireIndices.push(wirePositions.length - 2, wirePositions.length - 1);
 
-    wirePositions.push(center.plus(new Vector(0, 0, radius)));
-    wirePositions.push(center.plus(new Vector(0, 0, -radius)));
-    wireColors.push(borderColor);
-    wireColors.push(borderColor);
-    wireIndices.push(wirePositions.length - 2, wirePositions.length - 1);
+        wirePositions.push(center.plus(new Vector(0, radius, 0)));
+        wirePositions.push(center.plus(new Vector(0, -radius, 0)));
+        wireColors.push(borderColor);
+        wireColors.push(borderColor);
+        wireIndices.push(wirePositions.length - 2, wirePositions.length - 1);
+    }
 
     return new RenderData(triPositions, triColors, triIndices,
         new RenderData(
