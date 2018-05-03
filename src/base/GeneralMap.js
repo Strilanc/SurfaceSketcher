@@ -62,6 +62,13 @@ class GeneralMap {
         return r === undefined ? undefined : r[1];
     }
 
+    /**
+     * @returns {!int}
+     */
+    get size() {
+        return this._items.size;
+    }
+
     //noinspection ReservedWordAsName
     /**
      * @param {*} key

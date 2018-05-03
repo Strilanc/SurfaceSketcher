@@ -44,6 +44,13 @@ class GeneralSet {
     }
 
     /**
+     * @returns {!int}
+     */
+    get size() {
+       return this._items.size;
+    }
+
+    /**
      * @param {!GeneralSet|*} other
      * @returns {!boolean}
      */
