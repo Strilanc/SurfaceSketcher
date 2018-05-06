@@ -66,9 +66,27 @@ suite.test("entries", () => {
 });
 
 suite.test("get", () => {
-    let m = new GeneralMap([new Custom(1, 1), 'a']);
+    let m = new GeneralMap([new Custom(1, 1), 'a'], ['b', undefined]);
+
+    // Value mapped to defined.
     assertThat(m.get(new Custom(1, 1))).isEqualTo('a');
-    assertThat(m.get(new Custom(1, 2))).isEqualTo(undefined);
+    assertThat(m.get(new Custom(1, 1), 5)).isEqualTo('a');
+
+    // Value mapped to undefined.
+    assertThat(m.get('b')).isEqualTo(undefined);
+    assertThat(m.get('b', 5)).isEqualTo(undefined);
+
+    // Missing value.
+    assertThat(m.get('c')).isEqualTo(undefined);
+    assertThat(m.get('c', 5)).isEqualTo(5);
+});
+
+suite.test("getOrInsert", () => {
+    let m = new GeneralMap();
+    let r = [];
+    assertThat(m.getOrInsert('a', () => r)).is(r);
+    assertThat(m.get('a')).is(r);
+    assertThat(m.getOrInsert('a', () => 'b')).is(r);
 });
 
 suite.test("set", () => {
@@ -105,4 +123,10 @@ suite.test("clear", () => {
     assertThat(s).isEqualTo(new GeneralMap());
     s.clear();
     assertThat(s).isEqualTo(new GeneralMap());
+});
+
+suite.test("mapValues", () => {
+    let m = new GeneralMap(['a', 1], ['b', 2]);
+    let m2 = new GeneralMap(['a', 11], ['b', 12]);
+    assertThat(m.mapValues(e => e + 10)).isEqualTo(m2);
 });

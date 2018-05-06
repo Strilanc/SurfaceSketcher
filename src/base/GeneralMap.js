@@ -55,11 +55,28 @@ class GeneralMap {
 
     /**
      * @param {*} key
+     * @param {*} notPresentValue
+     * @returns {undefined|*}
+     */
+    get(key, notPresentValue=undefined) {
+        let entry = this._items.get(key.toString());
+        return entry !== undefined ? entry[1] : notPresentValue;
+    }
+
+    /**
+     * @param {*} key
+     * @param {!function(): *} defaultValueProducer
      * @returns {*}
      */
-    get(key) {
-        let r = this._items.get(key.toString());
-        return r === undefined ? undefined : r[1];
+    getOrInsert(key, defaultValueProducer) {
+        let entry = this._items.get(key.toString());
+        if (entry !== undefined) {
+            return entry[1];
+        }
+
+        let val = defaultValueProducer();
+        this.set(key, val);
+        return val;
     }
 
     /**
@@ -87,6 +104,18 @@ class GeneralMap {
      */
     isEqualTo(other) {
         return other instanceof GeneralMap && equate_Maps(this._items, other._items);
+    }
+
+    /**
+     * @param {!function(value: *): *} valueFunc
+     * @returns {!GeneralMap}
+     */
+    mapValues(valueFunc) {
+        let result = new GeneralMap();
+        for (let [k, v] of this.entries()) {
+            result.set(k, valueFunc(v));
+        }
+        return result;
     }
 
     /**
