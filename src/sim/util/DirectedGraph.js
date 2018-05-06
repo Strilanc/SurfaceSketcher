@@ -19,6 +19,17 @@ class DirectedNode {
     }
 
     /**
+     * @param {!function(key: *): *} keyTransformer
+     * @returns {!DirectedNode}
+     */
+    map(keyTransformer) {
+        return new DirectedNode(
+            keyTransformer(this.key),
+            new GeneralSet(...seq(this.ins).map(keyTransformer)),
+            new GeneralSet(...seq(this.outs).map(keyTransformer)));
+    }
+
+    /**
      * @returns {!DirectedNode}
      */
     clone() {
@@ -56,15 +67,56 @@ class DirectedGraph {
     }
 
     /**
-     * @param {!Array.<[*, *]>} edges
+     * @param {!Array.<[*]|[*, *]>} nodesOrEdges
      * @returns {!DirectedGraph}
      */
-    static fromEdgeList(edges) {
+    static fromEdgeList(nodesOrEdges) {
         let result = new DirectedGraph();
-        for (let [src, dst] of edges) {
-            result.includeEdge(src, dst);
+        for (let nodeOrEdge of nodesOrEdges) {
+            if (nodeOrEdge.length === 2) {
+                result.includeEdge(nodeOrEdge[0], nodeOrEdge[1]);
+            } else if (nodeOrEdge.length === 1) {
+                result.includeNode(nodeOrEdge[0]);
+            } else {
+                throw new DetailedError("Not a node or an edge.", {nodeOrEdge});
+            }
         }
         return result;
+    }
+
+    /**
+     * @param {!DirectedGraph} other
+     * @returns {!DirectedGraph}
+     */
+    inline_union(other) {
+        for (let n of other.nodes.values()) {
+            this.includeNode(n.key);
+            for (let dst of n.outs) {
+                this.includeEdge(n.key, dst);
+            }
+        }
+        return this;
+    }
+
+    /**
+     * @param {!DirectedGraph} other
+     * @returns {!DirectedGraph}
+     */
+    union(other) {
+        return this.clone().inline_union(other);
+    }
+
+    /**
+     * @param {!function(key: *): *} keyTransformer
+     * @returns {!DirectedGraph}
+     */
+    mapKeys(keyTransformer) {
+        let nodes = new GeneralMap();
+        for (let node of this.nodes.values()) {
+            let mappedNode = node.map(keyTransformer);
+            nodes.set(mappedNode.key, mappedNode);
+        }
+        return new DirectedGraph(nodes);
     }
 
     /**
@@ -207,11 +259,14 @@ class DirectedGraph {
     }
 
     /**
-     * @returns {!Array.<[*, *]>}
+     * @returns {!Array.<[*]|[*, *]>}
      */
     toEdgeList() {
         let result = [];
         for (let n of this.nodes.values()) {
+            if (n.outs.size === 0 && n.ins.size === 0) {
+                result.push([n.key]);
+            }
             for (let k2 of n.outs) {
                 result.push([n.key, this.nodes.get(k2).key]);
             }
@@ -223,7 +278,15 @@ class DirectedGraph {
      * @returns {!string}
      */
     toString() {
-        let edges = this.toEdgeList().map(e => `\n    ${describe(e[0])} -> ${describe(e[1])}`);
+        let describeEdgeOrNode = e => {
+            if (e.length === 1) {
+                return `\n    ${describe(e[0])}`;
+            } else {
+                return `\n    ${describe(e[0])} -> ${describe(e[1])}`
+            }
+        };
+
+        let edges = this.toEdgeList().map(describeEdgeOrNode);
         edges.sort();
         return `DirectedGraph {${edges.join('')}\n}`;
     }

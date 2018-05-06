@@ -208,3 +208,52 @@ suite.test("measure_z", () => {
     s.measure('z', Axis.Z);
     assertThat(s.toString()).isEqualTo('X_x * X_y');
 });
+
+suite.test("mapKeys", () => {
+    let s1 = new PauliMap();
+    let s2 = new PauliMap();
+
+    s1.x(1);
+    s1.y(2);
+    s1.z(3);
+
+    s2.x(11);
+    s2.y(12);
+    s2.z(13);
+
+    assertThat(s1.mapKeys(e => e + 10)).isEqualTo(s2);
+});
+
+suite.test("times", () => {
+    let s1 = new PauliMap();
+    let s2 = new PauliMap();
+
+    s1.x('a');
+    s1.y('b');
+    s1.z('c');
+
+    s2.x('d');
+    s2.y('e');
+    s2.z('f');
+
+    s1.x('g');
+    s1.y('h');
+    s1.z('i');
+
+    s2.x('g');
+    s2.y('h');
+    s2.z('i');
+
+    s1.x('j');
+    s1.y('k');
+    s1.z('l');
+
+    s2.x('k');
+    s2.y('l');
+    s2.z('j');
+
+    assertThat(s1.times(s2).toString()).isEqualTo('X_a * Y_b * Z_c * X_d * Y_e * Z_f * Y_j * Z_k * X_l');
+    assertThat(s2.times(s1).toString()).isEqualTo('X_a * Y_b * Z_c * X_d * Y_e * Z_f * Y_j * Z_k * X_l');
+    assertThat(s1.inline_times(s2)).is(s1);
+    assertThat(s1.toString()).isEqualTo('X_a * Y_b * Z_c * X_d * Y_e * Z_f * Y_j * Z_k * X_l');
+});

@@ -240,4 +240,4 @@ function equate_Objects(subject, other) {
     return true;
 }
 
-export {equate, equate_Sets, equate_Maps}
+export {equate, equate_Sets, equate_Maps, equate_Iterables}

@@ -65,6 +65,19 @@ suite.test("graph_fromEdgeList", () => {
     ));
 });
 
+suite.test("graph_fromEdgeList_withNodes", () => {
+    let g = DirectedGraph.fromEdgeList([
+        ['c'],
+        ['b', 'c'],
+        [3],
+    ]);
+    assertThat(g.nodes).isEqualTo(new GeneralMap(
+        ['b', new DirectedNode('b', new GeneralSet(), new GeneralSet('c'))],
+        ['c', new DirectedNode('c', new GeneralSet('b'), new GeneralSet())],
+        [3, new DirectedNode(3)],
+    ));
+});
+
 suite.test("graph_isEqualTo", () => {
     let eq = new EqualsTester();
     eq.assertAddGroup(new DirectedGraph(), new DirectedGraph(), DirectedGraph.fromEdgeList([]));
@@ -87,6 +100,9 @@ suite.test("graph_toString", () => {
 suite.test("graph_toEdgeList", () => {
     let g = DirectedGraph.fromEdgeList([['a', 'b'], ['c', 'a'], ['b', 'a']]);
     assertThat(g.toEdgeList()).isEqualTo([['a', 'b'], ['b', 'a'], ['c', 'a']]);
+
+    let g2 = DirectedGraph.fromEdgeList([[2], [2, 3], [5]]);
+    assertThat(g2.toEdgeList()).isEqualTo([[2, 3], [5]]);
 });
 
 suite.test("graph_hasIncludeDeleteToggleEdge", () => {
@@ -107,10 +123,12 @@ suite.test("graph_hasIncludeDeleteToggleEdge", () => {
     g.deleteEdge('a', 'b');
     assertTrue(g.hasEdge('a', 'c'));
     assertFalse(g.hasEdge('a', 'b'));
-    assertThat(g.toEdgeList()).isEqualTo([['a', 'c']]);
+    assertThat(g.toEdgeList()).isEqualTo([['a', 'c'], ['b']]);
     g.deleteEdge('a', 'b');
     assertTrue(g.hasEdge('a', 'c'));
     assertFalse(g.hasEdge('a', 'b'));
+    assertThat(g.toEdgeList()).isEqualTo([['a', 'c'], ['b']]);
+    g.deleteNode('b');
     assertThat(g.toEdgeList()).isEqualTo([['a', 'c']]);
 
     g.toggleEdge(1, 3);
@@ -139,4 +157,57 @@ suite.test("graph_topologicalOrder", () => {
         ['d', 'c'],
         ['c', 'e'],
     ]).topologicalOrder()).isEqualTo(['a', 'r', 'b', 'f', 'd', 'c', 'e']);
+});
+
+suite.test("map", () => {
+    assertThat(new DirectedGraph().mapKeys(e => undefined)).isEqualTo(new DirectedGraph());
+
+    let g = DirectedGraph.fromEdgeList([
+        [1, 2],
+        [3, 4],
+        [2, 1],
+        [5, 4],
+        [6],
+    ]);
+    let g2 = DirectedGraph.fromEdgeList([
+        [11, 12],
+        [13, 14],
+        [12, 11],
+        [15, 14],
+        [16],
+    ]);
+    assertThat(g.mapKeys(e => e + 10)).isEqualTo(g2);
+    assertThat(g).isNotEqualTo(g2);
+});
+
+suite.test("union", () => {
+    let g = DirectedGraph.fromEdgeList([
+        [0],
+        [1],
+        ['a', 'b'],
+        ['c', 'd'],
+        ['c', 'e'],
+    ]);
+    let g2 = DirectedGraph.fromEdgeList([
+        [1],
+        [2],
+        ['e', 'f'],
+        ['c', 'd'],
+        ['x', 'e'],
+    ]);
+    let g3 = DirectedGraph.fromEdgeList([
+        [0],
+        [1],
+        [2],
+        ['a', 'b'],
+        ['c', 'd'],
+        ['c', 'e'],
+        ['e', 'f'],
+        ['x', 'e'],
+    ]);
+    let gb = g.clone();
+    assertThat(g.union(g2)).isEqualTo(g3);
+    assertThat(g).isEqualTo(gb);
+    assertThat(g.inline_union(g2)).is(g);
+    assertThat(g).isEqualTo(g3);
 });

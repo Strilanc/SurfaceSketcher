@@ -37,6 +37,46 @@ class PauliMap {
     }
 
     /**
+     * @param {*} keyTransformer
+     * @returns {!PauliMap}
+     */
+    mapKeys(keyTransformer) {
+        let map = new GeneralMap();
+        for (let [k, v] of this.operations.entries()) {
+            map.set(keyTransformer(k), v);
+        }
+        if (map.size !== this.operations.size) {
+            throw new DetailedError("Non-reversible key transformation.",
+                {keyTransformer, n1: this.operations.size, n2: map.size})
+        }
+        return new PauliMap(map);
+    }
+
+    /**
+     * @param {!PauliMap} other
+     * @returns {!PauliMap}
+     */
+    inline_times(other) {
+        for (let [k, v] of other.operations.entries()) {
+            if ((v & PauliMap.ZMask) !== 0) {
+                this.z(k);
+            }
+            if ((v & PauliMap.XMask) !== 0) {
+                this.x(k);
+            }
+        }
+        return this;
+    }
+
+    /**
+     * @param {!PauliMap} other
+     * @returns {!PauliMap}
+     */
+    times(other) {
+        return this.clone().inline_times(other);
+    }
+
+    /**
      * @param {*} target
      * @returns {!int}
      */
