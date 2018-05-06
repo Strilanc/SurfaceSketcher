@@ -4,7 +4,7 @@ import {
     toggleMembership,
     makeArrayGrid,
     setMembershipInOfTo,
-    xorSetInto
+    xorSetInto,
 } from "src/sim/util/Util.js"
 
 let suite = new Suite("Util");

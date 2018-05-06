@@ -37,17 +37,24 @@ class PauliMap {
     }
 
     /**
-     * @param {*} keyTransformer
+     * @returns {!Iterable.<*>}
+     */
+    targets() {
+        return this.operations.keys();
+    }
+
+    /**
+     * @param {*} targetTransformer
      * @returns {!PauliMap}
      */
-    mapKeys(keyTransformer) {
+    mapTargets(targetTransformer) {
         let map = new GeneralMap();
-        for (let [k, v] of this.operations.entries()) {
-            map.set(keyTransformer(k), v);
+        for (let [target, operation] of this.operations.entries()) {
+            map.set(targetTransformer(target), operation);
         }
         if (map.size !== this.operations.size) {
             throw new DetailedError("Non-reversible key transformation.",
-                {keyTransformer, n1: this.operations.size, n2: map.size})
+                {targetTransformer, n1: this.operations.size, n2: map.size})
         }
         return new PauliMap(map);
     }

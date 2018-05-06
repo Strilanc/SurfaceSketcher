@@ -469,4 +469,14 @@ Util.CUSTOM_IS_EQUAL_TO_EQUALITY = (e1, e2) =>
     e1 === undefined ? e2 === undefined :
     e1.isEqualTo(e2);
 
-export {Util}
+
+/**
+ * @param {!string} text
+ * @param {!string} indentation
+ * @returns {!string}
+ */
+function indent(text, indentation='    ') {
+    return text.split('\n').map(e => e.length > 0 ? indentation + e : e).join('\n');
+}
+
+export {Util, indent}

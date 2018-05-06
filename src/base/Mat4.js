@@ -1,6 +1,7 @@
 import {DetailedError} from "src/base/DetailedError.js"
 import {Point} from "src/geo/Point.js";
 import {Vector} from "src/geo/Vector.js";
+import {indent} from "src/base/Util.js";
 
 class Mat4 {
     /**
@@ -260,7 +261,7 @@ class Mat4 {
             }
             rows.push('{' + rowEntries.join(', ') + '}')
         }
-        return '{\n    ' + rows.join('\n    ') + '\n}';
+        return `{\n${indent(rows.join('\n'))}\n}`;
     }
 }
 

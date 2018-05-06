@@ -435,8 +435,9 @@ class LockstepSurfaceLayer {
             }
         }));
 
-        let r = planes.join('\n\n').split('\n').join('\n    ');
-        return `LockstepSurfaceLayer(grid=\n    ${r},\n\n    fixup=${this.fixup.toString()})`;
+        let planeText = planes.join('\n\n');
+        let fixupText = this.fixup.toString();
+        return `LockstepSurfaceLayer(grid=\n${indent(planeText)},\n\n${indent('fixup=' + fixupText)})`;
     }
 }
 

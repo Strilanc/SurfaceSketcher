@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
-import {Util} from "src/base/Util.js"
+import {indent, Util} from "src/base/Util.js"
 
 let suite = new Suite("Util");
 
@@ -412,4 +412,13 @@ suite.test("modular_multiplicative_inverse", () => {
     assertThat(Util.modular_multiplicative_inverse(2, 11)).isEqualTo(6);
     assertThat(Util.modular_multiplicative_inverse(3, 1024)).isEqualTo(683);
     assertThat(Util.modular_multiplicative_inverse(683, 1024)).isEqualTo(3);
+});
+
+suite.test('indent', () => {
+    assertThat(indent('')).isEqualTo('');
+    assertThat(indent('a')).isEqualTo('    a');
+    assertThat(indent('a\n')).isEqualTo('    a\n');
+    assertThat(indent('a\nb')).isEqualTo('    a\n    b');
+    assertThat(indent('a', '\t')).isEqualTo('\ta');
+    assertThat(indent('a\n\nb\nwonder\n')).isEqualTo('    a\n\n    b\n    wonder\n');
 });

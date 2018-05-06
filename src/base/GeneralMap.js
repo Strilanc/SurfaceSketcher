@@ -24,14 +24,14 @@ class GeneralMap {
     }
 
     /**
-     * @returns {!Iterator.<*>}
+     * @returns {!Iterable.<*>}
      */
     keys() {
         return seq(this._items.values()).map(e => e[0])._iterable;
     }
 
     /**
-     * @returns {!Iterator.<*>}
+     * @returns {!Iterable.<*>}
      */
     values() {
         return seq(this._items.values()).map(e => e[1])._iterable;

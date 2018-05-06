@@ -209,7 +209,7 @@ suite.test("measure_z", () => {
     assertThat(s.toString()).isEqualTo('X_x * X_y');
 });
 
-suite.test("mapKeys", () => {
+suite.test("mapTargets", () => {
     let s1 = new PauliMap();
     let s2 = new PauliMap();
 
@@ -221,7 +221,15 @@ suite.test("mapKeys", () => {
     s2.y(12);
     s2.z(13);
 
-    assertThat(s1.mapKeys(e => e + 10)).isEqualTo(s2);
+    assertThat(s1.mapTargets(e => e + 10)).isEqualTo(s2);
+});
+
+suite.test("targets", () => {
+    let s = new PauliMap();
+    s.x(1);
+    s.y(2);
+    s.z(3);
+    assertThat(new Set(s.targets())).isEqualTo(new Set([1, 2, 3]));
 });
 
 suite.test("times", () => {
