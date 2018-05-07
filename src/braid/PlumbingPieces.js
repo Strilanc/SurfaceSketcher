@@ -1,3 +1,7 @@
+/**
+ * @param {!PlumbingPiece} pp
+ * @returns {!PlumbingPiece}
+ */
 import {DetailedError} from 'src/base/DetailedError.js'
 import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
@@ -16,28 +20,13 @@ import {
 } from "src/braid/CodeDistance.js";
 import {PlumbingPieceFootprint} from "src/braid/PlumbingPieceFootprint.js";
 import {PlumbingPiece} from "src/braid/PlumbingPiece.js";
+import {PlumbingPieceVariant} from "src/braid/PlumbingPieceVariant.js";
 
 const GENERIC_COLOR = [0.5, 0.5, 0.5, 1.0];
 const PRIMAL_COLOR = [0.9, 0.9, 0.9, 1.0];
 const DUAL_COLOR = [0.4, 0.4, 0.4, 1.0];
 
 
-class PlumbingPieceVariant {
-    /**
-     * @param {!string} name
-     * @param {![!number, !number, !number, !number]} color
-     */
-    constructor(name, color) {
-        this.name = name;
-        this.color = color;
-    }
-}
-
-
-/**
- * @param {!PlumbingPiece} pp
- * @returns {!PlumbingPiece}
- */
 function genericToPrimal(pp) {
     return new PlumbingPiece(
         pp.name + 'Primal',
