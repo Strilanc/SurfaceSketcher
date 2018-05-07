@@ -18,18 +18,73 @@ import {ALL_PLUMBING_PIECES, PLUMBING_PIECE_MAP} from "src/braid/PlumbingPieces.
 import {simulate_map} from "src/braid/SimulateUnitCellMap.js"
 
 
-let camera = new Camera(new Point(0, 0, 0), 7, -Math.PI/3, Math.PI/4);
-let codeDistance = 1;
+class DrawState {
+    /**
+     * @param {!Camera} camera
+     * @param {!int} codeDistance
+     * @param {!UnitCellMap} cellMap
+     * @param {!boolean} drawBraids
+     * @param {!boolean} drawOps
+     */
+    constructor(camera, codeDistance, cellMap, drawBraids, drawOps) {
+        /** @type {!Camera} */
+        this.camera = camera;
+        /** @type {!int} */
+        this.codeDistance = codeDistance;
+        /** @type {!UnitCellMap} */
+        this.cellMap = cellMap;
+        /** @type {!boolean} */
+        this.drawBraids = drawBraids;
+        /** @type {!boolean} */
+        this.drawOps = drawOps;
+    }
 
-let cellMap = new UnitCellMap();
-cellMap.cell(new Point(0, 0, 0)).piece_names.add('XPrimal');
-cellMap.cell(new Point(0, 0, 1)).piece_names.add('XPrimal');
-cellMap.cell(new Point(0, 0, 1)).piece_names.add('YPrimal');
-cellMap.cell(new Point(0, 1, 0)).piece_names.add('ZPrimal');
-cellMap.cell(new Point(0, 1, 0)).piece_names.add('ZDual');
+    /**
+     * @returns {!DrawState}
+     */
+    static defaultValue() {
+        let result = new DrawState(
+            new Camera(new Point(0, 0, 0), 7, -Math.PI/3, Math.PI/4),
+            1,
+            new UnitCellMap(),
+            true,
+            false);
+        result.cellMap.cell(new Point(0, 0, 0)).piece_names.add('XPrimal');
+        result.cellMap.cell(new Point(0, 0, 1)).piece_names.add('XPrimal');
+        result.cellMap.cell(new Point(0, 0, 1)).piece_names.add('YPrimal');
+        result.cellMap.cell(new Point(0, 1, 0)).piece_names.add('ZPrimal');
+        result.cellMap.cell(new Point(0, 1, 0)).piece_names.add('ZDual');
+        return result;
+    }
 
-let drawBraids = true;
-let drawOps = false;
+    /**
+     * @returns {!DrawState}
+     */
+    clone() {
+        return new DrawState(
+            this.camera.clone(),
+            this.codeDistance,
+            this.cellMap.clone(),
+            this.drawBraids,
+            this.drawOps);
+    }
+
+    /**
+     * @param {*|!DrawState} other
+     * @returns {!boolean}
+     */
+    isEqualTo(other) {
+        return other instanceof DrawState &&
+            this.camera.isEqualTo(other.camera) &&
+            this.codeDistance === other.codeDistance &&
+            this.cellMap.isEqualTo(other.cellMap) &&
+            this.drawBraids === other.drawBraids &&
+            this.drawOps === other.drawOps;
+    }
+}
+
+let drawState = DrawState.defaultValue();
+let lastDrawnState = undefined;
 
 /**
  * @returns {!Array.<!RenderData>}
@@ -37,12 +92,11 @@ let drawOps = false;
 function makeRenderData() {
     let result = [];
 
-    if (drawBraids) {
-        result.push(...cellMap.renderData());
-
+    if (drawState.drawBraids) {
+        result.push(...drawState.cellMap.renderData());
     }
 
-    if (!drawOps && drawBraids) {
+    if (!drawState.drawOps && drawState.drawBraids) {
         if (selectedPiece !== undefined) {
             result.push(selectedPiece.toRenderData([1, 0, 0, 1]));
         }
@@ -52,12 +106,12 @@ function makeRenderData() {
     // result.push(new Box(camera.focus_point, d));
 
 
-    if (drawOps) {
+    if (drawState.drawOps) {
         for (let i = 0; i < simulated_layers.length; i++) {
             for (let j = 0; j < simulated_layers[i].grid.length; j++) {
-                result.push(...simulated_layers[i].toIntraLayerRenderDatas(j, i, codeDistance));
+                result.push(...simulated_layers[i].toIntraLayerRenderDatas(j, i, drawState.codeDistance));
             }
-            result.push(...simulated_layers[i].toInterLayerRenderDatas(i, codeDistance));
+            result.push(...simulated_layers[i].toInterLayerRenderDatas(i, drawState.codeDistance));
         }
     }
 
@@ -135,9 +189,13 @@ let simulated_layers = /** @type {!Array.<!LockstepSurfaceLayer>} */ [];
  * @param {*} buffers
  */
 function drawScene(gl, programInfo, buffers) {
-    if (!last_simulation_map.isEqualTo(cellMap)) {
-        last_simulation_map = cellMap.clone();
-        simulated_layers = simulate_map(codeDistance, last_simulation_map);
+    if (drawState.isEqualTo(lastDrawnState)) {
+        return;
+    }
+    lastDrawnState = drawState.clone();
+    if (!last_simulation_map.isEqualTo(drawState.cellMap)) {
+        last_simulation_map = drawState.cellMap.clone();
+        simulated_layers = simulate_map(drawState.codeDistance, last_simulation_map);
     }
 
     let w = window.innerWidth;
@@ -161,7 +219,7 @@ function drawScene(gl, programInfo, buffers) {
     gl.uniformMatrix4fv(
         programInfo.uniformLocations.matrix,
         false,
-        camera.worldToScreenMatrix(canvas).transpose().raw);
+        drawState.camera.worldToScreenMatrix(canvas).transpose().raw);
 
     let allRenderData = makeRenderData();
     _drawSceneHelper(gl, programInfo, buffers, allRenderData, gl.TRIANGLES);
@@ -231,7 +289,7 @@ canvas.addEventListener('click', ev => {
     }
 
     if (!selectedPiece.plumbingPiece.onlyImplied) {
-        let s = cellMap.cell(selectedPiece.cell).piece_names;
+        let s = drawState.cellMap.cell(selectedPiece.cell).piece_names;
         if (s.has(selectedPiece.plumbingPiece.name)) {
             s.delete(selectedPiece.plumbingPiece.name);
         } else {
@@ -247,7 +305,7 @@ canvas.addEventListener('click', ev => {
             if (imp.name === selectedPiece.plumbingPiece.name) {
                 let d = pp.box.center().minus(selectedPiece.plumbingPiece.box.center()).minus(imp.offset).unit();
                 if (d.isApproximatelyEqualTo(selectedDir, 0.001)) {
-                    cellMap.cell(selectedPiece.cell.plus(imp.offset.scaledBy(-1))).piece_names.add(pp.name);
+                    drawState.cellMap.cell(selectedPiece.cell.plus(imp.offset.scaledBy(-1))).piece_names.add(pp.name);
                     selectedPiece = undefined;
                     selectedDir = undefined;
                     return;
@@ -272,15 +330,15 @@ canvas.addEventListener('mousemove', ev => {
         if (ev.shiftKey) {
             step(dx * -0.01, dy * 0.01, 0);
         } else {
-            camera.yaw += dx * 0.004;
-            camera.pitch += dy * 0.004;
-            camera.pitch = Math.max(Math.min(camera.pitch, Math.PI/2), -Math.PI/2);
+            drawState.camera.yaw += dx * 0.004;
+            drawState.camera.pitch += dy * 0.004;
+            drawState.camera.pitch = Math.max(Math.min(drawState.camera.pitch, Math.PI/2), -Math.PI/2);
         }
     }
     prevMouse = curMouse;
 
-    let ray = camera.screenPosToWorldRay(canvas, curMouse[0], curMouse[1]).ray;
-    let collision = cellMap.intersect(ray);
+    let ray = drawState.camera.screenPosToWorldRay(canvas, curMouse[0], curMouse[1]).ray;
+    let collision = drawState.cellMap.intersect(ray);
     if (collision === undefined) {
         selectedPiece = undefined;
         selectedDir = undefined;
@@ -292,47 +350,47 @@ canvas.addEventListener('mousemove', ev => {
 });
 
 function step(dx, dy, dz) {
-    let viewMatrix = camera.rotationMatrix();
+    let viewMatrix = drawState.camera.rotationMatrix();
     let d = viewMatrix.transformVector(new Vector(dx, dy, dz));
-    camera.focus_point = camera.focus_point.plus(d);
+    drawState.camera.focus_point = drawState.camera.focus_point.plus(d);
 }
 
 canvas.addEventListener('mousewheel', ev => {
     let factor = Math.exp(-ev.wheelDelta / 1000.0);
-    let scalarJump = camera.distance * (factor - 1);
+    let scalarJump = drawState.camera.distance * (factor - 1);
     let canvasBox = canvas.getBoundingClientRect();
     let curMouse = [ev.clientX - canvasBox.left, ev.clientY - canvasBox.top];
-    let focusDir = camera.screenPosToWorldRay(canvas, curMouse[0], curMouse[1]).ray.direction;
+    let focusDir = drawState.camera.screenPosToWorldRay(canvas, curMouse[0], curMouse[1]).ray.direction;
     let displacement = focusDir.scaledBy(scalarJump);
-    let strafe = displacement.perpOnto(camera.direction()).scaledBy(-1);
-    camera.distance += displacement.scalarProjectOnto(camera.direction());
-    camera.focus_point = camera.focus_point.plus(strafe);
+    let strafe = displacement.perpOnto(drawState.camera.direction()).scaledBy(-1);
+    drawState.camera.distance += displacement.scalarProjectOnto(drawState.camera.direction());
+    drawState.camera.focus_point = drawState.camera.focus_point.plus(strafe);
 });
 
 document.addEventListener('keydown', ev => {
     if (ev.keyCode === '1'.charCodeAt(0)) {
-        drawBraids = true;
-        drawOps = false;
+        drawState.drawBraids = true;
+        drawState.drawOps = false;
     }
 
     if (ev.keyCode === '2'.charCodeAt(0)) {
-        drawBraids = false;
-        drawOps = true;
+        drawState.drawBraids = false;
+        drawState.drawOps = true;
     }
 
     if (ev.keyCode === '3'.charCodeAt(0)) {
-        drawBraids = true;
-        drawOps = true;
+        drawState.drawBraids = true;
+        drawState.drawOps = true;
     }
 
     if (ev.keyCode === 187) {
-        codeDistance += 1;
+        drawState.codeDistance += 1;
         last_simulation_map = new UnitCellMap();
         ev.preventDefault();
     }
 
     if (ev.keyCode === 189) {
-        codeDistance = Math.max(codeDistance - 1, 1);
+        drawState.codeDistance = Math.max(drawState.codeDistance - 1, 1);
         last_simulation_map = new UnitCellMap();
         ev.preventDefault();
     }

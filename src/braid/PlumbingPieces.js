@@ -3,7 +3,7 @@ import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
 import {Point} from "src/geo/Point.js";
 import {seq} from "src/base/Seq.js";
-import {makeArrayGrid} from "src/sim/util/Util.js";
+import {makeArrayGrid, gridRangeToString} from "src/sim/util/Util.js";
 import {FixupOperation} from "src/sim/util/FixupOperation.js";
 import {XYT} from "src/sim/util/XYT.js";
 import {GeneralSet} from "src/base/GeneralSet.js";
@@ -31,28 +31,47 @@ class PlumbingPieceVariant {
 
 class PlumbingPieceFootprint {
     /**
-     * @param {!int} offsetX
-     * @param {!int} offsetY
-     * @param {!Array.<!Array.<!boolean>>} mask
+     * @param {!GeneralSet.<!XY>} mask
      */
-    constructor(offsetX, offsetY, mask) {
-        this.offsetX = offsetX;
-        this.offsetY = offsetY;
+    constructor(mask) {
         this.mask = mask;
     }
 
     /**
      * @param {!int} x
      * @param {!int} y
+     * @param {!int} w
+     * @param {!int} h
      * @returns {!PlumbingPieceFootprint}
      */
-    offsetBy(x, y) {
-        return new PlumbingPieceFootprint(this.offsetX + x, this.offsetY + y, this.mask);
+    static grid(x, y, w, h) {
+        let mask = new GeneralSet();
+        for (let i = 0; i < w; i++) {
+            for (let j = 0; j < h; j++) {
+                mask.add(new XY(x + i, y + j));
+            }
+        }
+        return new PlumbingPieceFootprint(mask);
+    }
+
+    /**
+     * @param {!int} dx
+     * @param {!int} dy
+     * @returns {!PlumbingPieceFootprint}
+     */
+    offsetBy(dx, dy) {
+        return new PlumbingPieceFootprint(new GeneralSet(
+            ...seq(this.mask).map(({x, y}) => new XY(x + dx, y + dy))));
     }
 
     toString() {
-        let content = this.mask.map(row => row.map(cell => cell ? '#' : ' ').join('')).join('\n    ');
-        return `PlumbingPieceFootprint(offsetX=${this.offsetX}, offsetY=${this.offsetY}, mask=\n    ${content}\n)`;
+        let minX = seq(this.mask).map(e => e.x).min(0);
+        let maxX = seq(this.mask).map(e => e.x).max(0);
+        let minY = seq(this.mask).map(e => e.y).min(0);
+        let maxY = seq(this.mask).map(e => e.y).max(0);
+        let func = (row, col) => this.mask.has(new XY(col, row)) ? '#' : ' ';
+        let content = gridRangeToString(minY, maxY, minX, maxX, func);
+        return `PlumbingPieceFootprint(offsetX=${minX}, offsetY=${minY}, mask=\n    ${content}\n)`;
     }
 }
 
@@ -171,7 +190,7 @@ let centerConnector = new PlumbingPiece(
         new Vector(SMALL_DIAMETER, SMALL_DIAMETER, SMALL_DIAMETER)),
     codeDistance => {
         let {w, h} = codeDistanceToPipeSize(codeDistance);
-        return new PlumbingPieceFootprint(0, 0, makeArrayGrid(w, h, () => true));
+        return PlumbingPieceFootprint.grid(0, 0, w, h);
     },
     () => {},
     GENERIC_COLOR,
@@ -188,7 +207,7 @@ let xConnector = new PlumbingPiece(
         let {w, h} = codeDistanceToPipeSize(codeDistance);
         w *= 2;
         w += codeDistanceToPipeSeparation(codeDistance);
-        return new PlumbingPieceFootprint(0, 0, makeArrayGrid(w, h, () => true));
+        return PlumbingPieceFootprint.grid(0, 0, w, h);
     },
     (codeDistance, fixupLayer, dx, dy) => {
         let {w, h} = codeDistanceToPipeSize(codeDistance);
@@ -218,7 +237,7 @@ let yConnector = new PlumbingPiece(
         new Vector(SMALL_DIAMETER, LONG_DIAMETER, SMALL_DIAMETER)),
     codeDistance => {
         let {w, h} = codeDistanceToPipeSize(codeDistance);
-        return new PlumbingPieceFootprint(0, 0, makeArrayGrid(w, h, () => true));
+        return PlumbingPieceFootprint.grid(0, 0, w, h);
     },
     () => {},
     GENERIC_COLOR,
@@ -238,7 +257,7 @@ let zConnector = new PlumbingPiece(
         let {w, h} = codeDistanceToPipeSize(codeDistance);
         h *= 2;
         h += codeDistanceToPipeSeparation(codeDistance);
-        return new PlumbingPieceFootprint(0, 0, makeArrayGrid(w, h, () => true));
+        return PlumbingPieceFootprint.grid(0, 0, w, h);
     },
     () => {},
     GENERIC_COLOR,

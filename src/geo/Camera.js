@@ -18,6 +18,13 @@ class Camera {
     }
 
     /**
+     * @returns {!Camera}
+     */
+    clone() {
+        return new Camera(this.focus_point.clone(), this.distance, this.yaw, this.pitch);
+    }
+
+    /**
      * @returns {!Point}
      */
     cameraPosition() {
@@ -97,6 +104,19 @@ class Camera {
         let pitch = Math.atan2(d.y, Math.sqrt(d.x * d.x + d.z * d.z));
         let ray = new Ray(pos, q.minus(pos));
         return {yaw, pitch, ray};
+    }
+
+    /**
+     * @param {!Camera|*} other
+     * @returns {!boolean}
+     */
+    isEqualTo(other) {
+        return other instanceof Camera &&
+            this.focus_point.isEqualTo(other.focus_point) &&
+            this.distance === other.distance &&
+            this.yaw === other.yaw &&
+            this.pitch === other.pitch;
+
     }
 }
 

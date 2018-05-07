@@ -17,6 +17,7 @@ import {Vector} from "src/geo/Vector.js";
 import {codeDistanceUnitCellSize, codeDistanceToPipeSize} from "src/braid/PlumbingPieces.js";
 import {DirectedGraph} from "src/sim/util/DirectedGraph.js";
 import {indent} from "src/base/Util.js";
+import {gridRangeToString} from "src/sim/util/Util.js";
 
 let HADAMARD = 'H';
 let CONTROL = 'C';
@@ -234,7 +235,7 @@ class Tile {
         let maxY = seq(this.operations.keys()).map(xy => xy.y).max(0);
         let d = this.depth();
         let planes = [];
-        planes.push(planeToString(minY, maxY, minX, maxX, (row, col) => {
+        planes.push(gridRangeToString(minY, maxY, minX, maxX, (row, col) => {
             let init = this.initializations.get(new XY(col, row));
             if (init === undefined) {
                 return ' ';
@@ -245,7 +246,7 @@ class Tile {
             }
         }));
         for (let z = 0; z < d; z++) {
-            planes.push(planeToString(minY, maxY, minX, maxX, (row, col) => {
+            planes.push(gridRangeToString(minY, maxY, minX, maxX, (row, col) => {
                 let r = this.operations.get(new XY(col, row));
                 if (r === undefined) {
                     return ' ';
@@ -254,7 +255,7 @@ class Tile {
                 return result === undefined ? ' ' : result;
             }));
         }
-        planes.push(planeToString(minY, maxY, minX, maxX, (row, col) => {
+        planes.push(gridRangeToString(minY, maxY, minX, maxX, (row, col) => {
             let init = this.measurements.get(new XY(col, row));
             if (init === undefined) {
                 return ' ';
@@ -267,29 +268,6 @@ class Tile {
 
         return `Tile(entries=[${indent(planes.join('\n\n'))}\n])`;
     }
-}
-
-/**
- * @param {!int} minRow
- * @param {!int} maxRow
- * @param {!int} minCol
- * @param {!int} maxCol
- * @param {!function(row: !int, col: !int): !string} func
- * @returns {string}
- */
-function planeToString(minRow, maxRow, minCol, maxCol, func) {
-    let w = maxCol - minCol + 1;
-    let rail = Seq.repeat('#', w + 2).join('');
-    let rows = [rail];
-    for (let row = minRow; row <= maxRow; row++) {
-        let cells = [];
-        for (let col = minCol; col <= maxCol; col++) {
-            cells.push(func(row, col));
-        }
-        rows.push('#' + cells.join('') + '#');
-    }
-    rows.push(rail);
-    return rows.join('\n');
 }
 
 /**

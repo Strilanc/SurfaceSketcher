@@ -13,6 +13,13 @@ class Point {
     }
 
     /**
+     * @returns {!Point}
+     */
+    clone() {
+        return new Point(this.x, this.y, this.z);
+    }
+
+    /**
      * @param {!Point} other
      * @returns {!Vector}
      */

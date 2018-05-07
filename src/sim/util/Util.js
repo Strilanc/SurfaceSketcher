@@ -1,3 +1,5 @@
+import {Seq} from "src/base/Seq.js";
+
 /**
  * Creates a 2d array with elements initialized using the given generator function.
  *
@@ -57,4 +59,28 @@ function xorSetInto(src, dst) {
     }
 }
 
-export {setMembershipInOfTo, toggleMembership, xorSetInto, makeArrayGrid}
+/**
+ * @param {!int} minRow
+ * @param {!int} maxRow
+ * @param {!int} minCol
+ * @param {!int} maxCol
+ * @param {!function(row: !int, col: !int): !string} func
+ * @returns {!string}
+ */
+function gridRangeToString(minRow, maxRow, minCol, maxCol, func) {
+    let w = maxCol - minCol + 1;
+    let rail = Seq.repeat('#', w + 2).join('');
+    let rows = [rail];
+    for (let row = minRow; row <= maxRow; row++) {
+        let cells = [];
+        for (let col = minCol; col <= maxCol; col++) {
+            let r = func(row, col);
+            cells.push(r === undefined ? ' ' : r);
+        }
+        rows.push('#' + cells.join('') + '#');
+    }
+    rows.push(rail);
+    return rows.join('\n');
+}
+
+export {setMembershipInOfTo, toggleMembership, xorSetInto, makeArrayGrid, gridRangeToString}

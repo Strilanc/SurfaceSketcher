@@ -12,28 +12,22 @@ import {PLUMBING_PIECE_MAP, PlumbingPieceFootprint} from "src/braid/PlumbingPiec
 import {FixupLayer} from "src/sim/FixupLayer.js";
 import {makeArrayGrid} from "src/sim/util/Util.js";
 import {Surface} from "src/sim/Surface.js";
+import {GeneralSet} from "src/base/GeneralSet.js";
 
 
 /**
  * @param {!int} codeDistance
- * @param {!int} width
- * @param {!int} height
  * @param {!Array.<!LocalizedPlumbingPiece>} pieces
  * @returns {!PlumbingPieceFootprint}
  */
-function blockOut(codeDistance, width, height, pieces) {
-    let result = makeArrayGrid(width, height, () => false);
+function blockOut(codeDistance, pieces) {
+    let result = new GeneralSet();
     for (let piece of pieces) {
-        let footprint = piece.toFootprint(codeDistance);
-        for (let row = 0; row < footprint.mask.length; row++) {
-            for (let col = 0; col < footprint.mask[row].length; col++) {
-                if (footprint.mask[row][col]) {
-                    result[row + footprint.offsetY][col + footprint.offsetX] = true;
-                }
-            }
+        for (let xy of piece.toFootprint(codeDistance).mask) {
+            result.add(xy);
         }
     }
-    return new PlumbingPieceFootprint(0, 0, result);
+    return new PlumbingPieceFootprint(result);
 }
 
 /**
@@ -83,7 +77,7 @@ function simulate_map(codeDistance, map) {
         }
         let layer = new LockstepSurfaceLayer(new FixupLayer(w, h));
         fixOut(layer.fixup, codeDistance, slice);
-        let block = blockOut(codeDistance, w, h, slice);
+        let block = blockOut(codeDistance, slice);
         layer.measureEnabledStabilizers(surface, block.mask);
         layers.push(layer);
     }

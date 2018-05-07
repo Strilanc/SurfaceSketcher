@@ -17,6 +17,7 @@ import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
 import {codeDistanceUnitCellSize, codeDistanceToPipeSize} from "src/braid/PlumbingPieces.js";
 import {DirectedGraph} from "src/sim/util/DirectedGraph.js";
+import {gridRangeToString} from "src/sim/util/Util.js";
 
 let HADAMARD = 'H';
 let CONTROL = 'C';
@@ -329,16 +330,16 @@ class LockstepSurfaceLayer {
 
     /**
      * @param {!Surface} surface
-     * @param {!Array.<!Array.<!boolean>>} disables
+     * @param {!GeneralSet.<!XY>} disables
      * @returns {!GeneralMap.<!XY, !MeasurementAdjustment>}
      */
     measureEnabledStabilizers(surface, disables) {
         let xTargets = [];
         let zTargets = [];
-        for (let row = 0; row < disables.length; row++) {
-            for (let col = 0; col < disables[row].length; col++) {
+        for (let row = 0; row < surface.height; row++) {
+            for (let col = 0; col < surface.width; col++) {
                 let xy = new XY(col, row);
-                if (!disables[row][col]) {
+                if (!disables.has(xy)) {
                     if (surface.is_x(xy)) {
                         xTargets.push(xy);
                     }
@@ -348,7 +349,7 @@ class LockstepSurfaceLayer {
                 }
             }
         }
-        return this.measureStabilizers(xTargets, zTargets, xy => !disables[xy.y][xy.x]);
+        return this.measureStabilizers(xTargets, zTargets, xy => !disables.has(xy));
     }
 
     /**
@@ -412,7 +413,7 @@ class LockstepSurfaceLayer {
     toString() {
         let m = seq(this.grid).flatten().map(e => e.length).max();
         let planes = [];
-        planes.push(planeToString(this, (row, col) => {
+        planes.push(gridRangeToString(0, this.height - 1, 0, this.width - 1, (row, col) => {
             let init = this.initializations.get(new XY(col, row));
             if (init === undefined) {
                 return ' ';
@@ -423,9 +424,9 @@ class LockstepSurfaceLayer {
             }
         }));
         for (let z = 0; z < m; z++) {
-            planes.push(planeToString(this, (row, col) => this.grid[row][col][z]));
+            planes.push(gridRangeToString(0, this.height - 1, 0, this.width - 1, (row, col) => this.grid[row][col][z]));
         }
-        planes.push(planeToString(this, (row, col) => {
+        planes.push(gridRangeToString(0, this.height - 1, 0, this.width - 1, (row, col) => {
             let init = this.measurements.get(new XY(col, row));
             if (init === undefined) {
                 return ' ';
@@ -440,29 +441,6 @@ class LockstepSurfaceLayer {
         let fixupText = this.fixup.toString();
         return `LockstepSurfaceLayer(grid=\n${indent(planeText)},\n\n${indent('fixup=' + fixupText)})`;
     }
-}
-
-/**
- * @param {!LockstepSurfaceLayer} layer
- * @param {!function(row: !int, col: !int): !string} func
- * @returns {string}
- */
-function planeToString(layer, func) {
-    let rail = Seq.repeat('#', layer.width + 2).join('');
-    let rows = [rail];
-    for (let row = 0; row < layer.height; row++) {
-        let cells = [];
-        for (let col = 0; col < layer.width; col++) {
-            let v = func(row, col);
-            if (v === undefined) {
-                v = ' ';
-            }
-            cells.push(v === undefined ? ' ' : v);
-        }
-        rows.push('#' + cells.join('') + '#');
-    }
-    rows.push(rail);
-    return rows.join('\n');
 }
 
 /**
