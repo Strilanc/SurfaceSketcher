@@ -265,3 +265,22 @@ suite.test("times", () => {
     assertThat(s1.inline_times(s2)).is(s1);
     assertThat(s1.toString()).isEqualTo('X_a * Y_b * Z_c * X_d * Y_e * Z_f * Y_j * Z_k * X_l');
 });
+
+suite.test("flips", () => {
+    let p = new PauliMap();
+    p.x(1);
+    p.y(2);
+    p.z(3);
+
+    assertTrue(p.flips(1, Axis.Z));
+    assertFalse(p.flips(1, Axis.X));
+
+    assertTrue(p.flips(2, Axis.Z));
+    assertTrue(p.flips(2, Axis.X));
+
+    assertFalse(p.flips(3, Axis.Z));
+    assertTrue(p.flips(3, Axis.X));
+
+    assertFalse(p.flips(4, Axis.Z));
+    assertFalse(p.flips(4, Axis.X));
+});

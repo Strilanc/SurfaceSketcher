@@ -93,6 +93,17 @@ class PauliMap {
     }
 
     /**
+     * Determines if the effects on the given target will cause an observable to change value or not.
+     * @param {*} target
+     * @param {!Axis} axis
+     */
+    flips(target, axis=Axis.Z) {
+        let t = this.get(target);
+        let m = axis.is_z() ? PauliMap.XMask : PauliMap.ZMask;
+        return (t & m) !== 0;
+    }
+
+    /**
      * @param {*} target
      */
     x(target) {

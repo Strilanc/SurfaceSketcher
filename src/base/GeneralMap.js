@@ -1,10 +1,11 @@
-import {equate_Maps} from "src/base/Equate.js";
-import {seq} from "src/base/Seq.js";
-
 /**
  * A Map that can use keys that aren't primitives. Assumes that the key's toString method returns an
  * appropriate key that respects the desired equality.
  */
+import {equate_Maps} from "src/base/Equate.js";
+import {seq} from "src/base/Seq.js";
+import {DetailedError} from "src/base/DetailedError.js";
+
 class GeneralMap {
     /**
      * @param {...[*, *]} entries
@@ -114,6 +115,21 @@ class GeneralMap {
         let result = new GeneralMap();
         for (let [k, v] of this.entries()) {
             result.set(k, valueFunc(v));
+        }
+        return result;
+    }
+
+    /**
+     * @param {!function(value: *): *} valueFunc
+     * @returns {!GeneralMap}
+     */
+    mapKeys(keyFunc) {
+        let result = new GeneralMap();
+        for (let [k, v] of this.entries()) {
+            result.set(keyFunc(k), v);
+        }
+        if (result.size !== this.size) {
+            throw new DetailedError('Irreversible key mapping.', {keyFunc, n1: this.size, n2: result.size});
         }
         return result;
     }

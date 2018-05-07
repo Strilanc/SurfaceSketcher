@@ -1,4 +1,4 @@
-import {Suite, assertThat, EqualsTester} from "test/TestUtil.js"
+import {Suite, assertThat, assertThrows, EqualsTester} from "test/TestUtil.js"
 import {seq} from "src/base/Seq.js"
 import {GeneralMap} from "src/base/GeneralMap.js"
 
@@ -129,4 +129,11 @@ suite.test("mapValues", () => {
     let m = new GeneralMap(['a', 1], ['b', 2]);
     let m2 = new GeneralMap(['a', 11], ['b', 12]);
     assertThat(m.mapValues(e => e + 10)).isEqualTo(m2);
+});
+
+suite.test("mapKeys", () => {
+    let m = new GeneralMap([1, 'a'], [2, 'b']);
+    let m2 = new GeneralMap([11, 'a'], [12, 'b']);
+    assertThat(m.mapKeys(e => e + 10)).isEqualTo(m2);
+    assertThrows(() => m.mapKeys(e => 0));
 });
