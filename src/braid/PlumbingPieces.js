@@ -13,8 +13,8 @@ const SMALL_DIAMETER = 0.2;
 const LONG_DIAMETER = 0.8;
 
 const GENERIC_COLOR = [0.5, 0.5, 0.5, 1.0];
-const PRIMAL_COLOR = [0.8, 0.8, 1.0, 1.0];
-const DUAL_COLOR = [0.7, 1.0, 0.7, 1.0];
+const PRIMAL_COLOR = [0.9, 0.9, 0.9, 1.0];
+const DUAL_COLOR = [0.4, 0.4, 0.4, 1.0];
 
 
 class PlumbingPieceVariant {

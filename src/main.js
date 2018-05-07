@@ -14,8 +14,11 @@ import {Point} from "src/geo/Point.js";
 import {Camera} from "src/geo/Camera.js";
 import {RenderData} from "src/geo/RenderData.js";
 import {UnitCellMap} from "src/braid/UnitCellMap.js";
+import {PlumbingPieceData} from "src/braid/UnitCell.js";
 import {ALL_PLUMBING_PIECES, PLUMBING_PIECE_MAP} from "src/braid/PlumbingPieces.js";
 import {simulate_map} from "src/braid/SimulateUnitCellMap.js"
+import {equate} from "src/base/Equate.js";
+import {LocalizedPlumbingPiece} from "src/braid/LocalizedPlumbingPiece.js";
 
 
 class DrawState {
@@ -25,8 +28,10 @@ class DrawState {
      * @param {!UnitCellMap} cellMap
      * @param {!boolean} drawBraids
      * @param {!boolean} drawOps
+     * @param {undefined|!LocalizedPlumbingPiece} selectedPiece
+     * @param {undefined|!Vector} selectedDir
      */
-    constructor(camera, codeDistance, cellMap, drawBraids, drawOps) {
+    constructor(camera, codeDistance, cellMap, drawBraids, drawOps, selectedPiece, selectedDir) {
         /** @type {!Camera} */
         this.camera = camera;
         /** @type {!int} */
@@ -37,6 +42,10 @@ class DrawState {
         this.drawBraids = drawBraids;
         /** @type {!boolean} */
         this.drawOps = drawOps;
+        /** @type {undefined|!LocalizedPlumbingPiece} */
+        this.selectedPiece = selectedPiece;
+        /** @type {undefined|!Vector} */
+        this.selectedDir = selectedDir;
     }
 
     /**
@@ -48,12 +57,14 @@ class DrawState {
             1,
             new UnitCellMap(),
             true,
-            false);
-        result.cellMap.cell(new Point(0, 0, 0)).piece_names.add('XPrimal');
-        result.cellMap.cell(new Point(0, 0, 1)).piece_names.add('XPrimal');
-        result.cellMap.cell(new Point(0, 0, 1)).piece_names.add('YPrimal');
-        result.cellMap.cell(new Point(0, 1, 0)).piece_names.add('ZPrimal');
-        result.cellMap.cell(new Point(0, 1, 0)).piece_names.add('ZDual');
+            false,
+            undefined,
+            undefined);
+        result.cellMap.cell(new Point(0, 0, 0)).pieces.set(PLUMBING_PIECE_MAP.get('XPrimal'), new PlumbingPieceData());
+        result.cellMap.cell(new Point(0, 0, 1)).pieces.set(PLUMBING_PIECE_MAP.get('XPrimal'), new PlumbingPieceData());
+        result.cellMap.cell(new Point(0, 0, 1)).pieces.set(PLUMBING_PIECE_MAP.get('YPrimal'), new PlumbingPieceData());
+        result.cellMap.cell(new Point(0, 1, 0)).pieces.set(PLUMBING_PIECE_MAP.get('ZPrimal'), new PlumbingPieceData());
+        result.cellMap.cell(new Point(0, 1, 0)).pieces.set(PLUMBING_PIECE_MAP.get('ZDual'), new PlumbingPieceData());
         return result;
     }
 
@@ -66,7 +77,9 @@ class DrawState {
             this.codeDistance,
             this.cellMap.clone(),
             this.drawBraids,
-            this.drawOps);
+            this.drawOps,
+            this.selectedPiece,
+            this.selectedDir);
     }
 
     /**
@@ -79,12 +92,16 @@ class DrawState {
             this.codeDistance === other.codeDistance &&
             this.cellMap.isEqualTo(other.cellMap) &&
             this.drawBraids === other.drawBraids &&
-            this.drawOps === other.drawOps;
+            this.drawOps === other.drawOps &&
+            equate(this.selectedPiece, other.selectedPiece) &&
+            equate(this.selectedDir, other.selectedDir);
     }
 }
 
 let drawState = DrawState.defaultValue();
 let lastDrawnState = undefined;
+let lastSimState = undefined;
+let prevMouse = [0, 0];
 
 /**
  * @returns {!Array.<!RenderData>}
@@ -97,8 +114,8 @@ function makeRenderData() {
     }
 
     if (!drawState.drawOps && drawState.drawBraids) {
-        if (selectedPiece !== undefined) {
-            result.push(selectedPiece.toRenderData([1, 0, 0, 1]));
+        if (drawState.selectedPiece !== undefined) {
+            result.push(drawState.selectedPiece.toRenderData([1, 0, 0, 1]));
         }
     }
 
@@ -118,7 +135,6 @@ function makeRenderData() {
     return result;
 }
 
-let last_simulation_map = new UnitCellMap();
 
 const canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 function main() {
@@ -193,9 +209,9 @@ function drawScene(gl, programInfo, buffers) {
         return;
     }
     lastDrawnState = drawState.clone();
-    if (!last_simulation_map.isEqualTo(drawState.cellMap)) {
-        last_simulation_map = drawState.cellMap.clone();
-        simulated_layers = simulate_map(drawState.codeDistance, last_simulation_map);
+    if (!drawState.cellMap.isEqualTo(lastSimState)) {
+        lastSimState = drawState.cellMap.clone();
+        simulated_layers = simulate_map(drawState.codeDistance, lastSimState);
     }
 
     let w = window.innerWidth;
@@ -284,47 +300,79 @@ function loadShader(gl, type, source) {
 main();
 
 canvas.addEventListener('click', ev => {
-    if (selectedPiece === undefined || selectedDir === undefined) {
+    if (drawState.selectedPiece === undefined || drawState.selectedDir === undefined) {
         return;
     }
 
-    if (!selectedPiece.plumbingPiece.onlyImplied) {
-        let s = drawState.cellMap.cell(selectedPiece.cell).piece_names;
-        if (s.has(selectedPiece.plumbingPiece.name)) {
-            s.delete(selectedPiece.plumbingPiece.name);
-        } else {
-            s.add(selectedPiece.plumbingPiece.name);
-        }
-        selectedPiece = undefined;
-        selectedDir = undefined;
-        return;
-    }
-
-    for (let pp of ALL_PLUMBING_PIECES) {
-        for (let imp of pp.implies) {
-            if (imp.name === selectedPiece.plumbingPiece.name) {
-                let d = pp.box.center().minus(selectedPiece.plumbingPiece.box.center()).minus(imp.offset).unit();
-                if (d.isApproximatelyEqualTo(selectedDir, 0.001)) {
-                    drawState.cellMap.cell(selectedPiece.cell.plus(imp.offset.scaledBy(-1))).piece_names.add(pp.name);
-                    selectedPiece = undefined;
-                    selectedDir = undefined;
-                    return;
+    let spp = drawState.selectedPiece.plumbingPiece;
+    if (!spp.onlyImplied) {
+        let cell = drawState.cellMap.cell(drawState.selectedPiece.cell);
+        let data = cell.pieces.get(spp);
+        if (ev.shiftKey) {
+            if (data !== undefined) {
+                let k = -1;
+                for (let i = 0; i < spp.variants.length; i++) {
+                    let v = spp.variants[i];
+                    if (v.name === data.variant) {
+                        k = i;
+                    }
                 }
+                k += 1;
+                if (k === spp.variants.length) {
+                    k = -1;
+                }
+                data.variant = k === -1 ? undefined : spp.variants[k].name;
             }
+        } else {
+            if (cell.pieces.has(spp)) {
+                cell.pieces.delete(spp);
+            } else {
+                cell.pieces.set(spp, new PlumbingPieceData());
+            }
+            drawState.selectedPiece = undefined;
+            drawState.selectedDir = undefined;
         }
+        return;
+    }
+
+    let lpp = findImplierCell();
+    if (lpp !== undefined) {
+        let cell = drawState.cellMap.cell(lpp.cell);
+        cell.pieces.set(lpp.plumbingPiece, new PlumbingPieceData());
+        drawState.selectedPiece = undefined;
+        drawState.selectedDir = undefined;
     }
 });
 
-let prevMouse = [0, 0];
-/** @type {undefined|!LocalizedPlumbingPiece} */
-let selectedPiece = undefined;
-/** @type {undefined|!Vector} */
-let selectedDir = undefined;
+/**
+ * @returns {undefined|!LocalizedPlumbingPiece}
+ */
+function findImplierCell() {
+    for (let pp of ALL_PLUMBING_PIECES) {
+        for (let imp of pp.implies) {
+            if (imp.name !== drawState.selectedPiece.plumbingPiece.name) {
+                continue;
+            }
+            let d = pp.box.center().
+                minus(drawState.selectedPiece.plumbingPiece.box.center()).
+                minus(imp.offset).
+                unit();
+            if (d.isApproximatelyEqualTo(drawState.selectedDir, 0.001)) {
+                let pt = drawState.selectedPiece.cell.plus(imp.offset.scaledBy(-1));
+                return new LocalizedPlumbingPiece(pp, pt);
+            }
+        }
+    }
+    return undefined;
+}
+
+
 canvas.addEventListener('mousemove', ev => {
     let b = canvas.getBoundingClientRect();
     let curMouse = [ev.clientX - b.left, ev.clientY - b.top];
 
     if (ev.which === 2) {
+        // Middle button drag.
         let dx = curMouse[0] - prevMouse[0];
         let dy = curMouse[1] - prevMouse[1];
         if (ev.shiftKey) {
@@ -340,12 +388,12 @@ canvas.addEventListener('mousemove', ev => {
     let ray = drawState.camera.screenPosToWorldRay(canvas, curMouse[0], curMouse[1]).ray;
     let collision = drawState.cellMap.intersect(ray);
     if (collision === undefined) {
-        selectedPiece = undefined;
-        selectedDir = undefined;
+        drawState.selectedPiece = undefined;
+        drawState.selectedDir = undefined;
     } else {
-        selectedPiece = collision.piece;
-        let box = selectedPiece.toBox(true);
-        selectedDir = box.facePointToDirection(collision.collisionPoint);
+        drawState.selectedPiece = collision.piece;
+        let box = drawState.selectedPiece.toBox(true);
+        drawState.selectedDir = box.facePointToDirection(collision.collisionPoint);
     }
 });
 
@@ -385,13 +433,13 @@ document.addEventListener('keydown', ev => {
 
     if (ev.keyCode === 187) {
         drawState.codeDistance += 1;
-        last_simulation_map = new UnitCellMap();
+        lastSimState = new UnitCellMap();
         ev.preventDefault();
     }
 
     if (ev.keyCode === 189) {
         drawState.codeDistance = Math.max(drawState.codeDistance - 1, 1);
-        last_simulation_map = new UnitCellMap();
+        lastSimState = new UnitCellMap();
         ev.preventDefault();
     }
 

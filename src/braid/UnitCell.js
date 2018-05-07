@@ -1,18 +1,43 @@
-import {equate_Sets} from "src/base/Equate.js"
+import {GeneralMap} from "src/base/GeneralMap.js";
+
+class PlumbingPieceData {
+    /**
+     * @param {undefined|!string} variant
+     */
+    constructor(variant=undefined) {
+        this.variant = variant;
+    }
+
+    /**
+     * @param {*} other
+     * @returns {!boolean}
+     */
+    isEqualTo(other) {
+        return other instanceof PlumbingPieceData && this.variant === other.variant;
+    }
+
+    /**
+     * @returns {!PlumbingPieceData}
+     */
+    clone() {
+        return new PlumbingPieceData(this.variant);
+    }
+}
+
 
 class UnitCell {
     /**
-     * @param {!Set.<!string>} piece_names
+     * @param {!GeneralMap.<!PlumbingPiece, !PlumbingPieceData>} pieces
      */
-    constructor(piece_names = new Set()) {
-        this.piece_names = piece_names;
+    constructor(pieces = new GeneralMap()) {
+        this.pieces = pieces;
     }
 
     /**
      * @returns {!UnitCell}
      */
     clone() {
-        return new UnitCell(new Set(this.piece_names));
+        return new UnitCell(this.pieces.mapValues(e => e.clone()));
     }
 
     /**
@@ -20,8 +45,8 @@ class UnitCell {
      * @returns {boolean}
      */
     isEqualTo(other) {
-        return other instanceof UnitCell && equate_Sets(this.piece_names, other.piece_names);
+        return other instanceof UnitCell && this.pieces.isEqualTo(other.pieces);
     }
 }
 
-export {UnitCell}
+export {UnitCell, PlumbingPieceData}

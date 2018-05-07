@@ -38,13 +38,15 @@ class UnitCellMap {
         let pieces = [];
         for (let [offset, val] of this.cells.entries()) {
             for (let pp of ALL_PLUMBING_PIECES) {
-                if (val.piece_names.has(pp.name)) {
-                    pieces.push(new LocalizedPlumbingPiece(pp, offset));
-                    for (let imp of pp.implies) {
-                        pieces.push(new LocalizedPlumbingPiece(
-                            PLUMBING_PIECE_MAP.get(imp.name),
-                            offset.plus(imp.offset)));
-                    }
+                let data = val.pieces.get(pp);
+                if (data === undefined) {
+                    continue;
+                }
+                pieces.push(new LocalizedPlumbingPiece(pp, offset, undefined, data.variant));
+                for (let imp of pp.implies) {
+                    pieces.push(new LocalizedPlumbingPiece(
+                        PLUMBING_PIECE_MAP.get(imp.name),
+                        offset.plus(imp.offset)));
                 }
             }
         }

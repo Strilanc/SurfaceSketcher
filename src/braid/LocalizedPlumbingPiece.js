@@ -12,11 +12,13 @@ class LocalizedPlumbingPiece {
      * @param {undefined|!Vector} extenderOffset If this piece is an extension of another piece (e.g. used when
      *     hinting where pieces can be added) this vector is the displacement from the root piece to this
      *     extender piece.
+     * @param {undefined|!string} variant
      */
-    constructor(plumbingPiece, cell, extenderOffset=undefined) {
+    constructor(plumbingPiece, cell, extenderOffset=undefined, variant=undefined) {
         this.plumbingPiece = plumbingPiece;
         this.cell = cell;
         this.extenderOffset = extenderOffset;
+        this.variant = variant;
     }
 
     /**
@@ -74,6 +76,14 @@ class LocalizedPlumbingPiece {
         }
         if (colorOverride === undefined) {
             colorOverride = this.plumbingPiece.color;
+            if (this.variant !== undefined) {
+                for (let k = 0; k < this.plumbingPiece.variants.length; k++) {
+                    let v = this.plumbingPiece.variants[k];
+                    if (v.name === this.variant) {
+                        colorOverride = v.color;
+                    }
+                }
+            }
         }
         return this.toBox().toRenderData(colorOverride);
     }
