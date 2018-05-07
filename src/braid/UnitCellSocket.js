@@ -13,7 +13,7 @@ class UnitCellSocket {
      * @param {![!number, !number, !number, !number]} color
      * @param {Array.<!{name: !string, offset: !Vector}>} implies
      * @param {!boolean} onlyImplied
-     * @param {!Array.<!PlumbingPieceVariant>} variants
+     * @param {!Array.<!UnitCellSocketData>} variants
      */
     constructor(name, box, footprint, propagateSignals, color, implies, onlyImplied, variants) {
         this.name = name;

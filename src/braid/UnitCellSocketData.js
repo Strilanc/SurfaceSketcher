@@ -1,4 +1,4 @@
-class PlumbingPieceVariant {
+class UnitCellSocketData {
     /**
      * @param {!string} name
      * @param {![!number, !number, !number, !number]} color
@@ -9,4 +9,4 @@ class PlumbingPieceVariant {
     }
 }
 
-export {PlumbingPieceVariant}
+export {UnitCellSocketData}
