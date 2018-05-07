@@ -8,9 +8,13 @@ import {FixupOperation} from "src/sim/util/FixupOperation.js";
 import {XYT} from "src/sim/util/XYT.js";
 import {GeneralSet} from "src/base/GeneralSet.js";
 import {XY} from "src/sim/util/XY.js";
-
-const SMALL_DIAMETER = 0.2;
-const LONG_DIAMETER = 0.8;
+import {
+    codeDistanceToPipeSeparation,
+    codeDistanceToPipeSize,
+    codeDistanceUnitCellSize,
+    SMALL_DIAMETER,
+    LONG_DIAMETER,
+} from "src/braid/CodeDistance.js";
 
 const GENERIC_COLOR = [0.5, 0.5, 0.5, 1.0];
 const PRIMAL_COLOR = [0.9, 0.9, 0.9, 1.0];
@@ -108,38 +112,6 @@ class PlumbingPiece {
     toString() {
         return `PlumbingPiece(${this.name})`;
     }
-}
-
-/**
- * @param {!int} codeDistance
- * @returns {{w: !int, h: !int}}
- */
-function codeDistanceToPipeSize(codeDistance) {
-    let w = Math.ceil(codeDistance / 4);
-    let h = Math.ceil((codeDistance - 2) / 4);
-    w = Math.max(w*2 - 1, 1);
-    h = Math.max(h*2 - 1, 1);
-    return {w, h};
-}
-
-/**
- * @param {!int} codeDistance
- * @returns {!int}
- */
-function codeDistanceToPipeSeparation(codeDistance) {
-    return codeDistance * 2 - 1;
-}
-
-/**
- * @param {!int} codeDistance
- * @returns {{w: !int, h: !int}}
- */
-function codeDistanceUnitCellSize(codeDistance) {
-    let {w, h} = codeDistanceToPipeSize(codeDistance);
-    let s = codeDistanceToPipeSeparation(codeDistance);
-    w += s;
-    h += s;
-    return {w, h};
 }
 
 /**
@@ -280,8 +252,5 @@ export {
     PlumbingPiece,
     ALL_PLUMBING_PIECES,
     PLUMBING_PIECE_MAP,
-    codeDistanceToPipeSize,
-    codeDistanceUnitCellSize,
     PlumbingPieceFootprint,
-    codeDistanceToPipeSeparation,
 }

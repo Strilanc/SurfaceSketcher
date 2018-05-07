@@ -1,7 +1,7 @@
 import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
 import {Point} from "src/geo/Point.js";
-import {codeDistanceUnitCellSize} from "src/braid/PlumbingPieces.js";
+import {codeDistanceUnitCellSize} from "src/braid/CodeDistance.js";
 
 const EXTENDER_SCALE_FACTOR = 0.3;
 

@@ -14,7 +14,7 @@ import {Point} from "src/geo/Point.js";
 import {Sphere} from "src/geo/Sphere.js";
 import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
-import {codeDistanceUnitCellSize, codeDistanceToPipeSize} from "src/braid/PlumbingPieces.js";
+import {codeDistanceUnitCellSize, codeDistanceToPipeSize} from "src/braid/CodeDistance.js";
 import {DirectedGraph} from "src/sim/util/DirectedGraph.js";
 import {indent} from "src/base/Util.js";
 import {gridRangeToString} from "src/sim/util/Util.js";
