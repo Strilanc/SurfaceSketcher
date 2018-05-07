@@ -12,6 +12,7 @@ import {makeArrayGrid} from "src/sim/util/Util.js";
 import {RenderData} from "src/geo/RenderData.js";
 import {Point} from "src/geo/Point.js";
 import {Sphere} from "src/geo/Sphere.js";
+import {indent} from "src/base/Util.js";
 import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
 import {codeDistanceUnitCellSize, codeDistanceToPipeSize} from "src/braid/PlumbingPieces.js";
