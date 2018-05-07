@@ -7,7 +7,7 @@ const EXTENDER_SCALE_FACTOR = 0.3;
 
 class LocalizedPlumbingPiece {
     /**
-     * @param {!PlumbingPiece} plumbingPiece What kind of piece is it?
+     * @param {!UnitCellSocket} plumbingPiece What kind of piece is it?
      * @param {!Point} cell Which unit cell is it in?
      * @param {undefined|!Vector} extenderOffset If this piece is an extension of another piece (e.g. used when
      *     hinting where pieces can be added) this vector is the displacement from the root piece to this

@@ -27,7 +27,7 @@ class PlumbingPieceData {
 
 class UnitCell {
     /**
-     * @param {!GeneralMap.<!PlumbingPiece, !PlumbingPieceData>} pieces
+     * @param {!GeneralMap.<!UnitCellSocket, !PlumbingPieceData>} pieces
      */
     constructor(pieces = new GeneralMap()) {
         this.pieces = pieces;

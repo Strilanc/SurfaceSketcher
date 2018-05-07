@@ -4,7 +4,7 @@ import {Point} from "src/geo/Point.js";
 import {PlumbingPieceFootprint} from "src/braid/PlumbingPieceFootprint.js";
 
 
-class PlumbingPiece {
+class UnitCellSocket {
     /**
      * @param {!string} name
      * @param {!Box} box
@@ -39,4 +39,4 @@ class PlumbingPiece {
     }
 }
 
-export {PlumbingPiece}
+export {UnitCellSocket}

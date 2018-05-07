@@ -1,6 +1,6 @@
 /**
- * @param {!PlumbingPiece} pp
- * @returns {!PlumbingPiece}
+ * @param {!UnitCellSocket} pp
+ * @returns {!UnitCellSocket}
  */
 import {DetailedError} from 'src/base/DetailedError.js'
 import {Box} from "src/geo/Box.js";
@@ -19,7 +19,7 @@ import {
     LONG_DIAMETER,
 } from "src/braid/CodeDistance.js";
 import {PlumbingPieceFootprint} from "src/braid/PlumbingPieceFootprint.js";
-import {PlumbingPiece} from "src/braid/PlumbingPiece.js";
+import {UnitCellSocket} from "src/braid/UnitCellSocket.js";
 import {PlumbingPieceVariant} from "src/braid/PlumbingPieceVariant.js";
 
 const GENERIC_COLOR = [0.5, 0.5, 0.5, 1.0];
@@ -28,7 +28,7 @@ const DUAL_COLOR = [0.4, 0.4, 0.4, 1.0];
 
 
 function genericToPrimal(pp) {
-    return new PlumbingPiece(
+    return new UnitCellSocket(
         pp.name + 'Primal',
         pp.box,
         codeDistance => pp.footprint(codeDistance),
@@ -40,11 +40,11 @@ function genericToPrimal(pp) {
 }
 
 /**
- * @param {!PlumbingPiece} pp
- * @returns {!PlumbingPiece}
+ * @param {!UnitCellSocket} pp
+ * @returns {!UnitCellSocket}
  */
 function genericToDual(pp) {
-    return new PlumbingPiece(
+    return new UnitCellSocket(
         pp.name + 'Dual',
         new Box(pp.box.baseCorner.plus(new Vector(0.5, 0.5, 0.5)), pp.box.diagonal),
         codeDistance => {
@@ -64,7 +64,7 @@ let movePositiveWard = new PlumbingPieceVariant('+', [0, 0, 1, 1]);
 let moveNegativeWard = new PlumbingPieceVariant('-', [0, 1, 1, 1]);
 let injectS = new PlumbingPieceVariant('S', [1, 0, 1, 1]);
 
-let centerConnector = new PlumbingPiece(
+let centerConnector = new UnitCellSocket(
     'Center',
     new Box(
         new Point(0, 0, 0),
@@ -79,7 +79,7 @@ let centerConnector = new PlumbingPiece(
     true,
     []);
 
-let xConnector = new PlumbingPiece(
+let xConnector = new UnitCellSocket(
     'X',
     new Box(
         new Point(SMALL_DIAMETER, 0, 0),
@@ -111,7 +111,7 @@ let xConnector = new PlumbingPiece(
     false,
     [movePositiveWard, moveNegativeWard, injectS]);
 
-let yConnector = new PlumbingPiece(
+let yConnector = new UnitCellSocket(
     'Y',
     new Box(
         new Point(0, SMALL_DIAMETER, 0),
@@ -129,7 +129,7 @@ let yConnector = new PlumbingPiece(
     false,
     [movePositiveWard, moveNegativeWard, injectS]);
 
-let zConnector = new PlumbingPiece(
+let zConnector = new UnitCellSocket(
     'Z',
     new Box(
         new Point(0, 0, SMALL_DIAMETER),
@@ -152,13 +152,13 @@ let zConnector = new PlumbingPiece(
 let genericPieces = [centerConnector, xConnector, yConnector, zConnector];
 let primalPieces = genericPieces.map(genericToPrimal);
 let dualPieces = genericPieces.map(genericToDual);
-/** @type {!Array.<!PlumbingPiece>} */
+/** @type {!Array.<!UnitCellSocket>} */
 const ALL_PLUMBING_PIECES = [...primalPieces, ...dualPieces];
-/** @type {!Map.<!string, !PlumbingPiece>} */
+/** @type {!Map.<!string, !UnitCellSocket>} */
 const PLUMBING_PIECE_MAP = seq(ALL_PLUMBING_PIECES).keyedBy(e => e.name);
 
 export {
-    PlumbingPiece,
+    UnitCellSocket,
     ALL_PLUMBING_PIECES,
     PLUMBING_PIECE_MAP,
 }
