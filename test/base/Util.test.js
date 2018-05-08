@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
-import {indent, Util} from "src/base/Util.js"
+import {indent, Util, float32ToBytes, bytesToFloat32} from "src/base/Util.js"
 
 let suite = new Suite("Util");
 

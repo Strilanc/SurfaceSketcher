@@ -33,7 +33,7 @@ PlumbingPieces.PRIMAL_RIGHTWARD = new PlumbingPiece(
     Sockets.XPrimal,
     PRIMAL_COLOR);
 PlumbingPieces.PRIMAL_LEFTWARD = new PlumbingPiece(
-    'PRIMAL_RIGHTWARD',
+    'PRIMAL_LEFTWARD',
     Sockets.XPrimal,
     SHIFTED_PRIMAL_COLOR);
 
@@ -60,7 +60,7 @@ PlumbingPieces.DUAL_RIGHTWARD = new PlumbingPiece(
     Sockets.XDual,
     DUAL_COLOR);
 PlumbingPieces.DUAL_LEFTWARD = new PlumbingPiece(
-    'DUAL_RIGHTWARD',
+    'DUAL_LETWARD',
     Sockets.XDual,
     SHIFTED_DUAL_COLOR);
 
@@ -113,6 +113,15 @@ PlumbingPieces.BySocket = new GeneralMap();
 for (let pp of PlumbingPieces.All) {
     PlumbingPieces.BySocket.getOrInsert(pp.socket, () => []).push(pp);
 }
+
+PlumbingPieces.ByName = seq(PlumbingPieces.All).keyedBy(e => e.name);
+PlumbingPieces.forceGetByName = name => {
+    let result = PlumbingPieces.ByName.get(name);
+    if (result === undefined) {
+        throw new DetailedError('Unknown plumbing piece.', {name});
+    }
+    return result;
+};
 
 PlumbingPieces.Defaults = new GeneralMap(
     [Sockets.XPrimal, PlumbingPieces.PRIMAL_RIGHTWARD],

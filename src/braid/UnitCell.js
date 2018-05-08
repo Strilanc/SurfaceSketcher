@@ -1,4 +1,5 @@
 import {GeneralMap} from "src/base/GeneralMap.js";
+import {UnitCellSocket} from "src/braid/UnitCellSocket.js";
 
 
 class UnitCell {
@@ -22,6 +23,13 @@ class UnitCell {
      */
     isEqualTo(other) {
         return other instanceof UnitCell && this.pieces.isEqualTo(other.pieces);
+    }
+
+    /**
+     * @returns {!string}
+     */
+    toString() {
+        return `UnitCell(pieces=${this.pieces})\n`;
     }
 }
 

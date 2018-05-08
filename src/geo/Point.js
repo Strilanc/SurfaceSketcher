@@ -98,6 +98,26 @@ class Point {
     toString() {
         return `(${this.x}, ${this.y}, ${this.z})`;
     }
+
+    /**
+     * @param {!Writer} out
+     */
+    write(out) {
+        out.writeFloat64(this.x);
+        out.writeFloat64(this.y);
+        out.writeFloat64(this.z);
+    }
+
+    /**
+     * @param {!Reader} inp
+     * @returns {!Point}
+     */
+    static read(inp) {
+        let x = inp.readFloat64();
+        let y = inp.readFloat64();
+        let z = inp.readFloat64();
+        return new Point(x, y, z);
+    }
 }
 
 export {Point}

@@ -111,7 +111,6 @@ let zConnector = new UnitCellSocket(
 let genericPieces = [centerConnector, xConnector, yConnector, zConnector];
 let primalPieces = genericPieces.map(genericToPrimal);
 let dualPieces = genericPieces.map(genericToDual);
-/** @type {!Array.<!UnitCellSocket>} */
 const ALL_PLUMBING_PIECES = [...primalPieces, ...dualPieces];
 /** @type {!Map.<!string, !UnitCellSocket>} */
 const PLUMBING_PIECE_MAP = seq(ALL_PLUMBING_PIECES).keyedBy(e => e.name);
@@ -168,8 +167,17 @@ Sockets.All = [
     Sockets.XDual,
     Sockets.YDual,
     Sockets.ZDual,
+    Sockets.CPrimal,
+    Sockets.CDual,
 ];
 Sockets.ByName = seq(Sockets.All).keyedBy(e => e.name);
+Sockets.forceGetByName = name => {
+    let result = Sockets.ByName.get(name);
+    if (result === undefined) {
+        throw new DetailedError('Unknown socket.', {name});
+    }
+    return result;
+};
 
 export {
     ALL_PLUMBING_PIECES,

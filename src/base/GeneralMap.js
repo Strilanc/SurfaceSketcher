@@ -120,7 +120,7 @@ class GeneralMap {
     }
 
     /**
-     * @param {!function(value: *): *} valueFunc
+     * @param {!function(value: *): *} keyFunc
      * @returns {!GeneralMap}
      */
     mapKeys(keyFunc) {
@@ -141,6 +141,36 @@ class GeneralMap {
         let vals = [...this._items.values()].map(e => `${e[0]}: ${e[1]}`);
         vals.sort();
         return '{' + vals.join(', ') + '}';
+    }
+
+    /**
+     * @param {!Writer} out
+     * @param {!function(*)} keyWrite
+     * @param {!function(*)} valueWrite
+     */
+    write(out, keyWrite, valueWrite) {
+        out.writeInt32(this.size);
+        for (let [key, val] of this.entries()) {
+            keyWrite(key);
+            valueWrite(val);
+        }
+    }
+
+    /**
+     * @param {!Reader} inp
+     * @param {!function(): *} keyRead
+     * @param {!function(): *} valueRead
+     * @returns {!GeneralMap.<*, *>} map
+     */
+    static read(inp, keyRead, valueRead) {
+        let size = inp.readInt32();
+        let result = new GeneralMap();
+        for (let i = 0; i < size; i++) {
+            let key = keyRead();
+            let val = valueRead();
+            result.set(key, val);
+        }
+        return result;
     }
 }
 

@@ -19,7 +19,13 @@ import {Sockets} from "src/braid/Sockets.js";
 import {simulate_map} from "src/braid/SimulateUnitCellMap.js"
 import {equate} from "src/base/Equate.js";
 import {LocalizedPlumbingPiece} from "src/braid/LocalizedPlumbingPiece.js";
+import {Revision} from "src/base/Revision.js";
+import {Reader, Writer} from "src/base/Serialize.js";
 
+let revision = new Revision([''], 0, false);
+revision.latestActiveCommit().subscribe(hex => {
+    document.location.hash = hex;
+});
 
 class DrawState {
     /**
@@ -43,6 +49,31 @@ class DrawState {
         this.drawOps = drawOps;
         /** @type {undefined|!LocalizedPlumbingPiece} */
         this.selectedPiece = selectedPiece;
+    }
+
+    /**
+     * @param {!Writer} out
+     */
+    write(out) {
+        this.camera.write(out);
+        out.writeInt8(this.codeDistance);
+        this.cellMap.write(out);
+        out.writeBooleans(this.drawBraids, this.drawOps);
+    }
+
+    /**
+     * @param {!Reader} inp
+     * @returns {!DrawState}
+     */
+    static read(inp) {
+        if (inp.isEndOfInput()) {
+            return DrawState.defaultValue();
+        }
+        let camera = Camera.read(inp);
+        let codeDistance = inp.readInt8();
+        let cellMap = UnitCellMap.read(inp);
+        let [drawBraids, drawOps] = inp.readBooleans(2);
+        return new DrawState(camera, codeDistance, cellMap, drawBraids, drawOps, undefined);
     }
 
     /**
@@ -100,7 +131,7 @@ class DrawState {
             let unitCell2 = this.cellMap.cell(loc2);
             let piece2 = unitCell2.pieces.get(n.socket);
             if (piece2 === undefined) {
-                unitCell2.pieces.set(n.socket, PlumbingPieces.Defaults.get(socket));
+                unitCell2.pieces.set(n.socket, PlumbingPieces.Defaults.get(n.socket));
             }
         }
     }
@@ -251,6 +282,10 @@ function drawScene(gl, programInfo, buffers) {
     if (!drawState.cellMap.isEqualTo(lastSimState)) {
         lastSimState = drawState.cellMap.clone();
         simulated_layers = simulate_map(drawState.codeDistance, lastSimState);
+
+        let writer = new Writer();
+        drawState.write(writer);
+        revision.commit(writer.toHex());
     }
 
     let w = window.innerWidth;
@@ -439,6 +474,20 @@ document.addEventListener('keydown', ev => {
         drawState.codeDistance = Math.max(drawState.codeDistance - 1, 1);
         lastSimState = new UnitCellMap();
         ev.preventDefault();
+    }
+
+    if (ev.keyCode === 'Z'.charCodeAt(0) && ev.ctrlKey && !ev.shiftKey) {
+        let state = revision.undo();
+        if (state !== undefined) {
+            drawState = DrawState.read(Reader.fromHex(state));
+        }
+    }
+    if ((ev.keyCode === 'Y'.charCodeAt(0) && ev.ctrlKey && !ev.shiftKey) ||
+            ev.keyCode === 'Z'.charCodeAt(0) && ev.ctrlKey && ev.shiftKey) {
+        let state = revision.redo();
+        if (state !== undefined) {
+            drawState = DrawState.read(Reader.fromHex(state));
+        }
     }
 
     if (ev.keyCode === 'A'.charCodeAt(0) || ev.keyCode === 37) {

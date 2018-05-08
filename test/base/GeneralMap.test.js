@@ -1,6 +1,7 @@
 import {Suite, assertThat, assertThrows, EqualsTester} from "test/TestUtil.js"
 import {seq} from "src/base/Seq.js"
 import {GeneralMap} from "src/base/GeneralMap.js"
+import {Writer, Reader} from "src/base/Serialize.js"
 
 let suite = new Suite("GeneralMap");
 
@@ -136,4 +137,19 @@ suite.test("mapKeys", () => {
     let m2 = new GeneralMap([11, 'a'], [12, 'b']);
     assertThat(m.mapKeys(e => e + 10)).isEqualTo(m2);
     assertThrows(() => m.mapKeys(e => 0));
+});
+
+suite.test("write_and_read", () => {
+    let m = new GeneralMap(
+        ['a', 1],
+        ['b', 2]
+    );
+    let hex = '00000002000000016101000000016202';
+
+    let out = new Writer();
+    m.write(out, key => out.writeAsciiString(key), val => out.writeInt8(val));
+    assertThat(out.toHex()).isEqualTo(hex);
+
+    let inp = Reader.fromHex(hex);
+    assertThat(GeneralMap.read(inp, () => inp.readAsciiString(), () => inp.readInt8())).isEqualTo(m);
 });

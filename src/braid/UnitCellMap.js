@@ -17,6 +17,33 @@ class UnitCellMap {
     }
 
     /**
+     * @param {!Writer} out
+     */
+    write(out) {
+        this.cells.write(
+            out,
+            loc => loc.write(out),
+            unitCell => unitCell.pieces.write(
+                out,
+                socket => out.writeAsciiString(socket.name),
+                piece => out.writeAsciiString(piece.name)));
+    }
+
+    /**
+     * @param {!Reader} inp
+     * @returns {!UnitCellMap}
+     */
+    static read(inp) {
+        return new UnitCellMap(GeneralMap.read(
+            inp,
+            () => Point.read(inp),
+            () => new UnitCell(GeneralMap.read(
+                inp,
+                () => Sockets.forceGetByName(inp.readAsciiString()),
+                () => PlumbingPieces.forceGetByName(inp.readAsciiString())))));
+    }
+
+    /**
      * @param {!Point} pt
      * @param {!boolean} do_not_modify
      * @returns {!UnitCell}

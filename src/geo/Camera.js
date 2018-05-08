@@ -2,6 +2,7 @@ import {Mat4} from "src/base/Mat4.js";
 import {Point} from "src/geo/Point.js";
 import {Vector} from "src/geo/Vector.js";
 import {Ray} from "src/geo/Ray.js";
+import {float32ToBytes, bytesToFloat32} from "src/base/Util.js";
 
 class Camera {
     /**
@@ -117,6 +118,28 @@ class Camera {
             this.yaw === other.yaw &&
             this.pitch === other.pitch;
 
+    }
+
+    /**
+     * @param {!Writer} out
+     */
+    write(out) {
+        this.focus_point.write(out);
+        out.writeFloat64(this.distance);
+        out.writeFloat64(this.yaw);
+        out.writeFloat64(this.pitch);
+    }
+
+    /**
+     * @param {!Reader} inp
+     * @returns {!Camera}
+     */
+    static read(inp) {
+        let focus = Point.read(inp);
+        let distance = inp.readFloat64();
+        let yaw = inp.readFloat64();
+        let pitch = inp.readFloat64();
+        return new Camera(focus, distance, yaw, pitch);
     }
 }
 

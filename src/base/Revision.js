@@ -136,6 +136,11 @@ class Revision {
             this.cancelCommitBeingWorkedOn();
             return;
         }
+        if (newCheckpoint === this.history[this.index + 1]) {
+            this.index += 1;
+            this.cancelCommitBeingWorkedOn();
+            return;
+        }
         this.isWorkingOnCommit = false;
         this.index += 1;
         this.history.splice(this.index, this.history.length - this.index);
