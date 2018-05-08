@@ -1,7 +1,3 @@
-/**
- * @param {!UnitCellSocket} pp
- * @returns {!UnitCellSocket}
- */
 import {DetailedError} from 'src/base/DetailedError.js'
 import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
@@ -22,20 +18,17 @@ import {UnitCellSocketFootprint} from "src/braid/UnitCellSocketFootprint.js";
 import {UnitCellSocket} from "src/braid/UnitCellSocket.js";
 import {UnitCellSocketNeighbor} from "src/braid/UnitCellSocketNeighbor.js";
 
-const GENERIC_COLOR = [0.5, 0.5, 0.5, 1.0];
-const PRIMAL_COLOR = [0.9, 0.9, 0.9, 1.0];
-const DUAL_COLOR = [0.4, 0.4, 0.4, 1.0];
 
-
+/**
+ * @param {!UnitCellSocket} pp
+ * @returns {!UnitCellSocket}
+ */
 function genericToPrimal(pp) {
     return new UnitCellSocket(
         pp.name + 'Primal',
         pp.box,
         codeDistance => pp.footprint(codeDistance),
-        pp.propagateSignals.bind(pp),
-        PRIMAL_COLOR,
-        pp.implies.map(({name, offset}) => ({name: name + 'Primal', offset})),
-        pp.onlyImplied);
+        pp.propagateSignals.bind(pp));
 }
 
 /**
@@ -52,10 +45,7 @@ function genericToDual(pp) {
             let dh = Math.floor((unitSize.h - 1) / 4) * 2 + 1;
             return pp.footprint(codeDistance).offsetBy(dw, dh);
         },
-        () => {},
-        DUAL_COLOR,
-        pp.implies.map(({name, offset}) => ({name: name + 'Dual', offset})),
-        pp.onlyImplied);
+        () => {});
 }
 
 let centerConnector = new UnitCellSocket(
@@ -67,10 +57,7 @@ let centerConnector = new UnitCellSocket(
         let {w, h} = codeDistanceToPipeSize(codeDistance);
         return UnitCellSocketFootprint.grid(0, 0, w, h);
     },
-    () => {},
-    GENERIC_COLOR,
-    [],
-    true);
+    () => {});
 
 let xConnector = new UnitCellSocket(
     'X',
@@ -95,13 +82,7 @@ let xConnector = new UnitCellSocket(
                     new GeneralSet(new XY(x + 2, y))));
             }
         }
-    },
-    GENERIC_COLOR,
-    [
-        {name: 'Center', offset: new Vector(0, 0, 0)},
-        {name: 'Center', offset: new Vector(1, 0, 0)},
-    ],
-    false);
+    });
 
 let yConnector = new UnitCellSocket(
     'Y',
@@ -112,13 +93,7 @@ let yConnector = new UnitCellSocket(
         let {w, h} = codeDistanceToPipeSize(codeDistance);
         return UnitCellSocketFootprint.grid(0, 0, w, h);
     },
-    () => {},
-    GENERIC_COLOR,
-    [
-        {name: 'Center', offset: new Vector(0, 0, 0)},
-        {name: 'Center', offset: new Vector(0, 1, 0)},
-    ],
-    false);
+    () => {});
 
 let zConnector = new UnitCellSocket(
     'Z',
@@ -131,13 +106,7 @@ let zConnector = new UnitCellSocket(
         h += codeDistanceToPipeSeparation(codeDistance);
         return UnitCellSocketFootprint.grid(0, 0, w, h);
     },
-    () => {},
-    GENERIC_COLOR,
-    [
-        {name: 'Center', offset: new Vector(0, 0, 0)},
-        {name: 'Center', offset: new Vector(0, 0, 1)},
-    ],
-    false);
+    () => {});
 
 let genericPieces = [centerConnector, xConnector, yConnector, zConnector];
 let primalPieces = genericPieces.map(genericToPrimal);

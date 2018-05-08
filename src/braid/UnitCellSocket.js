@@ -11,18 +11,12 @@ class UnitCellSocket {
      * @param {!Box} box
      * @param {!function(codeDistance: !int) : !UnitCellSocketFootprint} footprint
      * @param {!function(codeDistance: !int, fixupLayer: !FixupLayer, dx: !int, dy: !int)} propagateSignals
-     * @param {![!number, !number, !number, !number]} color
-     * @param {Array.<!{name: !string, offset: !Vector}>} implies
-     * @param {!boolean} onlyImplied
      */
-    constructor(name, box, footprint, propagateSignals, color, implies, onlyImplied) {
+    constructor(name, box, footprint, propagateSignals) {
         this.name = name;
         this.box = box;
         this.footprint = footprint;
         this.propagateSignals = propagateSignals;
-        this.color = color;
-        this.implies = implies;
-        this.onlyImplied = onlyImplied;
         /** @type {!GeneralMap.<!Vector, !UnitCellSocketNeighbor>} */
         this.neighbors = new GeneralMap();
         /** @type {!Array.<UnitCellSocketNeighbor>} */
