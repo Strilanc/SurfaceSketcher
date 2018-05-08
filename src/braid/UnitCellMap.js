@@ -4,7 +4,7 @@ import {GeneralSet} from 'src/base/GeneralSet.js'
 import {UnitCell} from 'src/braid/UnitCell.js'
 import {Point} from "src/geo/Point.js";
 import {Ray} from "src/geo/Ray.js";
-import {PLUMBING_PIECE_MAP, ALL_PLUMBING_PIECES} from "src/braid/Sockets.js";
+import {Sockets} from "src/braid/Sockets.js";
 import {LocalizedPlumbingPiece} from "src/braid/LocalizedPlumbingPiece.js";
 
 class UnitCellMap {
@@ -37,17 +37,17 @@ class UnitCellMap {
     _piecesAndImpliedPiecesWithPotentialRepeats() {
         let pieces = [];
         for (let [offset, val] of this.cells.entries()) {
-            for (let pp of ALL_PLUMBING_PIECES) {
-                let data = val.pieces.get(pp);
-                if (data === undefined) {
+            for (let socket of Sockets.All) {
+                let pp = val.pieces.get(socket);
+                if (pp === undefined) {
                     continue;
                 }
-                pieces.push(new LocalizedPlumbingPiece(pp, offset, undefined, data.variant));
-                for (let imp of pp.implies) {
-                    pieces.push(new LocalizedPlumbingPiece(
-                        PLUMBING_PIECE_MAP.get(imp.name),
-                        offset.plus(imp.offset)));
-                }
+                pieces.push(new LocalizedPlumbingPiece(offset, socket, pp));
+                // for (let imp of socket.implies) {
+                //     pieces.push(new LocalizedPlumbingPiece(
+                //         Sockets.ByName.get(imp.name),
+                //         offset.plus(imp.offset)));
+                // }
             }
         }
         return pieces;
@@ -90,24 +90,24 @@ class UnitCellMap {
     piecesAndImpliedPiecesAndExtenderPieces() {
         let pieces = this.piecesAndImpliedPieces();
         let extras = [];
-        for (let piece of pieces) {
-            if (!piece.plumbingPiece.onlyImplied) {
-                continue;
-            }
-            for (let ex of ALL_PLUMBING_PIECES) {
-                for (let imp of ex.implies) {
-                    if (imp.name === piece.plumbingPiece.name) {
-                        let newCell = piece.cell.plus(imp.offset.scaledBy(-1));
-                        let impliedPos = piece.plumbingPiece.boxAt(piece.cell).center();
-                        let extendedPos = ex.boxAt(newCell).center();
-                        extras.push(new LocalizedPlumbingPiece(
-                            ex,
-                            newCell,
-                            extendedPos.minus(impliedPos)));
-                    }
-                }
-            }
-        }
+        // for (let piece of pieces) {
+        //     if (!piece.socket.onlyImplied) {
+        //         continue;
+        //     }
+        //     for (let ex of Sockets.all) {
+        //         for (let imp of ex.implies) {
+        //             if (imp.name === piece.plumbingPiece.name) {
+        //                 let newCell = piece.cell.plus(imp.offset.scaledBy(-1));
+        //                 let impliedPos = piece.plumbingPiece.boxAt(piece.cell).center();
+        //                 let extendedPos = ex.boxAt(newCell).center();
+        //                 extras.push(new LocalizedPlumbingPiece(
+        //                     ex,
+        //                     newCell,
+        //                     extendedPos.minus(impliedPos)));
+        //             }
+        //         }
+        //     }
+        // }
         pieces.push(...extras);
         return UnitCellMap._removeDuplicatePieces(pieces);
     }

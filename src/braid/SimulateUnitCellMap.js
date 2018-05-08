@@ -51,9 +51,9 @@ function timeSlice(map, t) {
     let result = [];
     t /= 2;
     for (let piece of map.piecesAndImpliedPieces()) {
-        let pt = piece.cell;
-        let pp = piece.plumbingPiece;
-        let c = pp.boxAt(pt).center();
+        let pt = piece.loc;
+        let socket = piece.socket;
+        let c = socket.boxAt(pt).center();
         if (t - 0.25 <= c.y && c.y <= t + 0.25) {
             result.push(piece);
         }

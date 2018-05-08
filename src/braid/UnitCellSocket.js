@@ -13,9 +13,8 @@ class UnitCellSocket {
      * @param {![!number, !number, !number, !number]} color
      * @param {Array.<!{name: !string, offset: !Vector}>} implies
      * @param {!boolean} onlyImplied
-     * @param {!Array.<!PlumbingPiece>} variants
      */
-    constructor(name, box, footprint, propagateSignals, color, implies, onlyImplied, variants) {
+    constructor(name, box, footprint, propagateSignals, color, implies, onlyImplied) {
         this.name = name;
         this.box = box;
         this.footprint = footprint;
@@ -23,7 +22,6 @@ class UnitCellSocket {
         this.color = color;
         this.implies = implies;
         this.onlyImplied = onlyImplied;
-        this.variants = variants;
     }
 
     /**
@@ -35,7 +33,7 @@ class UnitCellSocket {
     }
 
     toString() {
-        return `PlumbingPiece(${this.name})`;
+        return `UnitCellSocket(${this.name})`;
     }
 }
 

@@ -14,8 +14,8 @@ import {Point} from "src/geo/Point.js";
 import {Camera} from "src/geo/Camera.js";
 import {RenderData} from "src/geo/RenderData.js";
 import {UnitCellMap} from "src/braid/UnitCellMap.js";
-import {PlumbingPieceData} from "src/braid/UnitCell.js";
-import {ALL_PLUMBING_PIECES, PLUMBING_PIECE_MAP} from "src/braid/Sockets.js";
+import {PlumbingPieces} from "src/braid/PlumbingPieces.js";
+import {Sockets} from "src/braid/Sockets.js";
 import {simulate_map} from "src/braid/SimulateUnitCellMap.js"
 import {equate} from "src/base/Equate.js";
 import {LocalizedPlumbingPiece} from "src/braid/LocalizedPlumbingPiece.js";
@@ -60,11 +60,11 @@ class DrawState {
             false,
             undefined,
             undefined);
-        result.cellMap.cell(new Point(0, 0, 0)).pieces.set(PLUMBING_PIECE_MAP.get('XPrimal'), new PlumbingPieceData());
-        result.cellMap.cell(new Point(0, 0, 1)).pieces.set(PLUMBING_PIECE_MAP.get('XPrimal'), new PlumbingPieceData());
-        result.cellMap.cell(new Point(0, 0, 1)).pieces.set(PLUMBING_PIECE_MAP.get('YPrimal'), new PlumbingPieceData());
-        result.cellMap.cell(new Point(0, 1, 0)).pieces.set(PLUMBING_PIECE_MAP.get('ZPrimal'), new PlumbingPieceData());
-        result.cellMap.cell(new Point(0, 1, 0)).pieces.set(PLUMBING_PIECE_MAP.get('ZDual'), new PlumbingPieceData());
+        result.cellMap.cell(new Point(0, 0, 0)).pieces.set(Sockets.XPrimal, PlumbingPieces.PRIMAL_RIGHTWARD);
+        result.cellMap.cell(new Point(0, 0, 1)).pieces.set(Sockets.XPrimal, PlumbingPieces.PRIMAL_RIGHTWARD);
+        result.cellMap.cell(new Point(0, 0, 1)).pieces.set(Sockets.YPrimal, PlumbingPieces.PRIMAL_FOREWARD);
+        result.cellMap.cell(new Point(0, 1, 0)).pieces.set(Sockets.ZPrimal, PlumbingPieces.PRIMAL_UPWARD);
+        result.cellMap.cell(new Point(0, 1, 0)).pieces.set(Sockets.ZDual, PlumbingPieces.DUAL_UPWARD);
         return result;
     }
 
@@ -304,30 +304,30 @@ canvas.addEventListener('click', ev => {
         return;
     }
 
-    let spp = drawState.selectedPiece.plumbingPiece;
-    if (!spp.onlyImplied) {
-        let cell = drawState.cellMap.cell(drawState.selectedPiece.cell);
-        let data = cell.pieces.get(spp);
+    let sok = drawState.selectedPiece.socket;
+    if (!sok.onlyImplied) {
+        let cell = drawState.cellMap.cell(drawState.selectedPiece.loc);
+        let pp = cell.pieces.get(sok);
         if (ev.shiftKey) {
-            if (data !== undefined) {
+            if (pp !== undefined) {
                 let k = -1;
-                for (let i = 0; i < spp.variants.length; i++) {
-                    let v = spp.variants[i];
-                    if (v.name === data.variant) {
+                let vars = PlumbingPieces.BySocket.get(sok);
+                for (let i = 0; i < vars.length; i++) {
+                    if (vars[i] === vars[k]) {
                         k = i;
                     }
                 }
                 k += 1;
-                if (k === spp.variants.length) {
-                    k = -1;
+                if (k === vars.length) {
+                    k = 0;
                 }
-                data.variant = k === -1 ? undefined : spp.variants[k].name;
+                cell.pieces.set(sok, vars[k]);
             }
         } else {
-            if (cell.pieces.has(spp)) {
-                cell.pieces.delete(spp);
+            if (cell.pieces.has(sok)) {
+                cell.pieces.delete(sok);
             } else {
-                cell.pieces.set(spp, new PlumbingPieceData());
+                cell.pieces.set(sok, PlumbingPieces.Defaults.get(sok));
             }
             drawState.selectedPiece = undefined;
             drawState.selectedDir = undefined;
@@ -337,8 +337,8 @@ canvas.addEventListener('click', ev => {
 
     let lpp = findImplierCell();
     if (lpp !== undefined) {
-        let cell = drawState.cellMap.cell(lpp.cell);
-        cell.pieces.set(lpp.plumbingPiece, new PlumbingPieceData());
+        let cell = drawState.cellMap.cell(lpp.loc);
+        cell.pieces.set(lpp.socket, PlumbingPieces.Defaults.get(lpp.socket));
         drawState.selectedPiece = undefined;
         drawState.selectedDir = undefined;
     }
@@ -348,18 +348,18 @@ canvas.addEventListener('click', ev => {
  * @returns {undefined|!LocalizedPlumbingPiece}
  */
 function findImplierCell() {
-    for (let pp of ALL_PLUMBING_PIECES) {
-        for (let imp of pp.implies) {
-            if (imp.name !== drawState.selectedPiece.plumbingPiece.name) {
+    for (let socket of Sockets.All) {
+        for (let imp of socket.implies) {
+            if (imp.name !== drawState.selectedPiece.socket.name) {
                 continue;
             }
-            let d = pp.box.center().
-                minus(drawState.selectedPiece.plumbingPiece.box.center()).
+            let d = socket.box.center().
+                minus(drawState.selectedPiece.socket.box.center()).
                 minus(imp.offset).
                 unit();
             if (d.isApproximatelyEqualTo(drawState.selectedDir, 0.001)) {
                 let pt = drawState.selectedPiece.cell.plus(imp.offset.scaledBy(-1));
-                return new LocalizedPlumbingPiece(pp, pt);
+                return new LocalizedPlumbingPiece(pt, socket, PlumbingPieces.Defaults.get(socket));
             }
         }
     }

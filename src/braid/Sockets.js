@@ -16,7 +16,6 @@ import {
 } from "src/braid/CodeDistance.js";
 import {UnitCellSocketFootprint} from "src/braid/UnitCellSocketFootprint.js";
 import {UnitCellSocket} from "src/braid/UnitCellSocket.js";
-import {PlumbingPiece} from "src/braid/PlumbingPiece.js";
 
 const GENERIC_COLOR = [0.5, 0.5, 0.5, 1.0];
 const PRIMAL_COLOR = [0.9, 0.9, 0.9, 1.0];
@@ -35,8 +34,7 @@ function genericToPrimal(pp) {
         pp.propagateSignals.bind(pp),
         PRIMAL_COLOR,
         pp.implies.map(({name, offset}) => ({name: name + 'Primal', offset})),
-        pp.onlyImplied,
-        pp.variants);
+        pp.onlyImplied);
 }
 
 /**
@@ -56,13 +54,8 @@ function genericToDual(pp) {
         () => {},
         DUAL_COLOR,
         pp.implies.map(({name, offset}) => ({name: name + 'Dual', offset})),
-        pp.onlyImplied,
-        pp.variants);
+        pp.onlyImplied);
 }
-
-let movePositiveWard = new PlumbingPiece('+', [0, 0, 1, 1]);
-let moveNegativeWard = new PlumbingPiece('-', [0, 1, 1, 1]);
-let injectS = new PlumbingPiece('S', [1, 0, 1, 1]);
 
 let centerConnector = new UnitCellSocket(
     'Center',
@@ -76,8 +69,7 @@ let centerConnector = new UnitCellSocket(
     () => {},
     GENERIC_COLOR,
     [],
-    true,
-    []);
+    true);
 
 let xConnector = new UnitCellSocket(
     'X',
@@ -108,8 +100,7 @@ let xConnector = new UnitCellSocket(
         {name: 'Center', offset: new Vector(0, 0, 0)},
         {name: 'Center', offset: new Vector(1, 0, 0)},
     ],
-    false,
-    [movePositiveWard, moveNegativeWard, injectS]);
+    false);
 
 let yConnector = new UnitCellSocket(
     'Y',
@@ -126,8 +117,7 @@ let yConnector = new UnitCellSocket(
         {name: 'Center', offset: new Vector(0, 0, 0)},
         {name: 'Center', offset: new Vector(0, 1, 0)},
     ],
-    false,
-    [movePositiveWard, moveNegativeWard, injectS]);
+    false);
 
 let zConnector = new UnitCellSocket(
     'Z',
@@ -146,8 +136,7 @@ let zConnector = new UnitCellSocket(
         {name: 'Center', offset: new Vector(0, 0, 0)},
         {name: 'Center', offset: new Vector(0, 0, 1)},
     ],
-    false,
-    []);
+    false);
 
 let genericPieces = [centerConnector, xConnector, yConnector, zConnector];
 let primalPieces = genericPieces.map(genericToPrimal);
@@ -157,7 +146,26 @@ const ALL_PLUMBING_PIECES = [...primalPieces, ...dualPieces];
 /** @type {!Map.<!string, !UnitCellSocket>} */
 const PLUMBING_PIECE_MAP = seq(ALL_PLUMBING_PIECES).keyedBy(e => e.name);
 
+class Sockets {
+}
+Sockets.XPrimal = PLUMBING_PIECE_MAP.get('XPrimal');
+Sockets.YPrimal = PLUMBING_PIECE_MAP.get('YPrimal');
+Sockets.ZPrimal = PLUMBING_PIECE_MAP.get('ZPrimal');
+Sockets.XDual = PLUMBING_PIECE_MAP.get('XDual');
+Sockets.YDual = PLUMBING_PIECE_MAP.get('YDual');
+Sockets.ZDual = PLUMBING_PIECE_MAP.get('ZDual');
+Sockets.All = [
+    Sockets.XPrimal,
+    Sockets.YPrimal,
+    Sockets.ZPrimal,
+    Sockets.XDual,
+    Sockets.YDual,
+    Sockets.ZDual,
+];
+Sockets.ByName = seq(Sockets.All).keyedBy(e => e.name);
+
 export {
     ALL_PLUMBING_PIECES,
     PLUMBING_PIECE_MAP,
+    Sockets,
 }
