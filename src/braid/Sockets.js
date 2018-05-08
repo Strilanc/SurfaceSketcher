@@ -16,7 +16,7 @@ import {
 } from "src/braid/CodeDistance.js";
 import {UnitCellSocketFootprint} from "src/braid/UnitCellSocketFootprint.js";
 import {UnitCellSocket} from "src/braid/UnitCellSocket.js";
-import {UnitCellSocketData} from "src/braid/UnitCellSocketData.js";
+import {PlumbingPiece} from "src/braid/PlumbingPiece.js";
 
 const GENERIC_COLOR = [0.5, 0.5, 0.5, 1.0];
 const PRIMAL_COLOR = [0.9, 0.9, 0.9, 1.0];
@@ -60,9 +60,9 @@ function genericToDual(pp) {
         pp.variants);
 }
 
-let movePositiveWard = new UnitCellSocketData('+', [0, 0, 1, 1]);
-let moveNegativeWard = new UnitCellSocketData('-', [0, 1, 1, 1]);
-let injectS = new UnitCellSocketData('S', [1, 0, 1, 1]);
+let movePositiveWard = new PlumbingPiece('+', [0, 0, 1, 1]);
+let moveNegativeWard = new PlumbingPiece('-', [0, 1, 1, 1]);
+let injectS = new PlumbingPiece('S', [1, 0, 1, 1]);
 
 let centerConnector = new UnitCellSocket(
     'Center',
