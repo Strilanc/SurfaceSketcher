@@ -6,18 +6,15 @@ import {DetailedError} from "src/base/DetailedError.js";
 import {UnitCellSocket} from "src/braid/UnitCellSocket.js";
 import {PlumbingPiece} from "src/braid/PlumbingPiece.js";
 
-const EXTENDER_SCALE_FACTOR = 0.3;
+const EXTENSION_LENGTH = 0.2;
 
 class LocalizedPlumbingPiece {
     /**
      * @param {!Point} loc Which unit cell is it in?
      * @param {!UnitCellSocket} socket Which socket is it in?
      * @param {!PlumbingPiece} piece What's in the socket?
-     * @param {undefined|!Vector} extenderOffset If this piece is an extension of another piece (e.g. used when
-     *     hinting where pieces can be added) this vector is the displacement from the root piece to this
-     *     extender piece.
      */
-    constructor(loc, socket, piece, extenderOffset=undefined) {
+    constructor(loc, socket, piece) {
         if (!(loc instanceof Point)) {
             throw new DetailedError("Not a Point.", {loc});
         }
@@ -27,30 +24,24 @@ class LocalizedPlumbingPiece {
         if (!(piece instanceof PlumbingPiece)) {
             throw new DetailedError("Not a PlumbingPiece.", {piece});
         }
-        this.loc= loc;
+        this.loc = loc;
         this.socket = socket;
         this.piece = piece;
-        this.extenderOffset = extenderOffset;
     }
 
     /**
      * @returns {!Box}
      */
-    toBox(reduceExtenderSize=false) {
-        let box = this.socket.boxAt(this.loc);
-        if (reduceExtenderSize && this.extenderOffset !== undefined) {
-            let ux = approximate_sign(this.extenderOffset.x);
-            let uy = approximate_sign(this.extenderOffset.y);
-            let uz = approximate_sign(this.extenderOffset.z);
-            let v1 = new Vector(ux === -1 ? 1 : 0, uy === -1 ? 1 : 0, uz === -1 ? 1 : 0);
-            let v2 = new Vector(ux === 0 ? 1 : EXTENDER_SCALE_FACTOR,
-                uy === 0 ? 1 : EXTENDER_SCALE_FACTOR,
-                uz === 0 ? 1 : EXTENDER_SCALE_FACTOR);
-            box.baseCorner = box.baseCorner.plus(
-                box.diagonal.pointwiseMultiply(v1.scaledBy(1 - EXTENDER_SCALE_FACTOR)));
-            box.diagonal = box.diagonal.pointwiseMultiply(v2);
-        }
-        return box;
+    toBox() {
+        return this.socket.boxAt(this.loc);
+    }
+
+    /**
+     * @param {!Vector} dirFrom The direction from the other piece to this neighbor piece.
+     * @returns {!Box}
+     */
+    toNeighborExtensionBox(dirFrom) {
+        return clampBox(this.socket.boxAt(this.loc), dirFrom.scaledBy(-1), EXTENSION_LENGTH);
     }
 
     /**
@@ -79,17 +70,17 @@ class LocalizedPlumbingPiece {
     }
 
     /**
-     * @param {![!number, !number, !number, !number]} colorOverride
+     * @param {![!number, !number, !number, !number]} highlight
      * @returns {!RenderData}
      */
-    toRenderData(colorOverride = undefined) {
-        if (this.extenderOffset !== undefined) {
-            colorOverride = [0, 1, 0, 1];
+    toRenderData(highlight = undefined) {
+        let c = [...this.piece.color];
+        if (highlight !== undefined) {
+            for (let i = 0; i < 4; i++) {
+                c[i] = 0.7 * c[i] + highlight[i] * 0.3;
+            }
         }
-        if (colorOverride === undefined) {
-            colorOverride = this.piece.color;
-        }
-        return this.toBox().toRenderData(colorOverride);
+        return this.toBox().toRenderData(c);
     }
 
     /**
@@ -112,4 +103,30 @@ function approximate_sign(v, epsilon=0.001) {
     return Math.sign(v);
 }
 
-export {LocalizedPlumbingPiece}
+/**
+ * @param {!Box} box The box to clamp.
+ * @param {!Vector} shrinkAlong An axis-aligned unit vector indicating which axis to affect and which side to move.
+ * @param {!number} maxDiameter
+ * @returns {!Box}
+ */
+function clampBox(box, shrinkAlong, maxDiameter) {
+    let delta = box.diagonal.zip(shrinkAlong, (e, s)  => Math.abs(s) * (e - Math.min(maxDiameter, e)));
+    return shrinkBox(box, shrinkAlong, delta.x + delta.y + delta.z);
+}
+
+/**
+ * @param {!Box} box The box to clamp.
+ * @param {!Vector} shrinkAlong An axis-aligned unit vector indicating which axis to affect and which side to move.
+ * @param {!number} delta The amount to shrink the box by.
+ * @returns {!Box}
+ */
+function shrinkBox(box, shrinkAlong, delta) {
+    let shift = shrinkAlong.pointwise(e => Math.abs(e) * delta);
+    let baseMask = shrinkAlong.pointwise(e => e === 1 ? 1 : 0);
+    let baseShift = baseMask.pointwiseMultiply(shift);
+    return new Box(
+        box.baseCorner.plus(baseShift),
+        box.diagonal.minus(shift));
+}
+
+export {LocalizedPlumbingPiece, shrinkBox, clampBox}

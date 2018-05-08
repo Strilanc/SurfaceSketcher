@@ -50,7 +50,7 @@ function fixOut(fixupLayer, codeDistance, pieces) {
 function timeSlice(map, t) {
     let result = [];
     t /= 2;
-    for (let piece of map.piecesAndImpliedPieces()) {
+    for (let piece of map.allLocalizedPieces()) {
         let pt = piece.loc;
         let socket = piece.socket;
         let c = socket.boxAt(pt).center();

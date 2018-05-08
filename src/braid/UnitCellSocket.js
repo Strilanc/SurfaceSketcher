@@ -2,6 +2,7 @@ import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
 import {Point} from "src/geo/Point.js";
 import {UnitCellSocketFootprint} from "src/braid/UnitCellSocketFootprint.js";
+import {GeneralMap} from "src/base/GeneralMap.js";
 
 
 class UnitCellSocket {
@@ -22,6 +23,10 @@ class UnitCellSocket {
         this.color = color;
         this.implies = implies;
         this.onlyImplied = onlyImplied;
+        /** @type {!GeneralMap.<!Vector, !UnitCellSocketNeighbor>} */
+        this.neighbors = new GeneralMap();
+        /** @type {!Array.<UnitCellSocketNeighbor>} */
+        this.impliedNeighbors = [];
     }
 
     /**

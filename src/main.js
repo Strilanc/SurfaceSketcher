@@ -29,9 +29,8 @@ class DrawState {
      * @param {!boolean} drawBraids
      * @param {!boolean} drawOps
      * @param {undefined|!LocalizedPlumbingPiece} selectedPiece
-     * @param {undefined|!Vector} selectedDir
      */
-    constructor(camera, codeDistance, cellMap, drawBraids, drawOps, selectedPiece, selectedDir) {
+    constructor(camera, codeDistance, cellMap, drawBraids, drawOps, selectedPiece) {
         /** @type {!Camera} */
         this.camera = camera;
         /** @type {!int} */
@@ -44,8 +43,6 @@ class DrawState {
         this.drawOps = drawOps;
         /** @type {undefined|!LocalizedPlumbingPiece} */
         this.selectedPiece = selectedPiece;
-        /** @type {undefined|!Vector} */
-        this.selectedDir = selectedDir;
     }
 
     /**
@@ -58,14 +55,54 @@ class DrawState {
             new UnitCellMap(),
             true,
             false,
-            undefined,
             undefined);
-        result.cellMap.cell(new Point(0, 0, 0)).pieces.set(Sockets.XPrimal, PlumbingPieces.PRIMAL_RIGHTWARD);
-        result.cellMap.cell(new Point(0, 0, 1)).pieces.set(Sockets.XPrimal, PlumbingPieces.PRIMAL_RIGHTWARD);
-        result.cellMap.cell(new Point(0, 0, 1)).pieces.set(Sockets.YPrimal, PlumbingPieces.PRIMAL_FOREWARD);
-        result.cellMap.cell(new Point(0, 1, 0)).pieces.set(Sockets.ZPrimal, PlumbingPieces.PRIMAL_UPWARD);
-        result.cellMap.cell(new Point(0, 1, 0)).pieces.set(Sockets.ZDual, PlumbingPieces.DUAL_UPWARD);
+        result.fillSlot(new Point(0, 0, 0), Sockets.XPrimal);
+        result.fillSlot(new Point(0, 0, 1), Sockets.XPrimal);
+        result.fillSlot(new Point(0, 0, 1), Sockets.YPrimal);
+        result.fillSlot(new Point(0, 1, 0), Sockets.ZPrimal);
+        result.fillSlot(new Point(0, 1, 0), Sockets.ZDual);
         return result;
+    }
+
+    /**
+     * @param {!Point} loc
+     * @param {!UnitCellSocket} socket
+     */
+    fillSlot(loc, socket) {
+        this.cellMap.cell(loc).pieces.set(socket, PlumbingPieces.Defaults.get(socket));
+        this.addImpliedNeighbors(loc, socket)
+    }
+
+    /**
+     * @param {!Point} loc
+     * @param {!UnitCellSocket} socket
+     */
+    removeIfLonely(loc, socket) {
+        for (let n of socket.neighbors.values()) {
+            let loc2 = n.inNextCell ? loc.plus(n.dir) : loc;
+            let unitCell2 = this.cellMap.cell(loc2);
+            let piece2 = unitCell2.pieces.get(n.socket);
+            if (piece2 !== undefined) {
+                return;
+            }
+        }
+        let unitCell = this.cellMap.cell(loc);
+        unitCell.pieces.delete(socket);
+    }
+
+    /**
+     * @param {!Point} loc
+     * @param {!UnitCellSocket} socket
+     */
+    addImpliedNeighbors(loc, socket) {
+        for (let n of socket.impliedNeighbors) {
+            let loc2 = n.inNextCell ? loc.plus(n.dir) : loc;
+            let unitCell2 = this.cellMap.cell(loc2);
+            let piece2 = unitCell2.pieces.get(n.socket);
+            if (piece2 === undefined) {
+                unitCell2.pieces.set(n.socket, PlumbingPieces.Defaults.get(socket));
+            }
+        }
     }
 
     /**
@@ -78,8 +115,7 @@ class DrawState {
             this.cellMap.clone(),
             this.drawBraids,
             this.drawOps,
-            this.selectedPiece,
-            this.selectedDir);
+            this.selectedPiece);
     }
 
     /**
@@ -93,8 +129,7 @@ class DrawState {
             this.cellMap.isEqualTo(other.cellMap) &&
             this.drawBraids === other.drawBraids &&
             this.drawOps === other.drawOps &&
-            equate(this.selectedPiece, other.selectedPiece) &&
-            equate(this.selectedDir, other.selectedDir);
+            equate(this.selectedPiece, other.selectedPiece);
     }
 }
 
@@ -115,7 +150,11 @@ function makeRenderData() {
 
     if (!drawState.drawOps && drawState.drawBraids) {
         if (drawState.selectedPiece !== undefined) {
-            result.push(drawState.selectedPiece.toRenderData([1, 0, 0, 1]));
+            let unitCell = drawState.cellMap.cell(drawState.selectedPiece.loc);
+            let curPiece = unitCell.pieces.get(drawState.selectedPiece.socket);
+            let hasPiece = curPiece === drawState.selectedPiece.piece;
+            let color = hasPiece ? [1, 0, 0, 1] : [0, 1, 0, 1];
+            result.push(drawState.selectedPiece.toRenderData(color));
         }
     }
 
@@ -300,72 +339,31 @@ function loadShader(gl, type, source) {
 main();
 
 canvas.addEventListener('click', ev => {
-    if (drawState.selectedPiece === undefined || drawState.selectedDir === undefined) {
+    if (drawState.selectedPiece === undefined) {
         return;
     }
 
-    let sok = drawState.selectedPiece.socket;
-    if (!sok.onlyImplied) {
-        let cell = drawState.cellMap.cell(drawState.selectedPiece.loc);
-        let pp = cell.pieces.get(sok);
+    let {loc, piece, socket} = drawState.selectedPiece;
+    let unitCell = drawState.cellMap.cell(loc);
+    let curPiece = unitCell.pieces.get(socket);
+    if (piece === curPiece) {
         if (ev.shiftKey) {
-            if (pp !== undefined) {
-                let k = -1;
-                let vars = PlumbingPieces.BySocket.get(sok);
-                for (let i = 0; i < vars.length; i++) {
-                    if (vars[i] === vars[k]) {
-                        k = i;
-                    }
-                }
-                k += 1;
-                if (k === vars.length) {
-                    k = 0;
-                }
-                cell.pieces.set(sok, vars[k]);
-            }
+            let possiblePieces = PlumbingPieces.BySocket.get(socket);
+            let k = possiblePieces.indexOf(piece);
+            k += 1;
+            k %= possiblePieces.length;
+            unitCell.pieces.set(socket, possiblePieces[k]);
         } else {
-            if (cell.pieces.has(sok)) {
-                cell.pieces.delete(sok);
-            } else {
-                cell.pieces.set(sok, PlumbingPieces.Defaults.get(sok));
-            }
-            drawState.selectedPiece = undefined;
-            drawState.selectedDir = undefined;
+            unitCell.pieces.delete(socket);
         }
-        return;
-    }
-
-    let lpp = findImplierCell();
-    if (lpp !== undefined) {
-        let cell = drawState.cellMap.cell(lpp.loc);
-        cell.pieces.set(lpp.socket, PlumbingPieces.Defaults.get(lpp.socket));
-        drawState.selectedPiece = undefined;
-        drawState.selectedDir = undefined;
+        for (let n of socket.impliedNeighbors) {
+            drawState.removeIfLonely(n.inNextCell ? loc.plus(n.dir) : loc, n.socket);
+        }
+    } else {
+        unitCell.pieces.set(socket, piece);
+        drawState.addImpliedNeighbors(loc, socket);
     }
 });
-
-/**
- * @returns {undefined|!LocalizedPlumbingPiece}
- */
-function findImplierCell() {
-    for (let socket of Sockets.All) {
-        for (let imp of socket.implies) {
-            if (imp.name !== drawState.selectedPiece.socket.name) {
-                continue;
-            }
-            let d = socket.box.center().
-                minus(drawState.selectedPiece.socket.box.center()).
-                minus(imp.offset).
-                unit();
-            if (d.isApproximatelyEqualTo(drawState.selectedDir, 0.001)) {
-                let pt = drawState.selectedPiece.cell.plus(imp.offset.scaledBy(-1));
-                return new LocalizedPlumbingPiece(pt, socket, PlumbingPieces.Defaults.get(socket));
-            }
-        }
-    }
-    return undefined;
-}
-
 
 canvas.addEventListener('mousemove', ev => {
     let b = canvas.getBoundingClientRect();
@@ -392,7 +390,7 @@ canvas.addEventListener('mousemove', ev => {
         drawState.selectedDir = undefined;
     } else {
         drawState.selectedPiece = collision.piece;
-        let box = drawState.selectedPiece.toBox(true);
+        let box = drawState.selectedPiece.toBox();
         drawState.selectedDir = box.facePointToDirection(collision.collisionPoint);
     }
 });

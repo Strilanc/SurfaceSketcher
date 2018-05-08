@@ -20,7 +20,9 @@ import {Sockets} from "src/braid/Sockets.js";
 import {GeneralMap} from "src/base/GeneralMap.js";
 
 const PRIMAL_COLOR = [0.9, 0.9, 0.9, 1.0];
+const SHIFTED_PRIMAL_COLOR = [0.8, 0.8, 1.0, 1.0];
 const DUAL_COLOR = [0.4, 0.4, 0.4, 1.0];
+const SHIFTED_DUAL_COLOR = [0.4, 0.4, 0.6, 1.0];
 
 
 class PlumbingPieces {
@@ -33,7 +35,7 @@ PlumbingPieces.PRIMAL_RIGHTWARD = new PlumbingPiece(
 PlumbingPieces.PRIMAL_LEFTWARD = new PlumbingPiece(
     'PRIMAL_RIGHTWARD',
     Sockets.XPrimal,
-    [1, 0, 0, 1]);
+    SHIFTED_PRIMAL_COLOR);
 
 PlumbingPieces.PRIMAL_BACKWARD = new PlumbingPiece(
     'PRIMAL_BACKWARD',
@@ -42,7 +44,7 @@ PlumbingPieces.PRIMAL_BACKWARD = new PlumbingPiece(
 PlumbingPieces.PRIMAL_FOREWARD = new PlumbingPiece(
     'PRIMAL_FOREWARD',
     Sockets.ZPrimal,
-    [1, 0, 0, 1]);
+    SHIFTED_PRIMAL_COLOR);
 
 PlumbingPieces.PRIMAL_UPWARD = new PlumbingPiece(
     'PRIMAL_UPWARD',
@@ -51,7 +53,7 @@ PlumbingPieces.PRIMAL_UPWARD = new PlumbingPiece(
 PlumbingPieces.PRIMAL_DOWNARD = new PlumbingPiece(
     'PRIMAL_DOWNWARD',
     Sockets.YPrimal,
-    [1, 0, 0, 1]);
+    SHIFTED_PRIMAL_COLOR);
 
 PlumbingPieces.DUAL_RIGHTWARD = new PlumbingPiece(
     'DUAL_RIGHTWARD',
@@ -60,16 +62,16 @@ PlumbingPieces.DUAL_RIGHTWARD = new PlumbingPiece(
 PlumbingPieces.DUAL_LEFTWARD = new PlumbingPiece(
     'DUAL_RIGHTWARD',
     Sockets.XDual,
-    [1, 0, 0, 1]);
+    SHIFTED_DUAL_COLOR);
 
 PlumbingPieces.DUAL_BACKWARD = new PlumbingPiece(
     'DUAL_BACKWARD',
     Sockets.ZDual,
-    DUAL_COLOR);
+    SHIFTED_DUAL_COLOR);
 PlumbingPieces.DUAL_FOREWARD = new PlumbingPiece(
     'DUAL_FOREWARD',
     Sockets.ZDual,
-    [1, 0, 0, 1]);
+    DUAL_COLOR);
 
 PlumbingPieces.DUAL_UPWARD = new PlumbingPiece(
     'DUAL_UPWARD',
@@ -78,7 +80,17 @@ PlumbingPieces.DUAL_UPWARD = new PlumbingPiece(
 PlumbingPieces.DUAL_DOWNARD = new PlumbingPiece(
     'DUAL_DOWNWARD',
     Sockets.YDual,
-    [1, 0, 0, 1]);
+    SHIFTED_DUAL_COLOR);
+
+PlumbingPieces.PRIMAL_CENTER = new PlumbingPiece(
+    'PRIMAL_CENTER',
+    Sockets.CPrimal,
+    PRIMAL_COLOR);
+
+PlumbingPieces.DUAL_CENTER = new PlumbingPiece(
+    'DUAL_CENTER',
+    Sockets.CDual,
+    DUAL_COLOR);
 
 PlumbingPieces.All = [
     PlumbingPieces.PRIMAL_RIGHTWARD,
@@ -93,6 +105,8 @@ PlumbingPieces.All = [
     PlumbingPieces.DUAL_LEFTWARD,
     PlumbingPieces.DUAL_FOREWARD,
     PlumbingPieces.DUAL_DOWNARD,
+    PlumbingPieces.DUAL_CENTER,
+    PlumbingPieces.PRIMAL_CENTER,
 ];
 
 PlumbingPieces.BySocket = new GeneralMap();
@@ -102,11 +116,13 @@ for (let pp of PlumbingPieces.All) {
 
 PlumbingPieces.Defaults = new GeneralMap(
     [Sockets.XPrimal, PlumbingPieces.PRIMAL_RIGHTWARD],
-    [Sockets.YPrimal, PlumbingPieces.PRIMAL_BACKWARD],
-    [Sockets.ZPrimal, PlumbingPieces.PRIMAL_UPWARD],
+    [Sockets.YPrimal, PlumbingPieces.PRIMAL_UPWARD],
+    [Sockets.ZPrimal, PlumbingPieces.PRIMAL_BACKWARD],
     [Sockets.XDual, PlumbingPieces.DUAL_RIGHTWARD],
-    [Sockets.YDual, PlumbingPieces.DUAL_BACKWARD],
-    [Sockets.ZDual, PlumbingPieces.DUAL_UPWARD],
+    [Sockets.YDual, PlumbingPieces.DUAL_UPWARD],
+    [Sockets.ZDual, PlumbingPieces.DUAL_FOREWARD],
+    [Sockets.CPrimal, PlumbingPieces.PRIMAL_CENTER],
+    [Sockets.CDual, PlumbingPieces.DUAL_CENTER],
 );
 
 export {PlumbingPieces}

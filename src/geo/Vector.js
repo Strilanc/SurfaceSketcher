@@ -36,6 +36,23 @@ class Vector {
     }
 
     /**
+     * @param {!function(!number): !number} f
+     * @returns {!Vector}
+     */
+    pointwise(f) {
+        return new Vector(f(this.x), f(this.y), f(this.z));
+    }
+
+    /**
+     * @param {!Vector} other
+     * @param {!function(!number, !number): !number} f
+     * @returns {!Vector}
+     */
+    zip(other, f) {
+        return new Vector(f(this.x, other.x), f(this.y, other.y), f(this.z, other.z));
+    }
+
+    /**
      * @param {!number} scalar
      * @returns {!Vector}
      */

@@ -136,3 +136,11 @@ suite.test("minus", () => {
 suite.test("perpOnto", () => {
     assertThat(new Vector(2, 3, 5).perpOnto(new Vector(1, 0, 0))).isEqualTo(new Vector(0, 3, 5));
 });
+
+suite.test("pointwise", () => {
+    assertThat(new Vector(2, 3, 12).pointwise(e => e * 2 + 1)).isEqualTo(new Vector(5, 7, 25));
+});
+
+suite.test("zip", () => {
+    assertThat(new Vector(2, 3, 12).zip(new Vector(5, 3, 0), Math.max)).isEqualTo(new Vector(5, 3, 12));
+});

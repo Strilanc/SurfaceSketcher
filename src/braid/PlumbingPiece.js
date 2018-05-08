@@ -27,6 +27,13 @@ class PlumbingPiece {
     clone() {
         return new PlumbingPiece(this.name, this.socket, this.color);
     }
+
+    /**
+     * @returns {!string}
+     */
+    toString() {
+        return `PlumbingPiece(${this.name}, ${this.socket})`;
+    }
 }
 
 export {PlumbingPiece}

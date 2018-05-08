@@ -1,3 +1,7 @@
+/**
+ * @param {!UnitCellSocket} pp
+ * @returns {!UnitCellSocket}
+ */
 import {DetailedError} from 'src/base/DetailedError.js'
 import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
@@ -16,16 +20,13 @@ import {
 } from "src/braid/CodeDistance.js";
 import {UnitCellSocketFootprint} from "src/braid/UnitCellSocketFootprint.js";
 import {UnitCellSocket} from "src/braid/UnitCellSocket.js";
+import {UnitCellSocketNeighbor} from "src/braid/UnitCellSocketNeighbor.js";
 
 const GENERIC_COLOR = [0.5, 0.5, 0.5, 1.0];
 const PRIMAL_COLOR = [0.9, 0.9, 0.9, 1.0];
 const DUAL_COLOR = [0.4, 0.4, 0.4, 1.0];
 
 
-/**
- * @param {!UnitCellSocket} pp
- * @returns {!UnitCellSocket}
- */
 function genericToPrimal(pp) {
     return new UnitCellSocket(
         pp.name + 'Primal',
@@ -151,9 +152,46 @@ class Sockets {
 Sockets.XPrimal = PLUMBING_PIECE_MAP.get('XPrimal');
 Sockets.YPrimal = PLUMBING_PIECE_MAP.get('YPrimal');
 Sockets.ZPrimal = PLUMBING_PIECE_MAP.get('ZPrimal');
+Sockets.CPrimal = PLUMBING_PIECE_MAP.get('CenterPrimal');
 Sockets.XDual = PLUMBING_PIECE_MAP.get('XDual');
 Sockets.YDual = PLUMBING_PIECE_MAP.get('YDual');
 Sockets.ZDual = PLUMBING_PIECE_MAP.get('ZDual');
+Sockets.CDual = PLUMBING_PIECE_MAP.get('CenterDual');
+
+
+/**
+ * @param {!UnitCellSocket} socket1
+ * @param {!UnitCellSocket} socket2
+ * @param {!Vector} dir
+ * @param {!boolean} nextCell
+ * @param {!boolean} is1To2Implied
+ */
+function addNeighbors(socket1, socket2, dir, nextCell, is1To2Implied=true) {
+    let neg = dir.scaledBy(-1);
+    let n1to2 = new UnitCellSocketNeighbor(socket2, dir, nextCell);
+    socket1.neighbors.set(dir, n1to2);
+    socket2.neighbors.set(neg, new UnitCellSocketNeighbor(socket1, neg, nextCell));
+    if (is1To2Implied) {
+        socket1.impliedNeighbors.push(n1to2);
+    }
+}
+
+addNeighbors(Sockets.XPrimal, Sockets.CPrimal, new Vector(1, 0, 0), true);
+addNeighbors(Sockets.YPrimal, Sockets.CPrimal, new Vector(0, 1, 0), true);
+addNeighbors(Sockets.ZPrimal, Sockets.CPrimal, new Vector(0, 0, 1), true);
+
+addNeighbors(Sockets.XPrimal, Sockets.CPrimal, new Vector(-1, 0, 0), false);
+addNeighbors(Sockets.YPrimal, Sockets.CPrimal, new Vector(0, -1, 0), false);
+addNeighbors(Sockets.ZPrimal, Sockets.CPrimal, new Vector(0, 0, -1), false);
+
+addNeighbors(Sockets.XDual, Sockets.CDual, new Vector(1, 0, 0), true);
+addNeighbors(Sockets.YDual, Sockets.CDual, new Vector(0, 1, 0), true);
+addNeighbors(Sockets.ZDual, Sockets.CDual, new Vector(0, 0, 1), true);
+
+addNeighbors(Sockets.XDual, Sockets.CDual, new Vector(-1, 0, 0), false);
+addNeighbors(Sockets.YDual, Sockets.CDual, new Vector(0, -1, 0), false);
+addNeighbors(Sockets.ZDual, Sockets.CDual, new Vector(0, 0, -1), false);
+
 Sockets.All = [
     Sockets.XPrimal,
     Sockets.YPrimal,
