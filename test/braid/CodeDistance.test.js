@@ -2,7 +2,7 @@ import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from "test/Tes
 
 import {codeDistanceToPipeSize} from "src/braid/CodeDistance.js"
 
-let suite = new Suite("PlumbingPieces");
+let suite = new Suite("CodeDistance");
 
 suite.test('codeDistanceToPipeSize', () => {
     assertThat(codeDistanceToPipeSize(1)).isEqualTo({w: 1, h: 1});

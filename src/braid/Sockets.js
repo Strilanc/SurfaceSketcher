@@ -1,7 +1,3 @@
-/**
- * @param {!UnitCellSocket} pp
- * @returns {!UnitCellSocket}
- */
 import {DetailedError} from 'src/base/DetailedError.js'
 import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
@@ -27,6 +23,10 @@ const PRIMAL_COLOR = [0.9, 0.9, 0.9, 1.0];
 const DUAL_COLOR = [0.4, 0.4, 0.4, 1.0];
 
 
+/**
+ * @param {!UnitCellSocket} pp
+ * @returns {!UnitCellSocket}
+ */
 function genericToPrimal(pp) {
     return new UnitCellSocket(
         pp.name + 'Primal',
@@ -158,7 +158,6 @@ const ALL_PLUMBING_PIECES = [...primalPieces, ...dualPieces];
 const PLUMBING_PIECE_MAP = seq(ALL_PLUMBING_PIECES).keyedBy(e => e.name);
 
 export {
-    UnitCellSocket,
     ALL_PLUMBING_PIECES,
     PLUMBING_PIECE_MAP,
 }

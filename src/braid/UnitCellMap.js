@@ -4,7 +4,7 @@ import {GeneralSet} from 'src/base/GeneralSet.js'
 import {UnitCell} from 'src/braid/UnitCell.js'
 import {Point} from "src/geo/Point.js";
 import {Ray} from "src/geo/Ray.js";
-import {PLUMBING_PIECE_MAP, ALL_PLUMBING_PIECES} from "src/braid/PlumbingPieces.js";
+import {PLUMBING_PIECE_MAP, ALL_PLUMBING_PIECES} from "src/braid/Sockets.js";
 import {LocalizedPlumbingPiece} from "src/braid/LocalizedPlumbingPiece.js";
 
 class UnitCellMap {

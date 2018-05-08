@@ -15,7 +15,7 @@ import {Camera} from "src/geo/Camera.js";
 import {RenderData} from "src/geo/RenderData.js";
 import {UnitCellMap} from "src/braid/UnitCellMap.js";
 import {PlumbingPieceData} from "src/braid/UnitCell.js";
-import {ALL_PLUMBING_PIECES, PLUMBING_PIECE_MAP} from "src/braid/PlumbingPieces.js";
+import {ALL_PLUMBING_PIECES, PLUMBING_PIECE_MAP} from "src/braid/Sockets.js";
 import {simulate_map} from "src/braid/SimulateUnitCellMap.js"
 import {equate} from "src/base/Equate.js";
 import {LocalizedPlumbingPiece} from "src/braid/LocalizedPlumbingPiece.js";

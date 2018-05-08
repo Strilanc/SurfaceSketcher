@@ -8,7 +8,7 @@ import {Point} from "src/geo/Point.js";
 import {seq} from "src/base/Seq.js";
 import {UnitCellMap} from "src/braid/UnitCellMap.js";
 import {LockstepSurfaceLayer} from "src/sim/LockstepSurfaceLayer.js";
-import {PLUMBING_PIECE_MAP} from "src/braid/PlumbingPieces.js";
+import {PLUMBING_PIECE_MAP} from "src/braid/Sockets.js";
 import {UnitCellSocketFootprint} from "src/braid/UnitCellSocketFootprint.js";
 import {FixupLayer} from "src/sim/FixupLayer.js";
 import {makeArrayGrid} from "src/sim/util/Util.js";
