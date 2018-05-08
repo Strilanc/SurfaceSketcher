@@ -18,7 +18,7 @@ import {
     SMALL_DIAMETER,
     LONG_DIAMETER,
 } from "src/braid/CodeDistance.js";
-import {PlumbingPieceFootprint} from "src/braid/PlumbingPieceFootprint.js";
+import {UnitCellSocketFootprint} from "src/braid/UnitCellSocketFootprint.js";
 import {UnitCellSocket} from "src/braid/UnitCellSocket.js";
 import {UnitCellSocketData} from "src/braid/UnitCellSocketData.js";
 
@@ -71,7 +71,7 @@ let centerConnector = new UnitCellSocket(
         new Vector(SMALL_DIAMETER, SMALL_DIAMETER, SMALL_DIAMETER)),
     codeDistance => {
         let {w, h} = codeDistanceToPipeSize(codeDistance);
-        return PlumbingPieceFootprint.grid(0, 0, w, h);
+        return UnitCellSocketFootprint.grid(0, 0, w, h);
     },
     () => {},
     GENERIC_COLOR,
@@ -88,7 +88,7 @@ let xConnector = new UnitCellSocket(
         let {w, h} = codeDistanceToPipeSize(codeDistance);
         w *= 2;
         w += codeDistanceToPipeSeparation(codeDistance);
-        return PlumbingPieceFootprint.grid(0, 0, w, h);
+        return UnitCellSocketFootprint.grid(0, 0, w, h);
     },
     (codeDistance, fixupLayer, dx, dy) => {
         let {w, h} = codeDistanceToPipeSize(codeDistance);
@@ -118,7 +118,7 @@ let yConnector = new UnitCellSocket(
         new Vector(SMALL_DIAMETER, LONG_DIAMETER, SMALL_DIAMETER)),
     codeDistance => {
         let {w, h} = codeDistanceToPipeSize(codeDistance);
-        return PlumbingPieceFootprint.grid(0, 0, w, h);
+        return UnitCellSocketFootprint.grid(0, 0, w, h);
     },
     () => {},
     GENERIC_COLOR,
@@ -138,7 +138,7 @@ let zConnector = new UnitCellSocket(
         let {w, h} = codeDistanceToPipeSize(codeDistance);
         h *= 2;
         h += codeDistanceToPipeSeparation(codeDistance);
-        return PlumbingPieceFootprint.grid(0, 0, w, h);
+        return UnitCellSocketFootprint.grid(0, 0, w, h);
     },
     () => {},
     GENERIC_COLOR,

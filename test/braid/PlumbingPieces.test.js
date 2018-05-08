@@ -1,6 +1,6 @@
 import {Suite, assertThat, assertThrows, assertTrue, assertFalse} from "test/TestUtil.js"
 
-import {codeDistanceToPipeSize} from "src/braid/PlumbingPieces.js"
+import {codeDistanceToPipeSize} from "src/braid/CodeDistance.js"
 
 let suite = new Suite("PlumbingPieces");
 

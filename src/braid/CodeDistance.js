@@ -54,8 +54,8 @@ function primalBoxToDualBox(box) {
 }
 
 /**
- * @param {!function(codeDistance: !int): !PlumbingPieceFootprint} footprintFunc
- * @returns {!function(codeDistance: !int): !PlumbingPieceFootprint}
+ * @param {!function(codeDistance: !int): !UnitCellSocketFootprint} footprintFunc
+ * @returns {!function(codeDistance: !int): !UnitCellSocketFootprint}
  */
 function primalFootprintToDualFootprint(footprintFunc) {
     return d => {

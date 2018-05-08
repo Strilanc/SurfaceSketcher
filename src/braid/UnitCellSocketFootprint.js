@@ -3,7 +3,7 @@ import {gridRangeToString} from "src/sim/util/Util.js";
 import {GeneralSet} from "src/base/GeneralSet.js";
 import {XY} from "src/sim/util/XY.js";
 
-class PlumbingPieceFootprint {
+class UnitCellSocketFootprint {
     /**
      * @param {!GeneralSet.<!XY>} mask
      */
@@ -16,7 +16,7 @@ class PlumbingPieceFootprint {
      * @param {!int} y
      * @param {!int} w
      * @param {!int} h
-     * @returns {!PlumbingPieceFootprint}
+     * @returns {!UnitCellSocketFootprint}
      */
     static grid(x, y, w, h) {
         let mask = new GeneralSet();
@@ -25,16 +25,16 @@ class PlumbingPieceFootprint {
                 mask.add(new XY(x + i, y + j));
             }
         }
-        return new PlumbingPieceFootprint(mask);
+        return new UnitCellSocketFootprint(mask);
     }
 
     /**
      * @param {!int} dx
      * @param {!int} dy
-     * @returns {!PlumbingPieceFootprint}
+     * @returns {!UnitCellSocketFootprint}
      */
     offsetBy(dx, dy) {
-        return new PlumbingPieceFootprint(new GeneralSet(
+        return new UnitCellSocketFootprint(new GeneralSet(
             ...seq(this.mask).map(({x, y}) => new XY(x + dx, y + dy))));
     }
 
@@ -49,4 +49,4 @@ class PlumbingPieceFootprint {
     }
 }
 
-export {PlumbingPieceFootprint}
+export {UnitCellSocketFootprint}

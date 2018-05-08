@@ -9,7 +9,7 @@ import {seq} from "src/base/Seq.js";
 import {UnitCellMap} from "src/braid/UnitCellMap.js";
 import {LockstepSurfaceLayer} from "src/sim/LockstepSurfaceLayer.js";
 import {PLUMBING_PIECE_MAP} from "src/braid/PlumbingPieces.js";
-import {PlumbingPieceFootprint} from "src/braid/PlumbingPieceFootprint.js";
+import {UnitCellSocketFootprint} from "src/braid/UnitCellSocketFootprint.js";
 import {FixupLayer} from "src/sim/FixupLayer.js";
 import {makeArrayGrid} from "src/sim/util/Util.js";
 import {Surface} from "src/sim/Surface.js";
@@ -19,7 +19,7 @@ import {GeneralSet} from "src/base/GeneralSet.js";
 /**
  * @param {!int} codeDistance
  * @param {!Array.<!LocalizedPlumbingPiece>} pieces
- * @returns {!PlumbingPieceFootprint}
+ * @returns {!UnitCellSocketFootprint}
  */
 function blockOut(codeDistance, pieces) {
     let result = new GeneralSet();
@@ -28,7 +28,7 @@ function blockOut(codeDistance, pieces) {
             result.add(xy);
         }
     }
-    return new PlumbingPieceFootprint(result);
+    return new UnitCellSocketFootprint(result);
 }
 
 /**

@@ -43,7 +43,7 @@ class LocalizedPlumbingPiece {
 
     /**
      * @param {!int} codeDistance
-     * @returns {!PlumbingPieceFootprint}
+     * @returns {!UnitCellSocketFootprint}
      */
     toFootprint(codeDistance) {
         let {w, h} = codeDistanceUnitCellSize(codeDistance);

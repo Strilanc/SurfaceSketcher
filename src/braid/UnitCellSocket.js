@@ -1,14 +1,14 @@
 import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
 import {Point} from "src/geo/Point.js";
-import {PlumbingPieceFootprint} from "src/braid/PlumbingPieceFootprint.js";
+import {UnitCellSocketFootprint} from "src/braid/UnitCellSocketFootprint.js";
 
 
 class UnitCellSocket {
     /**
      * @param {!string} name
      * @param {!Box} box
-     * @param {!function(codeDistance: !int) : !PlumbingPieceFootprint} footprint
+     * @param {!function(codeDistance: !int) : !UnitCellSocketFootprint} footprint
      * @param {!function(codeDistance: !int, fixupLayer: !FixupLayer, dx: !int, dy: !int)} propagateSignals
      * @param {![!number, !number, !number, !number]} color
      * @param {Array.<!{name: !string, offset: !Vector}>} implies
