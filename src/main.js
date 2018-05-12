@@ -22,11 +22,6 @@ import {LocalizedPlumbingPiece} from "src/braid/LocalizedPlumbingPiece.js";
 import {Revision} from "src/base/Revision.js";
 import {Reader, Writer} from "src/base/Serialize.js";
 
-let revision = new Revision([''], 0, false);
-revision.latestActiveCommit().subscribe(hex => {
-    document.location.hash = hex;
-});
-
 class DrawState {
     /**
      * @param {!Camera} camera
@@ -168,6 +163,12 @@ let drawState = DrawState.defaultValue();
 let lastDrawnState = undefined;
 let lastSimState = undefined;
 let prevMouse = [0, 0];
+
+let revision = new Revision([document.location.hash.substr(1)], 0, false);
+revision.latestActiveCommit().subscribe(hex => {
+    drawState = DrawState.read(Reader.fromHex(hex));
+    document.location.hash = hex;
+});
 
 /**
  * @returns {!Array.<!RenderData>}
@@ -477,17 +478,11 @@ document.addEventListener('keydown', ev => {
     }
 
     if (ev.keyCode === 'Z'.charCodeAt(0) && ev.ctrlKey && !ev.shiftKey) {
-        let state = revision.undo();
-        if (state !== undefined) {
-            drawState = DrawState.read(Reader.fromHex(state));
-        }
+        revision.undo();
     }
     if ((ev.keyCode === 'Y'.charCodeAt(0) && ev.ctrlKey && !ev.shiftKey) ||
             ev.keyCode === 'Z'.charCodeAt(0) && ev.ctrlKey && ev.shiftKey) {
-        let state = revision.redo();
-        if (state !== undefined) {
-            drawState = DrawState.read(Reader.fromHex(state));
-        }
+        revision.redo();
     }
 
     if (ev.keyCode === 'A'.charCodeAt(0) || ev.keyCode === 37) {
