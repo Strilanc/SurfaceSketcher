@@ -21,143 +21,7 @@ import {equate} from "src/base/Equate.js";
 import {LocalizedPlumbingPiece} from "src/braid/LocalizedPlumbingPiece.js";
 import {Revision} from "src/base/Revision.js";
 import {Reader, Writer} from "src/base/Serialize.js";
-
-class DrawState {
-    /**
-     * @param {!Camera} camera
-     * @param {!int} codeDistance
-     * @param {!UnitCellMap} cellMap
-     * @param {!boolean} drawBraids
-     * @param {!boolean} drawOps
-     * @param {undefined|!LocalizedPlumbingPiece} selectedPiece
-     */
-    constructor(camera, codeDistance, cellMap, drawBraids, drawOps, selectedPiece) {
-        /** @type {!Camera} */
-        this.camera = camera;
-        /** @type {!int} */
-        this.codeDistance = codeDistance;
-        /** @type {!UnitCellMap} */
-        this.cellMap = cellMap;
-        /** @type {!boolean} */
-        this.drawBraids = drawBraids;
-        /** @type {!boolean} */
-        this.drawOps = drawOps;
-        /** @type {undefined|!LocalizedPlumbingPiece} */
-        this.selectedPiece = selectedPiece;
-    }
-
-    /**
-     * @param {!Writer} out
-     */
-    write(out) {
-        this.camera.write(out);
-        out.writeInt8(this.codeDistance);
-        this.cellMap.write(out);
-        out.writeBooleans(this.drawBraids, this.drawOps);
-    }
-
-    /**
-     * @param {!Reader} inp
-     * @returns {!DrawState}
-     */
-    static read(inp) {
-        if (inp.isEndOfInput()) {
-            return DrawState.defaultValue();
-        }
-        let camera = Camera.read(inp);
-        let codeDistance = inp.readInt8();
-        let cellMap = UnitCellMap.read(inp);
-        let [drawBraids, drawOps] = inp.readBooleans(2);
-        return new DrawState(camera, codeDistance, cellMap, drawBraids, drawOps, undefined);
-    }
-
-    /**
-     * @returns {!DrawState}
-     */
-    static defaultValue() {
-        let result = new DrawState(
-            new Camera(new Point(0, 0, 0), 7, -Math.PI/3, Math.PI/4),
-            1,
-            new UnitCellMap(),
-            true,
-            false,
-            undefined);
-        result.fillSlot(new Point(0, 0, 0), Sockets.XPrimal);
-        result.fillSlot(new Point(0, 0, 1), Sockets.XPrimal);
-        result.fillSlot(new Point(0, 0, 1), Sockets.YPrimal);
-        result.fillSlot(new Point(0, 1, 0), Sockets.ZPrimal);
-        result.fillSlot(new Point(0, 1, 0), Sockets.ZDual);
-        return result;
-    }
-
-    /**
-     * @param {!Point} loc
-     * @param {!UnitCellSocket} socket
-     */
-    fillSlot(loc, socket) {
-        this.cellMap.cell(loc).pieces.set(socket, PlumbingPieces.Defaults.get(socket));
-        this.addImpliedNeighbors(loc, socket)
-    }
-
-    /**
-     * @param {!Point} loc
-     * @param {!UnitCellSocket} socket
-     */
-    removeIfLonely(loc, socket) {
-        for (let n of socket.neighbors.values()) {
-            let loc2 = n.inNextCell ? loc.plus(n.dir) : loc;
-            let unitCell2 = this.cellMap.cell(loc2);
-            let piece2 = unitCell2.pieces.get(n.socket);
-            if (piece2 !== undefined) {
-                return;
-            }
-        }
-        let unitCell = this.cellMap.cell(loc);
-        unitCell.pieces.delete(socket);
-    }
-
-    /**
-     * @param {!Point} loc
-     * @param {!UnitCellSocket} socket
-     */
-    addImpliedNeighbors(loc, socket) {
-        for (let n of socket.impliedNeighbors) {
-            let loc2 = n.inNextCell ? loc.plus(n.dir) : loc;
-            let unitCell2 = this.cellMap.cell(loc2);
-            let piece2 = unitCell2.pieces.get(n.socket);
-            if (piece2 === undefined) {
-                unitCell2.pieces.set(n.socket, PlumbingPieces.Defaults.get(n.socket));
-            }
-        }
-    }
-
-    /**
-     * @returns {!DrawState}
-     */
-    clone() {
-        return new DrawState(
-            this.camera.clone(),
-            this.codeDistance,
-            this.cellMap.clone(),
-            this.drawBraids,
-            this.drawOps,
-            this.selectedPiece);
-    }
-
-    /**
-     * @param {*|!DrawState} other
-     * @returns {!boolean}
-     */
-    isEqualTo(other) {
-        return other instanceof DrawState &&
-            this.camera.isEqualTo(other.camera) &&
-            this.codeDistance === other.codeDistance &&
-            this.cellMap.isEqualTo(other.cellMap) &&
-            this.drawBraids === other.drawBraids &&
-            this.drawOps === other.drawOps &&
-            equate(this.selectedPiece, other.selectedPiece);
-    }
-}
+import {DrawState} from "src/DrawState.js";
 
 let drawState = DrawState.defaultValue();
 let lastDrawnState = undefined;
@@ -166,7 +30,9 @@ let prevMouse = [0, 0];
 
 let revision = new Revision([document.location.hash.substr(1)], 0, false);
 revision.latestActiveCommit().subscribe(hex => {
+    let preCamera = drawState.camera;
     drawState = DrawState.read(Reader.fromHex(hex));
+    drawState.camera = preCamera;
     document.location.hash = hex;
 });
 
@@ -410,7 +276,7 @@ canvas.addEventListener('mousemove', ev => {
         let dx = curMouse[0] - prevMouse[0];
         let dy = curMouse[1] - prevMouse[1];
         if (ev.shiftKey) {
-            step(dx * -0.01, dy * 0.01, 0);
+            moveCameraRelativeToFacing(dx * -0.01, dy * 0.01, 0);
         } else {
             drawState.camera.yaw += dx * 0.004;
             drawState.camera.pitch += dy * 0.004;
@@ -431,7 +297,7 @@ canvas.addEventListener('mousemove', ev => {
     }
 });
 
-function step(dx, dy, dz) {
+function moveCameraRelativeToFacing(dx, dy, dz) {
     let viewMatrix = drawState.camera.rotationMatrix();
     let d = viewMatrix.transformVector(new Vector(dx, dy, dz));
     drawState.camera.focus_point = drawState.camera.focus_point.plus(d);
@@ -449,57 +315,68 @@ canvas.addEventListener('mousewheel', ev => {
     drawState.camera.focus_point = drawState.camera.focus_point.plus(strafe);
 });
 
-document.addEventListener('keydown', ev => {
-    if (ev.keyCode === '1'.charCodeAt(0)) {
-        drawState.drawBraids = true;
-        drawState.drawOps = false;
+let keyListeners = /** @type {!Map.<!int, !Array.<!function(!KeyboardEvent)>>} */ new Map();
+
+/**
+ * @param {!string|!int} keyOrCode
+ * @param {!function(!KeyboardEvent)} func
+ */
+function addKeyListener(keyOrCode, func) {
+    if (!Number.isInteger(keyOrCode)) {
+        keyOrCode = keyOrCode.charCodeAt(0);
     }
 
-    if (ev.keyCode === '2'.charCodeAt(0)) {
-        drawState.drawBraids = false;
-        drawState.drawOps = true;
+    if (!keyListeners.has(keyOrCode)) {
+        keyListeners.set(keyOrCode, []);
     }
+    keyListeners.get(keyOrCode).push(func);
+}
 
-    if (ev.keyCode === '3'.charCodeAt(0)) {
-        drawState.drawBraids = true;
-        drawState.drawOps = true;
-    }
+addKeyListener('1', () => {
+    drawState.drawBraids = true;
+    drawState.drawOps = false;
+});
 
-    if (ev.keyCode === 187) {
-        drawState.codeDistance += 1;
-        lastSimState = new UnitCellMap();
-        ev.preventDefault();
-    }
+addKeyListener('2', () => {
+    drawState.drawBraids = false;
+    drawState.drawOps = true;
+});
 
-    if (ev.keyCode === 189) {
-        drawState.codeDistance = Math.max(drawState.codeDistance - 1, 1);
-        lastSimState = new UnitCellMap();
-        ev.preventDefault();
-    }
+addKeyListener('3', () => {
+    drawState.drawBraids = true;
+    drawState.drawOps = true;
+});
 
-    if (ev.keyCode === 'Z'.charCodeAt(0) && ev.ctrlKey && !ev.shiftKey) {
+addKeyListener(187, () => {
+    drawState.codeDistance += 1;
+    lastSimState = new UnitCellMap();
+});
+
+addKeyListener(187, () => {
+    drawState.codeDistance = Math.max(drawState.codeDistance - 1, 1);
+    lastSimState = new UnitCellMap();
+});
+
+addKeyListener('Z', ev => {
+    if (ev.ctrlKey && !ev.shiftKey) {
         revision.undo();
-    }
-    if ((ev.keyCode === 'Y'.charCodeAt(0) && ev.ctrlKey && !ev.shiftKey) ||
-            ev.keyCode === 'Z'.charCodeAt(0) && ev.ctrlKey && ev.shiftKey) {
+    } else if (ev.ctrlKey && ev.shiftKey) {
         revision.redo();
     }
+});
 
-    if (ev.keyCode === 'A'.charCodeAt(0) || ev.keyCode === 37) {
-        step(-0.1, 0, 0);
-        ev.preventDefault();
+addKeyListener('Y', ev => {
+    if (ev.ctrlKey && !ev.shiftKey) {
+        revision.redo();
     }
-    if (ev.keyCode === 'D'.charCodeAt(0) || ev.keyCode === 39) {
-        step(0.1, 0, 0);
-        ev.preventDefault();
-    }
+});
 
-    if (ev.keyCode === 'S'.charCodeAt(0) || ev.keyCode === 40) {
-        step(0, -0.1, 0);
+document.addEventListener('keydown', ev => {
+    let handlers = keyListeners.get(ev.keyCode);
+    if (handlers !== undefined) {
         ev.preventDefault();
-    }
-    if (ev.keyCode === 'W'.charCodeAt(0) || ev.keyCode === 38) {
-        step(0, 0.1, 0);
-        ev.preventDefault();
+        for (let handler of handlers) {
+            handler(ev);
+        }
     }
 });
