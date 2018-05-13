@@ -15,6 +15,9 @@ class RenderData {
      *     Render data for the same thing, but reformated for drawing wireframes.
      */
     constructor(points, colors, indices, wireframe, uv=undefined) {
+        if (!Array.isArray(points) || (points.length > 0 && !(points[0] instanceof Point))) {
+            throw new DetailedError('Not an array of points.', {points});
+        }
         this.points = points;
         this.colors = colors;
         this.indices = indices;
@@ -65,14 +68,17 @@ class RenderData {
         let results = [];
         let curChunk = [];
         let n = 0;
-        for (let e of renderData) {
-            let d = e.points.length;
+        for (let dat of renderData) {
+            if (!(dat instanceof RenderData)) {
+                throw new DetailedError('Not a RenderData.', {dat})
+            }
+            let d = dat.points.length;
             if (n + d >= (1 << 16)) {
                 results.push(curChunk);
                 n = 0;
                 curChunk = [];
             }
-            curChunk.push(e);
+            curChunk.push(dat);
             n += d;
         }
         if (curChunk.length > 0) {

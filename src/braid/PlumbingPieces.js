@@ -2,7 +2,9 @@ import {DetailedError} from 'src/base/DetailedError.js'
 import {seq} from "src/base/Seq.js";
 import {PlumbingPiece} from "src/braid/PlumbingPiece.js";
 import {Sockets} from "src/braid/Sockets.js";
+import {UnitCellSocketFootprint} from "src/braid/UnitCellSocketFootprint.js";
 import {GeneralMap} from "src/base/GeneralMap.js";
+import {GeneralSet} from "src/base/GeneralSet.js";
 import {Rect} from "src/geo/Rect.js";
 import {pyramidRenderData, lineSegmentPathRenderData} from "src/draw/Shapes.js";
 import {
@@ -21,6 +23,9 @@ import {
 } from "src/draw/shader.js";
 import {Vector} from "src/geo/Vector.js";
 import {RenderData} from "src/geo/RenderData.js";
+import {codeDistanceToPipeSeparation, codeDistanceToPipeSize} from "src/braid/CodeDistance.js";
+import {XYT} from "src/sim/util/XYT.js";
+import {XY} from "src/sim/util/XY.js";
 
 const PRIMAL_COLOR = [0.9, 0.9, 0.9, 1.0];
 const DUAL_COLOR = [0.4, 0.4, 0.4, 1.0];
@@ -68,11 +73,47 @@ function resultToKetRect(result) {
     return KET_UNKNOWN_RECT;
 }
 
+/**
+ * @param {!TileStack} tileStack
+ * @param {!int} codeDistance
+ * @param {!int} dx
+ * @param {!int} dy
+ */
+function propagateRightward(tileStack, codeDistance, dx, dy) {
+    let {w, h} = codeDistanceToPipeSize(codeDistance);
+    let s = codeDistanceToPipeSeparation(codeDistance);
+    for (let j = 0; j < h; j += 2) {
+        for (let i = 1; i < s; i += 2) {
+            let x = i + w + dx;
+            let y = j + dy;
+            tileStack.feedforward_x(new XY(x, y), new XY(x + 2, y));
+        }
+    }
+}
+
+/**
+ * @param {!LocalizedPlumbingPiece} localizedPiece
+ * @param {!SimulationResults} simResults
+ * @returns {!Array.<!RenderData>}
+ */
+function displayResult(localizedPiece, simResults) {
+    let box = localizedPiece.toBox();
+    let quad = box.faceQuad(new Vector(0, 1, 0)).
+        swapLegs().
+        flipHorizontal().
+        offsetBy(new Vector(0, box.diagonal.y / 2, 0));
+    let ketRect = resultToKetRect(simResults.get(localizedPiece.loc, localizedPiece.socket));
+    return [quad.toRenderData([1, 0.8, 0.8, 1], ketRect)];
+}
+
 PlumbingPieces.PRIMAL_RIGHTWARD = new PlumbingPiece(
     'PRIMAL_RIGHTWARD',
     Sockets.XPrimal,
     PRIMAL_COLOR,
-    H_ARROW_TEXTURE_RECT);
+    H_ARROW_TEXTURE_RECT,
+    undefined,
+    undefined,
+    propagateRightward);
 PlumbingPieces.PRIMAL_LEFTWARD = new PlumbingPiece(
     'PRIMAL_LEFTWARD',
     Sockets.XPrimal,
@@ -94,15 +135,8 @@ PlumbingPieces.PRIMAL_Z_INSPECT = new PlumbingPiece(
     Sockets.ZPrimal,
     PRIMAL_COLOR,
     DISPLAY_TEXTURE_RECT,
-    (localizedPiece, simResults) => {
-        let box = localizedPiece.toBox();
-        let quad = box.faceQuad(new Vector(0, 1, 0)).
-            swapLegs().
-            flipHorizontal().
-            offsetBy(new Vector(0, box.diagonal.y / 2, 0));
-        let r = resultToKetRect(simResults.get(localizedPiece.loc, localizedPiece.socket));
-        return [quad.toRenderData([1, 0.8, 0.8, 1], r)];
-    });
+    displayResult,
+    () => new UnitCellSocketFootprint(new GeneralSet()));
 
 PlumbingPieces.PRIMAL_BACKWARD = new PlumbingPiece(
     'PRIMAL_BACKWARD',
@@ -163,7 +197,8 @@ PlumbingPieces.DUAL_Z_INSPECT = new PlumbingPiece(
     'DUAL_Z_INSPECT',
     Sockets.ZDual,
     DUAL_COLOR,
-    DISPLAY_TEXTURE_RECT);
+    DISPLAY_TEXTURE_RECT,
+    displayResult);
 
 PlumbingPieces.DUAL_UPWARD = new PlumbingPiece(
     'DUAL_UPWARD',

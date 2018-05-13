@@ -57,6 +57,32 @@ class TileStack {
     }
 
     /**
+     * @param {!XY} xy
+     */
+    measurementOnLastTileAt(xy) {
+        if (!this.lastTile().measurements.has(xy)) {
+            throw new DetailedError('Not measured yet.', {xy});
+        }
+        return new XYT(xy.x, xy.y, this.tiles.length - 1);
+    }
+
+    /**
+     * @param {!XY} control
+     * @param {!XY} target
+     */
+    feedforward_x(control, target) {
+        this.feed.feedforward_x(this.measurementOnLastTileAt(control), target);
+    }
+
+    /**
+     * @param {!XY} control
+     * @param {!XY} target
+     */
+    feedforward_z(control, target) {
+        this.feed.feedforward_z(this.measurementOnLastTileAt(control), target);
+    }
+
+    /**
      * @param {!XY} control
      * @param {!XY} target
      */

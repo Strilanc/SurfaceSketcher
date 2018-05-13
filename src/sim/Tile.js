@@ -289,4 +289,4 @@ function padPush(array1, array2, item1, item2, pad=undefined) {
     array2.push(item2);
 }
 
-export {Tile}
+export {Tile, CONTROL, X_RIGHT, X_LEFT, X_UP, X_DOWN}

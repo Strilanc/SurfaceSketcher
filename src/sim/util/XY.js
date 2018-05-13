@@ -13,6 +13,15 @@ class XY {
     }
 
     /**
+     * @param {!int} dx
+     * @param {!int} dy
+     * @returns {!XY}
+     */
+    offsetBy(dx, dy) {
+        return new XY(this.x + dx, this.y + dy, this.must_be_active);
+    }
+
+    /**
      * @returns {!string}
      */
     toString() {

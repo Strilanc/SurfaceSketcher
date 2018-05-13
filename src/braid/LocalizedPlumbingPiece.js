@@ -55,15 +55,6 @@ class LocalizedPlumbingPiece {
     }
 
     /**
-     * @param {!int} codeDistance
-     * @param {!FixupLayer} fixupLayer
-     */
-    doSignalPropagation(codeDistance, fixupLayer) {
-        let {w, h} = codeDistanceUnitCellSize(codeDistance);
-        this.socket.propagateSignals(codeDistance, fixupLayer, w * this.loc.x, h * this.loc.z);
-    }
-
-    /**
      * @returns {!string}
      */
     key() {

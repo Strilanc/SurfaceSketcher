@@ -27,8 +27,7 @@ function genericToPrimal(pp) {
     return new UnitCellSocket(
         pp.name + 'Primal',
         pp.box,
-        codeDistance => pp.footprint(codeDistance),
-        pp.propagateSignals.bind(pp));
+        codeDistance => pp.footprint(codeDistance));
 }
 
 /**
@@ -44,8 +43,7 @@ function genericToDual(pp) {
             let dw = Math.floor((unitSize.w - 1) / 4) * 2 + 1;
             let dh = Math.floor((unitSize.h - 1) / 4) * 2 + 1;
             return pp.footprint(codeDistance).offsetBy(dw, dh);
-        },
-        () => {});
+        });
 }
 
 let centerConnector = new UnitCellSocket(
@@ -56,8 +54,7 @@ let centerConnector = new UnitCellSocket(
     codeDistance => {
         let {w, h} = codeDistanceToPipeSize(codeDistance);
         return UnitCellSocketFootprint.grid(0, 0, w, h);
-    },
-    () => {});
+    });
 
 let xConnector = new UnitCellSocket(
     'X',
@@ -69,19 +66,6 @@ let xConnector = new UnitCellSocket(
         w *= 2;
         w += codeDistanceToPipeSeparation(codeDistance);
         return UnitCellSocketFootprint.grid(0, 0, w, h);
-    },
-    (codeDistance, fixupLayer, dx, dy) => {
-        let {w, h} = codeDistanceToPipeSize(codeDistance);
-        let s = codeDistanceToPipeSeparation(codeDistance);
-        for (let j = 0; j < h; j += 2) {
-            for (let i = 1; i < s; i += 2) {
-                let x = i + w + dx;
-                let y = j + dy;
-                fixupLayer.pushFixup(new FixupOperation(
-                    new XYT(x, y, 0),
-                    new GeneralSet(new XY(x + 2, y))));
-            }
-        }
     });
 
 let yConnector = new UnitCellSocket(
@@ -92,8 +76,7 @@ let yConnector = new UnitCellSocket(
     codeDistance => {
         let {w, h} = codeDistanceToPipeSize(codeDistance);
         return UnitCellSocketFootprint.grid(0, 0, w, h);
-    },
-    () => {});
+    });
 
 let zConnector = new UnitCellSocket(
     'Z',
@@ -105,8 +88,7 @@ let zConnector = new UnitCellSocket(
         h *= 2;
         h += codeDistanceToPipeSeparation(codeDistance);
         return UnitCellSocketFootprint.grid(0, 0, w, h);
-    },
-    () => {});
+    });
 
 let genericPieces = [centerConnector, xConnector, yConnector, zConnector];
 let primalPieces = genericPieces.map(genericToPrimal);

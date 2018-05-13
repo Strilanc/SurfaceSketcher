@@ -1,3 +1,7 @@
+/**
+ * Entry point for the whole program.
+ */
+
 window.onerror = function(msg, url, line, col, error) {
     document.getElementById('err_msg').textContent = describe(msg);
     document.getElementById('err_line').textContent = describe(line);
@@ -25,6 +29,7 @@ import {DrawState} from "src/DrawState.js";
 import {initShaders} from "src/draw/shader.js";
 import {GeneralMap} from "src/base/GeneralMap.js";
 import {SimulationResults} from "src/braid/SimulateUnitCellMap.js";
+import {tileStackToRenderData} from "src/draw/TileDrawing.js";
 
 let drawState = DrawState.defaultValue();
 let lastDrawnState = undefined;
@@ -69,16 +74,12 @@ function makeRenderData() {
         }
     }
 
-    // let d = new Vector(1, 1, 1).scaledBy(0.1);
-    // result.push(new Box(camera.focus_point, d));
-
-
     if (drawState.drawOps) {
+        let tileIndex = 0;
         for (let i = 0; i < simLayers.length; i++) {
-            for (let j = 0; j < simLayers[i].grid.length; j++) {
-                result.push(...simLayers[i].toIntraLayerRenderDatas(j, i, drawState.codeDistance));
-            }
-            result.push(...simLayers[i].toInterLayerRenderDatas(i, drawState.codeDistance));
+            let tileStack = simLayers[i];
+            result.push(...tileStackToRenderData(tileStack, tileIndex, drawState.codeDistance));
+            tileIndex += tileStack.tiles.length;
         }
     }
 
@@ -100,7 +101,7 @@ function main() {
     requestAnimationFrame(render);
 }
 
-let simLayers = /** @type {!Array.<!LockstepSurfaceLayer>} */ [];
+let simLayers = /** @type {!Array.<!TileStack>} */ [];
 /**
  * @param {!WebGLRenderingContext} gl
  * @param {*} programInfo
@@ -299,7 +300,7 @@ addKeyListener(187, () => {
     lastSimState = new UnitCellMap();
 });
 
-addKeyListener(187, () => {
+addKeyListener(189, () => {
     drawState.codeDistance = Math.max(drawState.codeDistance - 1, 1);
     lastSimState = new UnitCellMap();
 });

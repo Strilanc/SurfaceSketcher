@@ -15,6 +15,8 @@ import {makeArrayGrid} from "src/sim/util/Util.js";
 import {Surface} from "src/sim/Surface.js";
 import {GeneralSet} from "src/base/GeneralSet.js";
 import {GeneralMap} from "src/base/GeneralMap.js";
+import {Tile} from "src/sim/Tile.js";
+import {TileStack} from "src/sim/TileStack.js";
 
 
 /**
@@ -22,10 +24,10 @@ import {GeneralMap} from "src/base/GeneralMap.js";
  * @param {!Array.<!LocalizedPlumbingPiece>} pieces
  * @returns {!UnitCellSocketFootprint}
  */
-function blockOut(codeDistance, pieces) {
+function combinedFootprint(codeDistance, pieces) {
     let result = new GeneralSet();
     for (let piece of pieces) {
-        for (let xy of piece.toFootprint(codeDistance).mask) {
+        for (let xy of piece.piece.toLocalizedFootprint(piece, codeDistance).mask) {
             result.add(xy);
         }
     }
@@ -33,13 +35,13 @@ function blockOut(codeDistance, pieces) {
 }
 
 /**
- * @param {!FixupLayer} fixupLayer
+ * @param {!TileStack} tileStack
  * @param {!int} codeDistance
  * @param {!Array.<!LocalizedPlumbingPiece>} pieces
  */
-function fixOut(fixupLayer, codeDistance, pieces) {
+function propagateSignals(tileStack, codeDistance, pieces) {
     for (let piece of pieces) {
-        piece.doSignalPropagation(codeDistance, fixupLayer);
+        piece.piece.propagateSignal(tileStack, piece, codeDistance);
     }
 }
 
@@ -65,33 +67,34 @@ function timeSlice(map, t) {
 /**
  * @param {!int} codeDistance
  * @param {!UnitCellMap} map
- * @returns {!Array.<!LockstepSurfaceLayer>}
+ * @returns {!Array.<!TileStack>}
  */
 function simulateMap(codeDistance, map) {
-    let w = 20;
-    let h = 20;
+    let w = 10;
+    let h = 10;
     let surface = new Surface(w, h);
-    let layers = [];
+    let tileStacks = [];
     for (let t = 0; t < 100; t++) {
-        let slice = [...timeSlice(map, t)];
-        if (slice.length === 0) {
+        let pieces = [...timeSlice(map, t)];
+        if (pieces.length === 0) {
             continue;
         }
-        let layer = new LockstepSurfaceLayer(new FixupLayer(w, h));
-        fixOut(layer.fixup, codeDistance, slice);
-        let block = blockOut(codeDistance, slice);
-        layer.measureEnabledStabilizers(surface, block.mask);
-        layers.push(layer);
+        let tileStack = new TileStack();
+        tileStack.startNewTile();
+        propagateSignals(tileStack, codeDistance, pieces);
+        let block = combinedFootprint(codeDistance, pieces);
+        tileStack.measureEnabledStabilizers(surface, block.mask);
+        tileStacks.push(tileStack);
     }
     surface.destruct();
-    return layers;
+    return tileStacks;
 }
 
 /**
- * @param {!Array.<!LockstepSurfaceLayer>} layers
+ * @param {!Array.<!TileStack>} tileStacks
  * @returns {!SimulationResults}
  */
-function runSimulation(layers) {
+function runSimulation(tileStacks) {
     return new SimulationResults(new GeneralMap());
 }
 
