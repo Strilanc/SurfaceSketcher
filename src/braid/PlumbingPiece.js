@@ -6,7 +6,8 @@ class PlumbingPiece {
      * @param {!UnitCellSocket} socket
      * @param {![!number, !number, !number, !number]} color
      * @param {undefined|!Rect} textureRect
-     * @param {undefined|!function(!LocalizedPlumbingPiece) : !Array.<!RenderData>} customToRenderData
+     * @param {undefined|!function(
+     *      !LocalizedPlumbingPiece, !SimulationResults) : !Array.<!RenderData>} customToRenderData
      */
     constructor(name, socket, color, textureRect=undefined, customToRenderData=undefined) {
         this.name = name;
@@ -32,11 +33,12 @@ class PlumbingPiece {
     /**
      *
      * @param {!LocalizedPlumbingPiece} localizedPiece
+     * @param {!SimulationResults} simulationResults
      * @returns {!Array.<!RenderData>}
      */
-    toLocalizedRenderData(localizedPiece) {
+    toLocalizedRenderData(localizedPiece, simulationResults) {
         if (this.customToRenderData !== undefined) {
-            return this.customToRenderData(localizedPiece);
+            return this.customToRenderData(localizedPiece, simulationResults);
         } else {
             return [localizedPiece.toRenderData(undefined)];
         }

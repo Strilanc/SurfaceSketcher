@@ -13,6 +13,9 @@ class GeneralMap {
     constructor(...entries) {
         this._items = /** @type {!Map.<!string, *>} */ new Map();
         for (let [key, val] of entries) {
+            if (this.has(key)) {
+                throw new DetailedError('Duplicate key during init.', {key, val});
+            }
             this.set(key, val);
         }
     }

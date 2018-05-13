@@ -14,6 +14,7 @@ import {FixupLayer} from "src/sim/FixupLayer.js";
 import {makeArrayGrid} from "src/sim/util/Util.js";
 import {Surface} from "src/sim/Surface.js";
 import {GeneralSet} from "src/base/GeneralSet.js";
+import {GeneralMap} from "src/base/GeneralMap.js";
 
 
 /**
@@ -66,7 +67,7 @@ function timeSlice(map, t) {
  * @param {!UnitCellMap} map
  * @returns {!Array.<!LockstepSurfaceLayer>}
  */
-function simulate_map(codeDistance, map) {
+function simulateMap(codeDistance, map) {
     let w = 20;
     let h = 20;
     let surface = new Surface(w, h);
@@ -86,4 +87,34 @@ function simulate_map(codeDistance, map) {
     return layers;
 }
 
-export {simulate_map}
+/**
+ * @param {!Array.<!LockstepSurfaceLayer>} layers
+ * @returns {!SimulationResults}
+ */
+function runSimulation(layers) {
+    return new SimulationResults(new GeneralMap());
+}
+
+class SimulationResults {
+    /**
+     * @param {!GeneralMap.<!Point, !GeneralMap.<!UnitCellSocket, !string>>} displayVals
+     */
+    constructor(displayVals) {
+        this.displayVals = displayVals;
+    }
+
+    /**
+     * @param {!Point} loc
+     * @param {!UnitCellSocket} socket
+     * @returns {undefined|*}
+     */
+    get(loc, socket) {
+        let s = this.displayVals.get(loc);
+        if (s === undefined) {
+            return undefined;
+        }
+        return s.get(socket);
+    }
+}
+
+export {simulateMap, SimulationResults, runSimulation}

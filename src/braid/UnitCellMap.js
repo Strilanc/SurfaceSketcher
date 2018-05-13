@@ -92,12 +92,13 @@ class UnitCellMap {
     }
 
     /**
+     * @param {!SimulationResults} simResults
      * @returns {!Array.<!RenderData>}
      */
-    renderData() {
+    renderData(simResults) {
         let result = [];
         for (let e of this.allLocalizedPieces()) {
-            result.push(...e.piece.toLocalizedRenderData(e));
+            result.push(...e.piece.toLocalizedRenderData(e, simResults));
         }
         return result;
     }

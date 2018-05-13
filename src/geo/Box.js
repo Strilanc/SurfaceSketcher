@@ -1,12 +1,13 @@
-import {Point} from "src/geo/Point.js"
-import {RenderData} from "src/geo/RenderData.js"
-import {Vector} from "src/geo/Vector.js"
-
 /**
  * @param {!int} v
  * @param {!int} amount
  * @returns {!int}
  */
+import {Point} from "src/geo/Point.js"
+import {RenderData} from "src/geo/RenderData.js"
+import {Vector} from "src/geo/Vector.js"
+import {Quad} from "src/geo/Quad.js";
+
 function rot3(v, amount) {
     let inverse_amount = (3 - amount) % 3;
     let m = (1 << inverse_amount) - 1;
@@ -139,6 +140,17 @@ class Box {
         let corners = this.corners();
         let m = side ? 0b100 : 0;
         return [0, 1, 3, 2].map(i => corners[rot3((i | m), dir)]);
+    }
+
+    /**
+     * @param {!Vector} dir
+     * @returns {!Quad}
+     */
+    faceQuad(dir) {
+        let side = dir.x + dir.y + dir.z < 0;
+        let d = Math.abs(dir.dot(new Vector(0, 2, 1)));
+        let points = this._facePoints(d, side);
+        return new Quad(points[0], points[1].minus(points[0]), points[3].minus(points[0]));
     }
 
     /**

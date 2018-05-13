@@ -16,17 +16,20 @@ import {RenderData} from "src/geo/RenderData.js";
 import {UnitCellMap} from "src/braid/UnitCellMap.js";
 import {PlumbingPieces} from "src/braid/PlumbingPieces.js";
 import {Sockets} from "src/braid/Sockets.js";
-import {simulate_map} from "src/braid/SimulateUnitCellMap.js"
+import {simulateMap, runSimulation} from "src/braid/SimulateUnitCellMap.js"
 import {equate} from "src/base/Equate.js";
 import {LocalizedPlumbingPiece} from "src/braid/LocalizedPlumbingPiece.js";
 import {Revision} from "src/base/Revision.js";
 import {Reader, Writer} from "src/base/Serialize.js";
 import {DrawState} from "src/DrawState.js";
 import {initShaders} from "src/draw/shader.js";
+import {GeneralMap} from "src/base/GeneralMap.js";
+import {SimulationResults} from "src/braid/SimulateUnitCellMap.js";
 
 let drawState = DrawState.defaultValue();
 let lastDrawnState = undefined;
 let lastSimState = undefined;
+let simResults = undefined;
 let prevMouse = [0, 0];
 let loadCamera = true;
 
@@ -48,8 +51,12 @@ revision.latestActiveCommit().subscribe(hex => {
 function makeRenderData() {
     let result = [];
 
+    let simResultsDef = simResults;
+    if (simResults === undefined) {
+        simResultsDef = new SimulationResults(new GeneralMap());
+    }
     if (drawState.drawBraids) {
-        result.push(...drawState.cellMap.renderData());
+        result.push(...drawState.cellMap.renderData(simResultsDef));
     }
 
     if (!drawState.drawOps && drawState.drawBraids) {
@@ -67,11 +74,11 @@ function makeRenderData() {
 
 
     if (drawState.drawOps) {
-        for (let i = 0; i < simulated_layers.length; i++) {
-            for (let j = 0; j < simulated_layers[i].grid.length; j++) {
-                result.push(...simulated_layers[i].toIntraLayerRenderDatas(j, i, drawState.codeDistance));
+        for (let i = 0; i < simLayers.length; i++) {
+            for (let j = 0; j < simLayers[i].grid.length; j++) {
+                result.push(...simLayers[i].toIntraLayerRenderDatas(j, i, drawState.codeDistance));
             }
-            result.push(...simulated_layers[i].toInterLayerRenderDatas(i, drawState.codeDistance));
+            result.push(...simLayers[i].toInterLayerRenderDatas(i, drawState.codeDistance));
         }
     }
 
@@ -93,7 +100,7 @@ function main() {
     requestAnimationFrame(render);
 }
 
-let simulated_layers = /** @type {!Array.<!LockstepSurfaceLayer>} */ [];
+let simLayers = /** @type {!Array.<!LockstepSurfaceLayer>} */ [];
 /**
  * @param {!WebGLRenderingContext} gl
  * @param {*} programInfo
@@ -107,7 +114,8 @@ function drawScene(gl, programInfo, buffers, arrowTexture) {
     lastDrawnState = drawState.clone();
     if (!drawState.cellMap.isEqualTo(lastSimState)) {
         lastSimState = drawState.cellMap.clone();
-        simulated_layers = simulate_map(drawState.codeDistance, lastSimState);
+        simLayers = simulateMap(drawState.codeDistance, lastSimState);
+        simResults = runSimulation(simLayers);
 
         let writer = new Writer();
         drawState.write(writer);

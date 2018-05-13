@@ -11,6 +11,13 @@ import {
     S_TEXTURE_RECT,
     H_INIT_TEXTURE_RECT,
     DISPLAY_TEXTURE_RECT,
+    KET_UNKNOWN_RECT,
+    KET_PLUS_I_RECT,
+    KET_MINUS_I_RECT,
+    KET_PLUS_RECT,
+    KET_MINUS_RECT,
+    KET_OFF_RECT,
+    KET_ON_RECT,
 } from "src/draw/shader.js";
 import {Vector} from "src/geo/Vector.js";
 import {RenderData} from "src/geo/RenderData.js";
@@ -49,6 +56,18 @@ function injectionSiteRenderData(localizedPiece, d, color) {
     return [a, b, c];
 }
 
+function resultToKetRect(result) {
+    switch (result) {
+        case '0': return KET_OFF_RECT;
+        case '1': return KET_ON_RECT;
+        case '+': return KET_PLUS_RECT;
+        case '-': return KET_MINUS_RECT;
+        case '+i': return KET_PLUS_I_RECT;
+        case '-i': return KET_MINUS_I_RECT;
+    }
+    return KET_UNKNOWN_RECT;
+}
+
 PlumbingPieces.PRIMAL_RIGHTWARD = new PlumbingPiece(
     'PRIMAL_RIGHTWARD',
     Sockets.XPrimal,
@@ -70,6 +89,20 @@ PlumbingPieces.PRIMAL_HORIZONTAL_INIT = new PlumbingPiece(
     Sockets.XPrimal,
     PRIMAL_COLOR,
     H_INIT_TEXTURE_RECT);
+PlumbingPieces.PRIMAL_Z_INSPECT = new PlumbingPiece(
+    'PRIMAL_Z_INSPECT',
+    Sockets.ZPrimal,
+    PRIMAL_COLOR,
+    DISPLAY_TEXTURE_RECT,
+    (localizedPiece, simResults) => {
+        let box = localizedPiece.toBox();
+        let quad = box.faceQuad(new Vector(0, 1, 0)).
+            swapLegs().
+            flipHorizontal().
+            offsetBy(new Vector(0, box.diagonal.y / 2, 0));
+        let r = resultToKetRect(simResults.get(localizedPiece.loc, localizedPiece.socket));
+        return [quad.toRenderData([1, 0.8, 0.8, 1], r)];
+    });
 
 PlumbingPieces.PRIMAL_BACKWARD = new PlumbingPiece(
     'PRIMAL_BACKWARD',
@@ -166,6 +199,7 @@ PlumbingPieces.All = [
     PlumbingPieces.DUAL_HORIZONTAL_S,
     PlumbingPieces.PRIMAL_HORIZONTAL_INIT,
     PlumbingPieces.DUAL_Z_INSPECT,
+    PlumbingPieces.PRIMAL_Z_INSPECT,
 ];
 
 PlumbingPieces.BySocket = new GeneralMap();

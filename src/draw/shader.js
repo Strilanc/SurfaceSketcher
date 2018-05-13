@@ -158,6 +158,26 @@ function createShader(gl, type, source) {
 function createArrowTexture(gl) {
     let r = 128;
     return createTextureByDrawingToCanvas(gl, 8*r, 8*r, ctx => {
+        function drawCell(x, y, drawer) {
+            ctx.save();
+            try {
+                ctx.beginPath();
+                ctx.translate(r * x * 2, r * y * 2);
+                drawer(ctx);
+            } finally {
+                ctx.restore();
+            }
+        }
+
+        function textCell(x, y, text) {
+            drawCell(x, y, () => {
+                ctx.fillStyle = 'black';
+                ctx.font = '180px sans-serif';
+                let w = ctx.measureText(text).width;
+                ctx.fillText(text, r - w/2, r*1.2);
+            });
+        }
+
         ctx.save();
         drawArrow(ctx, r);
         ctx.translate(r*4, 0);
@@ -165,30 +185,35 @@ function createArrowTexture(gl) {
         drawArrow(ctx, r);
         ctx.restore();
 
-        ctx.save();
-        ctx.translate(0, r*2);
-        ctx.translate(0, r/2);
-        drawArrow(ctx, r/2);
-        ctx.translate(r*2, r);
-        drawArrow(ctx, -r/2);
-        ctx.restore();
+        drawCell(0, 1, () => {
+            ctx.translate(0, r/2);
+            drawArrow(ctx, r/2);
+            ctx.translate(r*2, r);
+            drawArrow(ctx, -r/2);
+        });
 
-        ctx.save();
-        ctx.translate(r*2, r*2);
-        ctx.beginPath();
-        ctx.arc(r, r, r/2, 0, 2*Math.PI);
-        ctx.fillStyle = 'green';
-        ctx.fill();
-        ctx.fillStyle = 'black';
-        ctx.font = '120px monospace';
-        ctx.fillText('S', r, r);
-        ctx.restore();
+        drawCell(1, 1, () => {
+            ctx.arc(r, r, r/2, 0, 2*Math.PI);
+            ctx.fillStyle = 'green';
+            ctx.fill();
+            ctx.fillStyle = 'black';
+            ctx.font = '120px monospace';
+            ctx.fillText('S', r, r);
+        });
 
-        ctx.translate(r*4, 0);
-        ctx.beginPath();
-        ctx.arc(r, r, r/2, 0, 2*Math.PI);
-        ctx.fillStyle = 'red';
-        ctx.fill();
+        drawCell(2, 0, () => {
+            ctx.arc(r, r, r/2, 0, 2*Math.PI);
+            ctx.fillStyle = 'red';
+            ctx.fill();
+        });
+
+        textCell(2, 1, '|?\u27E9');
+        textCell(2, 2, '|0\u27E9');
+        textCell(2, 3, '|1\u27E9');
+        textCell(3, 0, '|+\u27E9');
+        textCell(3, 1, '|-\u27E9');
+        textCell(3, 2, '|+i\u27E9');
+        textCell(3, 3, '|-i\u27E9');
     });
 }
 
@@ -229,6 +254,20 @@ const S_TEXTURE_RECT = textureCell(1, 1);
 const H_INIT_TEXTURE_RECT = textureCell(0, 1);
 /** @type {!Rect} */
 const DISPLAY_TEXTURE_RECT = textureCell(2, 0);
+/** @type {!Rect} */
+const KET_UNKNOWN_RECT = textureCell(2, 1);
+/** @type {!Rect} */
+const KET_OFF_RECT = textureCell(2, 2);
+/** @type {!Rect} */
+const KET_ON_RECT = textureCell(2, 3);
+/** @type {!Rect} */
+const KET_PLUS_RECT = textureCell(3, 0);
+/** @type {!Rect} */
+const KET_MINUS_RECT = textureCell(3, 1);
+/** @type {!Rect} */
+const KET_PLUS_I_RECT = textureCell(3, 2);
+/** @type {!Rect} */
+const KET_MINUS_I_RECT = textureCell(3, 3);
 
 export {
     initShaders,
@@ -237,4 +276,11 @@ export {
     S_TEXTURE_RECT,
     H_INIT_TEXTURE_RECT,
     DISPLAY_TEXTURE_RECT,
+    KET_UNKNOWN_RECT,
+    KET_PLUS_I_RECT,
+    KET_MINUS_I_RECT,
+    KET_PLUS_RECT,
+    KET_MINUS_RECT,
+    KET_OFF_RECT,
+    KET_ON_RECT,
 }
