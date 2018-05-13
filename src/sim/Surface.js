@@ -27,6 +27,28 @@ class Surface {
         }
     }
 
+    measureAllStabilizers() {
+        for (let i = 0; i < this.width; i++) {
+            for (let j = i & 1; j < this.height; j += 2) {
+                this.measure_local_stabilizer(new XY(i, j, true));
+            }
+        }
+    }
+
+    clearXStabilizers() {
+        this.measureAllStabilizers();
+        for (let j = 1; j < this.height; j += 2) {
+            let parity = false;
+            for (let i = (this.width | 1) - 2; i >= 0; i -= 2) {
+                parity ^= this.last_measure(new XY(i, j)).result;
+                if (parity) {
+                    this.phase_toggle(new XY(i - 1, j));
+                }
+            }
+        }
+        this.measureAllStabilizers();
+    }
+
     destruct() {
         this.state.destruct();
     }

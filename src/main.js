@@ -58,7 +58,7 @@ function makeRenderData() {
 
     let simResultsDef = simResults;
     if (simResults === undefined) {
-        simResultsDef = new SimulationResults(new GeneralMap());
+        simResultsDef = new SimulationResults(new GeneralMap(), new GeneralMap());
     }
     if (drawState.drawBraids) {
         result.push(...drawState.cellMap.renderData(simResultsDef));
@@ -78,7 +78,7 @@ function makeRenderData() {
         let tileIndex = 0;
         for (let i = 0; i < simLayers.length; i++) {
             let tileStack = simLayers[i];
-            result.push(...tileStackToRenderData(tileStack, tileIndex, drawState.codeDistance));
+            result.push(...tileStackToRenderData(tileStack, tileIndex, drawState.codeDistance, simResults));
             tileIndex += tileStack.tiles.length;
         }
     }
@@ -311,6 +311,11 @@ addKeyListener('Z', ev => {
     } else if (ev.ctrlKey && ev.shiftKey) {
         revision.redo();
     }
+});
+
+addKeyListener('S', () => {
+    lastDrawnState = undefined;
+    lastSimState = undefined;
 });
 
 addKeyListener('Y', ev => {

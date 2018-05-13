@@ -18,6 +18,7 @@ import {codeDistanceUnitCellSize, codeDistanceToPipeSize} from "src/braid/CodeDi
 import {DirectedGraph} from "src/sim/util/DirectedGraph.js";
 import {indent} from "src/base/Util.js";
 import {gridRangeToString} from "src/sim/util/Util.js";
+import {XYT} from "src/sim/util/XYT.js";
 
 let HADAMARD = 'H';
 let CONTROL = 'C';
@@ -81,6 +82,75 @@ class Tile {
         let c = this.operations.getOrInsert(control, () => new TileColumn());
         let t = this.operations.getOrInsert(target, () => new TileColumn());
         c.padPush(t, CONTROL, x_type);
+    }
+
+    /**
+     * @param {!Surface} surface
+     * @param {!int} tileIndex
+     * @param {!GeneralMap.<!XYT, !Measurement>} measurementResultsOut
+     */
+    simulateOn(surface, tileIndex, measurementResultsOut) {
+        this._simulateInit(surface);
+        this._simulateOps(surface);
+        this._simulateMeasurements(surface, tileIndex, measurementResultsOut);
+    }
+
+    /**
+     * @param {!Surface} surface
+     */
+    _simulateInit(surface) {
+        for (let [xy, axis] of this.initializations.entries()) {
+            surface.measure(xy);
+            if (axis.is_x()) {
+                surface.hadamard(xy);
+            }
+        }
+    }
+
+    /**
+     * @param {!Surface} surface
+     */
+    _simulateOps(surface) {
+        let d = this.depth();
+        for (let i = 0; i < d; i++) {
+            for (let [xy, col] of this.operations.entries()) {
+                let op = col.entries[i];
+                switch (op) {
+                    case undefined:
+                        break;
+                    case CONTROL:
+                        break;
+                    case X_RIGHT:
+                        surface.cnot(xy.offsetBy(1, 0), xy);
+                        break;
+                    case X_LEFT:
+                        surface.cnot(xy.offsetBy(-1, 0), xy);
+                        break;
+                    case X_UP:
+                        surface.cnot(xy.offsetBy(0, 1), xy);
+                        break;
+                    case X_DOWN:
+                        surface.cnot(xy.offsetBy(0, -1), xy);
+                        break;
+                    default:
+                        throw new DetailedError('Unrecognized', {op});
+                }
+            }
+        }
+    }
+
+    /**
+     * @param {!Surface} surface
+     * @param {!int} tileIndex
+     * @param {!GeneralMap.<!XYT, !Measurement>} measurementResultsOut
+     */
+    _simulateMeasurements(surface, tileIndex, measurementResultsOut) {
+        for (let [xy, axis] of this.measurements.entries()) {
+            if (axis.is_x()) {
+                surface.hadamard(xy);
+            }
+            measurementResultsOut.set(new XYT(xy.x, xy.y, tileIndex), surface.measure(xy));
+        }
     }
 
     /**

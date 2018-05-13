@@ -92,6 +92,52 @@ class TileStack {
     }
 
     /**
+     * @param {!Surface} surface
+     * @param {!int} tileIndex
+     * @param {!GeneralMap.<!XYT, !Measurement>} measurementResultsOut
+     */
+    simulateOn(surface, tileIndex, measurementResultsOut) {
+        let measurements = new GeneralMap();
+        for (let i = 0; i < this.tiles.length; i++) {
+            this.tiles[i].simulateOn(surface, i, measurements);
+        }
+
+        // Classical propagation.
+        for (let xyt of this.prop.topologicalOrder()) {
+            if (measurements.get(xyt).result) {
+                for (let xyt2 of this.prop.outEdges(xyt)) {
+                    let m3 = measurements.get(xyt2);
+                    m3.result = !m3.result;
+                }
+            }
+        }
+
+        // Quantum propagation.
+        for (let [control, feed] of this.feed._pauliMaps.entries()) {
+            if (measurements.get(control).result) {
+                for (let [target, mask] of feed.operations.entries()) {
+                    if ((PauliMap.ZMask & mask) !== 0) {
+                        surface.phase(target);
+                        surface.phase(target);
+                    }
+                    if ((PauliMap.XMask & mask) !== 0) {
+                        surface.hadamard(target);
+                        surface.phase(target);
+                        surface.phase(target);
+                        surface.hadamard(target);
+                    }
+                }
+            }
+            feed.targets()
+        }
+
+        let result = measurements.mapKeys(xyt => new XYT(xyt.x, xyt.y, xyt.t + tileIndex));
+        for (let [key, val] of result.entries()) {
+            measurementResultsOut.set(key, val);
+        }
+    }
+
+    /**
      * @param {!XY} target
      * @param {!Axis} axis
      */

@@ -127,6 +127,18 @@ class DirectedGraph {
     }
 
     /**
+     * @param {*} key
+     * @returns {!Iterable.<*>}
+     */
+    outEdges(key) {
+        let node = this.nodes.get(key);
+        if (node === undefined) {
+            return [];
+        }
+        return node.outs;
+    }
+
+    /**
      * @returns {!DirectedGraph}
      */
     clone() {

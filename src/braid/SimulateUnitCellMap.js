@@ -70,15 +70,13 @@ function timeSlice(map, t) {
  * @returns {!Array.<!TileStack>}
  */
 function simulateMap(codeDistance, map) {
-    let w = 10;
-    let h = 10;
+    let w = 8;
+    let h = 16;
     let surface = new Surface(w, h);
     let tileStacks = [];
-    for (let t = 0; t < 100; t++) {
+    let count = seq(map.cells.keys()).map(e => (e.z + 2) * 2).max(0);
+    for (let t = 0; t < count; t++) {
         let pieces = [...timeSlice(map, t)];
-        if (pieces.length === 0) {
-            continue;
-        }
         let tileStack = new TileStack();
         tileStack.startNewTile();
         propagateSignals(tileStack, codeDistance, pieces);
@@ -95,15 +93,29 @@ function simulateMap(codeDistance, map) {
  * @returns {!SimulationResults}
  */
 function runSimulation(tileStacks) {
-    return new SimulationResults(new GeneralMap());
+    let w = 8;
+    let h = 16;
+    let surface = new Surface(w, h);
+    surface.clearXStabilizers();
+    let tileIndex = 0;
+    let measurements = new GeneralMap();
+    for (let tileStack of tileStacks) {
+        tileStack.simulateOn(surface, tileIndex, measurements);
+        tileIndex += tileStack.tiles.length;
+    }
+    surface.destruct();
+
+    return new SimulationResults(new GeneralMap(), measurements);
 }
 
 class SimulationResults {
     /**
      * @param {!GeneralMap.<!Point, !GeneralMap.<!UnitCellSocket, !string>>} displayVals
+     * @param {!GeneralMap.<!XYT, !Measurement>} measurements
      */
-    constructor(displayVals) {
+    constructor(displayVals, measurements) {
         this.displayVals = displayVals;
+        this.measurements = measurements;
     }
 
     /**

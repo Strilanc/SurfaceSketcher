@@ -11,6 +11,7 @@ import {DetailedError} from "src/base/DetailedError.js";
 import {XY} from "src/sim/util/XY.js";
 import {X_DOWN, X_LEFT, X_RIGHT, X_UP} from "src/sim/Tile.js";
 import {circleRenderData, lineSegmentPathRenderData} from "src/draw/Shapes.js";
+import {XYT} from "src/sim/util/XYT.js";
 
 /**
  * @param {*} operationIdentifier
@@ -72,9 +73,10 @@ function qubitPosition(codeDistance, xy, opIndex, tileIndex) {
  * @param {!Tile} tile
  * @param {!int} tileIndex
  * @param {!int} codeDistance
+ * @param {!SimulationResults} simResult
  * @returns {!Array.<!RenderData>}
  */
-function _tileWireRenderData(tile, tileIndex, codeDistance) {
+function _tileWireRenderData(tile, tileIndex, codeDistance, simResult) {
     let pos = (xy, opIndex) => qubitPosition(codeDistance, xy, opIndex, tileIndex);
 
     let result = [];
@@ -91,11 +93,29 @@ function _tileWireRenderData(tile, tileIndex, codeDistance) {
 
     // Measurements.
     for (let [xy, axis] of tile.measurements.entries()) {
-        if (axis.is_z()) {
-            result.push(uprightPyramidRenderData(pos(xy, depth), +0.01, [0, 1, 0, 1]));
+        let color;
+        let m = simResult.measurements.get(new XYT(xy.x, xy.y, tileIndex));
+
+        if (m !== undefined && m.random) {
+            color = [1, 0, 0, 1];
+        } if (m !== undefined && m.result) {
+            if (axis.is_z()) {
+                color = [0.75, 1, 0.75, 1];
+            } else {
+                color = [0.75, 0.75, 1, 1];
+            }
+        } else if (m !== undefined && !m.result) {
+            if (axis.is_z()) {
+                color = [0, 0.25, 0, 1];
+            } else {
+                color = [0, 0, 0.25, 1];
+            }
+        } else if (axis.is_z()) {
+            color = [0, 1, 0, 1];
         } else {
-            result.push(uprightPyramidRenderData(pos(xy, depth), +0.01, [0, 0, 1, 1]));
+            color = [0, 0, 1, 1];
         }
+        result.push(uprightPyramidRenderData(pos(xy, depth), +0.01, color));
     }
 
     // Data lines.
@@ -188,10 +208,11 @@ function flatCrossedCircleRenderData(center, dx, dz, radius, centerColor, border
  * @param {!Tile} tile
  * @param {!int} tileIndex
  * @param {!int} codeDistance
+ * @param {!SimulationResults} simResult
  * @returns {!Array.<!RenderData>}
  */
-function tileToRenderData(tile, tileIndex, codeDistance) {
-    let result = _tileWireRenderData(tile, tileIndex, codeDistance);
+function tileToRenderData(tile, tileIndex, codeDistance, simResult) {
+    let result = _tileWireRenderData(tile, tileIndex, codeDistance, simResult);
     for (let [xy, col] of tile.operations.entries()) {
         for (let colOpIndex = 0; colOpIndex < col.entries.length; colOpIndex++) {
             result.push(..._tileOperationToRenderData(col, tileIndex, colOpIndex, xy, codeDistance));
@@ -204,12 +225,13 @@ function tileToRenderData(tile, tileIndex, codeDistance) {
  * @param {!TileStack} tileStack
  * @param {!int} tileIndex
  * @param {!int} codeDistance
+ * @param {!SimulationResults} simResult
  * @returns {!Array.<!RenderData>}
  */
-function tileStackToRenderData(tileStack, tileIndex, codeDistance) {
+function tileStackToRenderData(tileStack, tileIndex, codeDistance, simResult) {
     let result = [];
     for (let i = 0; i < tileStack.tiles.length; i++) {
-        result.push(...tileToRenderData(tileStack.tiles[i], tileIndex + i, codeDistance));
+        result.push(...tileToRenderData(tileStack.tiles[i], tileIndex + i, codeDistance, simResult));
     }
     return result;
 }
