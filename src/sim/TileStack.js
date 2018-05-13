@@ -70,7 +70,18 @@ class TileStack {
      * @param {!XY} control
      * @param {!XY} target
      */
+    propagate(control, target) {
+        this.prop.includeEdge(this.measurementOnLastTileAt(control), this.measurementOnLastTileAt(target));
+    }
+
+    /**
+     * @param {!XY} control
+     * @param {!XY} target
+     */
     feedforward_x(control, target) {
+        if (this.lastTile().measurements.has(target)) {
+            throw new DetailedError('Already measured.', {target});
+        }
         this.feed.feedforward_x(this.measurementOnLastTileAt(control), target);
     }
 
@@ -103,17 +114,17 @@ class TileStack {
         }
 
         // Classical propagation.
-        for (let xyt of this.prop.topologicalOrder()) {
-            if (measurements.get(xyt).result) {
-                for (let xyt2 of this.prop.outEdges(xyt)) {
-                    let m3 = measurements.get(xyt2);
-                    m3.result = !m3.result;
+        for (let control of this.prop.topologicalOrder()) {
+            if (measurements.get(control).result) {
+                for (let target of this.prop.outEdges(control)) {
+                    let targetMeasurement = measurements.get(target);
+                    targetMeasurement.result = !targetMeasurement.result;
                 }
             }
         }
 
         // Quantum propagation.
-        for (let [control, feed] of this.feed._pauliMaps.entries()) {
+        for (let [control, feed] of this.feed.entries()) {
             if (measurements.get(control).result) {
                 for (let [target, mask] of feed.operations.entries()) {
                     if ((PauliMap.ZMask & mask) !== 0) {
@@ -179,6 +190,20 @@ class TileStack {
     hadamard(target) {
         this.feed.hadamard(target);
         this.lastTile().hadamard(target);
+    }
+
+    /**
+     * @param {!XY} target
+     */
+    pauli_x(target) {
+        this.lastTile().pauli_x(target);
+    }
+
+    /**
+     * @param {!XY} target
+     */
+    pauli_z(target) {
+        this.lastTile().pauli_x(target);
     }
 
     /**

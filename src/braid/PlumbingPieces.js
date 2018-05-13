@@ -198,7 +198,8 @@ PlumbingPieces.DUAL_Z_INSPECT = new PlumbingPiece(
     Sockets.ZDual,
     DUAL_COLOR,
     DISPLAY_TEXTURE_RECT,
-    displayResult);
+    displayResult,
+    () => new UnitCellSocketFootprint(new GeneralSet()));
 
 PlumbingPieces.DUAL_UPWARD = new PlumbingPiece(
     'DUAL_UPWARD',
@@ -262,4 +263,4 @@ PlumbingPieces.Defaults = new GeneralMap(
     [Sockets.CDual, PlumbingPieces.DUAL_CENTER],
 );
 
-export {PlumbingPieces}
+export {PlumbingPieces, PRIMAL_COLOR, DUAL_COLOR}

@@ -20,7 +20,7 @@ import {RenderData} from "src/geo/RenderData.js";
 import {UnitCellMap} from "src/braid/UnitCellMap.js";
 import {PlumbingPieces} from "src/braid/PlumbingPieces.js";
 import {Sockets} from "src/braid/Sockets.js";
-import {simulateMap, runSimulation} from "src/braid/SimulateUnitCellMap.js"
+import {unitCellMapToTileStacks, runSimulation} from "src/braid/SimulateUnitCellMap.js"
 import {equate} from "src/base/Equate.js";
 import {LocalizedPlumbingPiece} from "src/braid/LocalizedPlumbingPiece.js";
 import {Revision} from "src/base/Revision.js";
@@ -48,6 +48,13 @@ revision.latestActiveCommit().subscribe(hex => {
         drawState.camera = preCamera;
     }
     document.location.hash = hex;
+});
+revision.changes().subscribe(hex => {
+    if (hex === undefined) {
+        let writer = new Writer();
+        drawState.write(writer);
+        document.location.hash = writer.toHex();
+    }
 });
 
 /**
@@ -115,7 +122,7 @@ function drawScene(gl, programInfo, buffers, arrowTexture) {
     lastDrawnState = drawState.clone();
     if (!drawState.cellMap.isEqualTo(lastSimState)) {
         lastSimState = drawState.cellMap.clone();
-        simLayers = simulateMap(drawState.codeDistance, lastSimState);
+        simLayers = unitCellMapToTileStacks(drawState.codeDistance, lastSimState);
         simResults = runSimulation(simLayers);
 
         let writer = new Writer();
@@ -245,6 +252,10 @@ canvas.addEventListener('mousemove', ev => {
     }
 });
 
+canvas.addEventListener('mouseup', () => {
+    revision.startedWorkingOnCommit();
+});
+
 function moveCameraRelativeToFacing(dx, dy, dz) {
     let viewMatrix = drawState.camera.rotationMatrix();
     let d = viewMatrix.transformVector(new Vector(dx, dy, dz));
@@ -261,6 +272,7 @@ canvas.addEventListener('mousewheel', ev => {
     let strafe = displacement.perpOnto(drawState.camera.direction()).scaledBy(-1);
     drawState.camera.distance += displacement.scalarProjectOnto(drawState.camera.direction());
     drawState.camera.focus_point = drawState.camera.focus_point.plus(strafe);
+    revision.startedWorkingOnCommit();
 });
 
 let keyListeners = /** @type {!Map.<!int, !Array.<!function(!KeyboardEvent)>>} */ new Map();
@@ -307,6 +319,7 @@ addKeyListener(189, () => {
 
 addKeyListener('Z', ev => {
     if (ev.ctrlKey && !ev.shiftKey) {
+        revision.cancelCommitBeingWorkedOn();
         revision.undo();
     } else if (ev.ctrlKey && ev.shiftKey) {
         revision.redo();

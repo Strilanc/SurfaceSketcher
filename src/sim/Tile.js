@@ -23,9 +23,30 @@ import {XYT} from "src/sim/util/XYT.js";
 let HADAMARD = 'H';
 let CONTROL = 'C';
 let X_RIGHT = '<';
+let PAULI_X = 'X';
+let PAULI_Z = 'Z';
 let X_LEFT = '>';
 let X_UP = 'v';
 let X_DOWN = '^';
+
+let SIM_ACTIONS = new Map();
+SIM_ACTIONS.set(undefined, () => {});
+SIM_ACTIONS.set(CONTROL, () => {});
+SIM_ACTIONS.set(X_RIGHT, (surface, xy) => surface.cnot(xy.offsetBy(1, 0), xy));
+SIM_ACTIONS.set(X_LEFT, (surface, xy) => surface.cnot(xy.offsetBy(-1, 0), xy));
+SIM_ACTIONS.set(X_UP, (surface, xy) => surface.cnot(xy.offsetBy(0, +1), xy));
+SIM_ACTIONS.set(X_DOWN, (surface, xy) => surface.cnot(xy.offsetBy(0, -1), xy));
+SIM_ACTIONS.set(PAULI_X, (surface, xy) => {
+    surface.hadamard(xy);
+    surface.phase(xy);
+    surface.phase(xy);
+    surface.hadamard(xy);
+});
+SIM_ACTIONS.set(PAULI_Z, (surface, xy) => {
+    surface.phase(xy);
+    surface.phase(xy);
+});
+
 
 class TileColumn {
     /**
@@ -100,7 +121,12 @@ class Tile {
      */
     _simulateInit(surface) {
         for (let [xy, axis] of this.initializations.entries()) {
-            surface.measure(xy);
+            if (surface.measure(xy).result) {
+                surface.hadamard(xy);
+                surface.phase(xy);
+                surface.phase(xy);
+                surface.hadamard(xy);
+            }
             if (axis.is_x()) {
                 surface.hadamard(xy);
             }
@@ -115,26 +141,11 @@ class Tile {
         for (let i = 0; i < d; i++) {
             for (let [xy, col] of this.operations.entries()) {
                 let op = col.entries[i];
-                switch (op) {
-                    case undefined:
-                        break;
-                    case CONTROL:
-                        break;
-                    case X_RIGHT:
-                        surface.cnot(xy.offsetBy(1, 0), xy);
-                        break;
-                    case X_LEFT:
-                        surface.cnot(xy.offsetBy(-1, 0), xy);
-                        break;
-                    case X_UP:
-                        surface.cnot(xy.offsetBy(0, 1), xy);
-                        break;
-                    case X_DOWN:
-                        surface.cnot(xy.offsetBy(0, -1), xy);
-                        break;
-                    default:
-                        throw new DetailedError('Unrecognized', {op});
+                let action = SIM_ACTIONS.get(op);
+                if (action === undefined) {
+                    throw new DetailedError('Unrecognized', {op});
                 }
+                action(surface, xy);
             }
         }
     }
@@ -149,7 +160,14 @@ class Tile {
             if (axis.is_x()) {
                 surface.hadamard(xy);
             }
-            measurementResultsOut.set(new XYT(xy.x, xy.y, tileIndex), surface.measure(xy));
+            let result = surface.measure(xy);
+            measurementResultsOut.set(new XYT(xy.x, xy.y, tileIndex), result);
+            if (result.result) {
+                surface.hadamard(xy);
+                surface.phase(xy);
+                surface.phase(xy);
+                surface.hadamard(xy);
+            }
         }
     }
 
@@ -159,6 +177,22 @@ class Tile {
     hadamard(target) {
         let t = this.operations.getOrInsert(target, () => new TileColumn());
         t.entries.push(HADAMARD);
+    }
+
+    /**
+     * @param {!XY} target
+     */
+    pauli_x(target) {
+        let t = this.operations.getOrInsert(target, () => new TileColumn());
+        t.entries.push(PAULI_X);
+    }
+
+    /**
+     * @param {!XY} target
+     */
+    pauli_z(target) {
+        let t = this.operations.getOrInsert(target, () => new TileColumn());
+        t.entries.push(PAULI_Z);
     }
 
     /**
@@ -292,7 +326,7 @@ class Tile {
      * @returns {!int}
      */
     depth() {
-        return seq(this.operations.values()).map(e => e.entries.length).max();
+        return seq(this.operations.values()).map(e => e.entries.length).max(0);
     }
 
     /**
@@ -359,4 +393,4 @@ function padPush(array1, array2, item1, item2, pad=undefined) {
     array2.push(item2);
 }
 
-export {Tile, CONTROL, X_RIGHT, X_LEFT, X_UP, X_DOWN}
+export {Tile, CONTROL, X_RIGHT, X_LEFT, X_UP, X_DOWN, PAULI_X, PAULI_Z}

@@ -1,6 +1,7 @@
 /**
- * @param {!int} t
+ * Methods for preparing parallel operations to perform during simulation, and actually doing that simulation.
  */
+
 import {DetailedError} from 'src/base/DetailedError.js'
 import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
@@ -17,6 +18,7 @@ import {GeneralSet} from "src/base/GeneralSet.js";
 import {GeneralMap} from "src/base/GeneralMap.js";
 import {Tile} from "src/sim/Tile.js";
 import {TileStack} from "src/sim/TileStack.js";
+import {XY} from "src/sim/util/XY.js";
 
 
 /**
@@ -65,15 +67,46 @@ function timeSlice(map, t) {
 }
 
 /**
+ * @param {!Surface} surface
+ * @returns {!TileStack}
+ */
+function makeClearXStabilizersTileStack(surface) {
+    let t = makeMeasureAllStabilizersTileStack(surface);
+    for (let j = 1; j < surface.height; j += 2) {
+        for (let i = (surface.width | 1) - 2; i >= 1; i -= 2) {
+            if (i >= 1) {
+                t.feedforward_z(new XY(i, j), new XY(i - 1, j));
+            }
+            if (i >= 2) {
+                t.propagate(new XY(i, j), new XY(i - 2, j));
+            }
+        }
+    }
+    return t;
+}
+
+/**
+ * @param {!Surface} surface
+ * @returns {!TileStack}
+ */
+function makeMeasureAllStabilizersTileStack(surface) {
+    let t = new TileStack();
+    t.startNewTile();
+    t.measureEnabledStabilizers(surface, new GeneralSet());
+    return t;
+}
+
+/**
  * @param {!int} codeDistance
  * @param {!UnitCellMap} map
  * @returns {!Array.<!TileStack>}
  */
-function simulateMap(codeDistance, map) {
+function unitCellMapToTileStacks(codeDistance, map) {
     let w = 8;
     let h = 16;
     let surface = new Surface(w, h);
     let tileStacks = [];
+    tileStacks.push(makeClearXStabilizersTileStack(surface));
     let count = seq(map.cells.keys()).map(e => (e.z + 2) * 2).max(0);
     for (let t = 0; t < count; t++) {
         let pieces = [...timeSlice(map, t)];
@@ -90,14 +123,13 @@ function simulateMap(codeDistance, map) {
 
 /**
  * @param {!Array.<!TileStack>} tileStacks
+ * @param {!int} tileIndex
  * @returns {!SimulationResults}
  */
-function runSimulation(tileStacks) {
+function runSimulation(tileStacks, tileIndex=0) {
     let w = 8;
     let h = 16;
     let surface = new Surface(w, h);
-    surface.clearXStabilizers();
-    let tileIndex = 0;
     let measurements = new GeneralMap();
     for (let tileStack of tileStacks) {
         tileStack.simulateOn(surface, tileIndex, measurements);
@@ -132,4 +164,10 @@ class SimulationResults {
     }
 }
 
-export {simulateMap, SimulationResults, runSimulation}
+export {
+    unitCellMapToTileStacks,
+    SimulationResults,
+    runSimulation,
+    makeMeasureAllStabilizersTileStack,
+    makeClearXStabilizersTileStack
+}

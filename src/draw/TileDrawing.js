@@ -12,6 +12,8 @@ import {XY} from "src/sim/util/XY.js";
 import {X_DOWN, X_LEFT, X_RIGHT, X_UP} from "src/sim/Tile.js";
 import {circleRenderData, lineSegmentPathRenderData} from "src/draw/Shapes.js";
 import {XYT} from "src/sim/util/XYT.js";
+import {DUAL_COLOR, PRIMAL_COLOR} from "src/braid/PlumbingPieces.js";
+import {PauliMap} from "src/sim/util/PauliMap.js";
 
 /**
  * @param {*} operationIdentifier
@@ -66,7 +68,7 @@ function qubitPosition(codeDistance, xy, opIndex, tileIndex) {
     let sh = Math.floor((uh - 2*ph)/4) * 2;
     let x = keyFrameLerp(subX, [0, 0], [pw, 0.2], [pw + sw, 0.5], [pw*2 + sw, 0.7], [uw, 1]);
     let y = keyFrameLerp(subY, [0, 0], [ph, 0.2], [ph + sh, 0.5], [ph*2 + sh, 0.7], [uh, 1]);
-    return new Point(x + blockX, opIndex*0.03 + tileIndex*0.5, y + blockY)
+    return new Point(x + blockX, opIndex*0.01 + tileIndex*0.5 - 0.5, y + blockY)
 }
 
 /**
@@ -85,9 +87,9 @@ function _tileWireRenderData(tile, tileIndex, codeDistance, simResult) {
     // Initializations.
     for (let [xy, axis] of tile.initializations.entries()) {
         if (axis.is_z()) {
-            result.push(uprightPyramidRenderData(pos(xy, -1), -0.01, [0, 1, 0, 1]));
+            result.push(uprightPyramidRenderData(pos(xy, -1), -0.01, PRIMAL_COLOR));
         } else {
-            result.push(uprightPyramidRenderData(pos(xy, -1), -0.01, [0, 0, 1, 1]));
+            result.push(uprightPyramidRenderData(pos(xy, -1), -0.01, DUAL_COLOR));
         }
     }
 
@@ -96,40 +98,23 @@ function _tileWireRenderData(tile, tileIndex, codeDistance, simResult) {
         let color;
         let m = simResult.measurements.get(new XYT(xy.x, xy.y, tileIndex));
 
-        if (m !== undefined && m.random) {
-            color = [1, 0, 0, 1];
-        } if (m !== undefined && m.result) {
+        if (m !== undefined && m.result) {
             if (axis.is_z()) {
-                color = [0.75, 1, 0.75, 1];
+                color = [1, 0.7, 0.7, 1];
             } else {
-                color = [0.75, 0.75, 1, 1];
-            }
-        } else if (m !== undefined && !m.result) {
-            if (axis.is_z()) {
-                color = [0, 0.25, 0, 1];
-            } else {
-                color = [0, 0, 0.25, 1];
+                color = [0.7, 0.4, 0.4, 1];
             }
         } else if (axis.is_z()) {
-            color = [0, 1, 0, 1];
+            color = PRIMAL_COLOR;
         } else {
-            color = [0, 0, 1, 1];
+            color = DUAL_COLOR;
         }
-        result.push(uprightPyramidRenderData(pos(xy, depth), +0.01, color));
+        result.push(uprightPyramidRenderData(pos(xy, depth + 1), +0.01, color));
     }
 
     // Data lines.
     for (let xy of tile.operations.keys()) {
-        let color;
-        let axis = tile.initializations.get(xy);
-        if (axis === undefined) {
-            color = [0, 0, 0, 1];
-        } else if (axis.is_z()) {
-            color = [0, 1, 0, 1];
-        } else {
-            color = [0, 0, 1, 1];
-        }
-        result.push(lineSegmentPathRenderData([pos(xy, -1), pos(xy, depth)], color));
+        result.push(lineSegmentPathRenderData([pos(xy, -1), pos(xy, depth + 4)], [0, 0, 0, 1]));
     }
 
     return result;
@@ -151,15 +136,15 @@ function _tileOperationToRenderData(tileColumn, tileIndex, opIndex, colXy, codeD
         return [];
     }
 
-    let target = flatCrossedCircleRenderData(
+    let target = flatCrossedCircleRenderDataMulti(
         pos(colXy),
         delta.x,
         delta.y,
-        0.006,
+        0.004,
         [0.9, 0.9, 0.9, 1],
         [0, 0, 0, 1]);
 
-    let control = flatCrossedCircleRenderData(
+    let control = flatCrossedCircleRenderDataMulti(
         pos(colXy.offsetBy(delta.x, delta.y)),
         -delta.x,
         -delta.y,
@@ -170,6 +155,100 @@ function _tileOperationToRenderData(tileColumn, tileIndex, opIndex, colXy, codeD
     let controlToTargetLine = lineSegmentPathRenderData([pos(colXy), pos(colXy.offsetBy(delta.x, delta.y))]);
 
     return [...target, ...control, controlToTargetLine];
+}
+
+/**
+ * @param {!TileStack} tileStack
+ * @param {!int} tileIndex
+ * @param {!int} codeDistance
+ * @returns {!Array.<!RenderData>}
+ */
+function _tileStackFeedToRenderData(tileStack, tileIndex, codeDistance) {
+    let result = [];
+
+    for (let [xyt, pauliMap] of tileStack.feed.entries()) {
+        let controlPos = qubitPosition(codeDistance, xyt.xy, 10, xyt.t + tileIndex);
+        let controlData = circleRenderData(
+            controlPos,
+            new Vector(0.002, 0, 0),
+            new Vector(0, 0, 0.002),
+            [0, 0, 0, 1],
+            undefined,
+            12);
+        result.push(controlData);
+
+        for (let [target, effect] of pauliMap.operations.entries()) {
+            let targetPos = qubitPosition(codeDistance, target, 10, xyt.t + tileIndex);
+            let targetColor;
+            if (effect === PauliMap.XMask) {
+                targetColor = PRIMAL_COLOR;
+            } else if (effect === PauliMap.ZMask) {
+                targetColor = DUAL_COLOR;
+            } else if (effect === (PauliMap.XMask | PauliMap.ZMask)) {
+                targetColor = [0, 0, 1, 1];
+            }
+
+            let delta = targetPos.minus(controlPos).perpOnto(new Vector(0, 1, 0)).unit();
+            let targetData = flatCrossedCircleRenderDataMulti(
+                targetPos,
+                delta.x,
+                delta.y,
+                0.004,
+                targetColor,
+                [0, 0, 0, 1]);
+
+            let controlToTargetLine = lineSegmentPathRenderData([controlPos, targetPos]);
+
+            result.push(...targetData);
+            result.push(controlToTargetLine);
+        }
+    }
+    return result;
+}
+
+/**
+ * @param {!TileStack} tileStack
+ * @param {!int} tileIndex
+ * @param {!int} codeDistance
+ * @returns {!Array.<!RenderData>}
+ */
+function _tileStackPropToRenderData(tileStack, tileIndex, codeDistance) {
+    let result = [];
+
+    for (let xyt of tileStack.prop.topologicalOrder()) {
+        let outs = tileStack.prop.outEdges(xyt);
+        if (outs.length === 0) {
+            continue;
+        }
+
+        let controlPos = qubitPosition(codeDistance, xyt.xy, 9, xyt.t + tileIndex);
+        let controlData = circleRenderData(
+            controlPos,
+            new Vector(0.002, 0, 0),
+            new Vector(0, 0, 0.002),
+            [0, 0, 0, 1],
+            undefined,
+            12);
+        result.push(controlData);
+
+        for (let target of outs) {
+            let targetPos = qubitPosition(codeDistance, target, 7, xyt.t + tileIndex);
+            let delta = targetPos.minus(controlPos).perpOnto(new Vector(0, 1, 0)).unit();
+            let targetData = flatCrossedCircleRenderDataMulti(
+                targetPos,
+                delta.x,
+                delta.y,
+                0.004,
+                PRIMAL_COLOR,
+                [0, 0, 0, 1]);
+
+            let controlToTargetLine = lineSegmentPathRenderData([controlPos, targetPos]);
+
+            result.push(...targetData);
+            result.push(controlToTargetLine);
+        }
+    }
+    return result;
 }
 
 /**
@@ -193,10 +272,10 @@ function uprightPyramidRenderData(tip, height, color) {
  * @param {![!number, !number, !number, !number]}borderColor
  * @returns {!Array.<!RenderData>}
  */
-function flatCrossedCircleRenderData(center, dx, dz, radius, centerColor, borderColor) {
+function flatCrossedCircleRenderDataMulti(center, dx, dz, radius, centerColor, borderColor) {
     let dh = new Vector(dx*radius, 0, dz*radius);
     let dv = new Vector(0, radius, 0);
-    let circleData = circleRenderData(center, dh, dv, centerColor, borderColor);
+    let circleData = circleRenderData(center, dh, dv, centerColor, borderColor, 12);
 
     let crossData1 = lineSegmentPathRenderData([center.plus(dh), center.plus(dh.scaledBy(-1))]);
     let crossData2 = lineSegmentPathRenderData([center.plus(dv), center.plus(dv.scaledBy(-1))]);
@@ -233,6 +312,8 @@ function tileStackToRenderData(tileStack, tileIndex, codeDistance, simResult) {
     for (let i = 0; i < tileStack.tiles.length; i++) {
         result.push(...tileToRenderData(tileStack.tiles[i], tileIndex + i, codeDistance, simResult));
     }
+    result.push(..._tileStackFeedToRenderData(tileStack, tileIndex, codeDistance));
+    result.push(..._tileStackPropToRenderData(tileStack, tileIndex, codeDistance));
     return result;
 }
 

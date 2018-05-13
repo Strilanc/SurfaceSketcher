@@ -128,14 +128,14 @@ class DirectedGraph {
 
     /**
      * @param {*} key
-     * @returns {!Iterable.<*>}
+     * @returns {!Array.<*>}
      */
     outEdges(key) {
         let node = this.nodes.get(key);
         if (node === undefined) {
             return [];
         }
-        return node.outs;
+        return [...node.outs];
     }
 
     /**

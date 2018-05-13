@@ -29,6 +29,13 @@ class ControlledPauliMaps {
     }
 
     /**
+     * @returns {!Iterator.<![!XYT, !PauliMap]>}
+     */
+    entries() {
+        return this._pauliMaps.entries();
+    }
+
+    /**
      * @returns {!ControlledPauliMaps}
      */
     clone() {
