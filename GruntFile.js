@@ -93,8 +93,9 @@ module.exports = function(grunt) {
         var triggers = rootFiles.map(function(path) {
             return '_gen_package_get(' + JSON.stringify(path) + ');';
         }).join('\n');
+        var mainFirst = rootFiles.indexOf('src/main.js') !== -1 ? '_gen_package_get("src/main.js");' : '';
 
-        var all = [header, wrappedContent, triggers].join('\n\n\n') + '\n';
+        var all = [header, wrappedContent, mainFirst, triggers].join('\n\n\n') + '\n';
 
         grunt.file.write(dst, all);
     });

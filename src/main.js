@@ -22,17 +22,23 @@ import {LocalizedPlumbingPiece} from "src/braid/LocalizedPlumbingPiece.js";
 import {Revision} from "src/base/Revision.js";
 import {Reader, Writer} from "src/base/Serialize.js";
 import {DrawState} from "src/DrawState.js";
+import {initShaders} from "src/draw/shader.js";
 
 let drawState = DrawState.defaultValue();
 let lastDrawnState = undefined;
 let lastSimState = undefined;
 let prevMouse = [0, 0];
+let loadCamera = true;
 
 let revision = new Revision([document.location.hash.substr(1)], 0, false);
 revision.latestActiveCommit().subscribe(hex => {
     let preCamera = drawState.camera;
     drawState = DrawState.read(Reader.fromHex(hex));
-    drawState.camera = preCamera;
+    if (loadCamera) {
+        loadCamera = false;
+    } else {
+        drawState.camera = preCamera;
+    }
     document.location.hash = hex;
 });
 
@@ -76,63 +82,15 @@ function makeRenderData() {
 const canvas = /** @type {!HTMLCanvasElement} */ document.getElementById('main-canvas');
 function main() {
     const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";  // Don't show scroll bars just because the canvas fills the screen.
 
-    const vsSource = `
-        attribute vec4 aVertexPosition;
-        attribute vec4 aVertexColor;
-
-        uniform mat4 uMatrix;
-
-        varying lowp vec4 vColor;
-
-        void main(void) {
-            gl_Position = uMatrix * aVertexPosition;
-            vColor = aVertexColor;
-        }
-    `;
-
-    const fsSource = `
-        precision highp float;
-
-        varying lowp vec4 vColor;
-
-        void main(void) {
-            gl_FragColor = vColor;
-        }
-    `;
-
-    const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
-
-    const programInfo = {
-        program: shaderProgram,
-        attribLocations: {
-            vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
-            vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
-        },
-        uniformLocations: {
-            matrix: gl.getUniformLocation(shaderProgram, 'uMatrix'),
-        },
-    };
-
-    const buffers = initBuffers(gl);
+    let {programInfo, buffers, arrowTexture} = initShaders(gl);
 
     function render() {
-        drawScene(gl, programInfo, buffers);
+        drawScene(gl, programInfo, buffers, arrowTexture);
         requestAnimationFrame(render);
     }
     requestAnimationFrame(render);
-}
-
-function initBuffers(gl) {
-    const positionBuffer = gl.createBuffer();
-    const colorBuffer = gl.createBuffer();
-    const indexBuffer = gl.createBuffer();
-    return {
-        position: positionBuffer,
-        color: colorBuffer,
-        indices: indexBuffer,
-    };
 }
 
 let simulated_layers = /** @type {!Array.<!LockstepSurfaceLayer>} */ [];
@@ -140,8 +98,9 @@ let simulated_layers = /** @type {!Array.<!LockstepSurfaceLayer>} */ [];
  * @param {!WebGLRenderingContext} gl
  * @param {*} programInfo
  * @param {*} buffers
+ * @param {!WebGLTexture} arrowTexture
  */
-function drawScene(gl, programInfo, buffers) {
+function drawScene(gl, programInfo, buffers, arrowTexture) {
     if (drawState.isEqualTo(lastDrawnState)) {
         return;
     }
@@ -177,6 +136,9 @@ function drawScene(gl, programInfo, buffers) {
         programInfo.uniformLocations.matrix,
         false,
         drawState.camera.worldToScreenMatrix(canvas).transpose().raw);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, arrowTexture);
+    gl.uniform1i(programInfo.uniformLocations.texture, 0);
 
     let allRenderData = makeRenderData();
     _drawSceneHelper(gl, programInfo, buffers, allRenderData, gl.TRIANGLES);
@@ -202,40 +164,17 @@ function _drawSceneHelper(gl, programInfo, buffers, allRenderData, mode) {
         gl.vertexAttribPointer(programInfo.attribLocations.vertexColor, 4, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
 
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.textureCoords);
+        gl.bufferData(gl.ARRAY_BUFFER, RenderData.allUvData(chunk), gl.STATIC_DRAW);
+        gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+
         let indexData = RenderData.allIndexData(chunk);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indexData, gl.STATIC_DRAW);
 
         gl.drawElements(mode, indexData.length, gl.UNSIGNED_SHORT, 0);
     }
-}
-
-function initShaderProgram(gl, vsSource, fsSource) {
-    const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
-    const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
-
-    const shaderProgram = gl.createProgram();
-    gl.attachShader(shaderProgram, vertexShader);
-    gl.attachShader(shaderProgram, fragmentShader);
-    gl.linkProgram(shaderProgram);
-
-    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-        throw new Error('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
-    }
-
-    return shaderProgram;
-}
-
-function loadShader(gl, type, source) {
-    const shader = gl.createShader(type);
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        let info = gl.getShaderInfoLog(shader);
-        gl.deleteShader(shader);
-        throw new DetailedError('Bad shader', {type, source, info});
-    }
-    return shader;
 }
 
 main();

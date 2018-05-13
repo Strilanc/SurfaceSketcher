@@ -106,16 +106,6 @@ class UnitCellMap {
         let bestPiece = undefined;
         let bestPt = undefined;
         let bestNew = undefined;
-        for (let [dir, localizedPiece] of this.allNeighbors()) {
-            let pt = ray.intersectBox(localizedPiece.toNeighborExtensionBox(dir), 0.001);
-            if (pt !== undefined) {
-                if (bestPt === undefined || ray.firstPoint([bestPt, pt]) === pt) {
-                    bestPiece = localizedPiece;
-                    bestPt = pt;
-                    bestNew = true;
-                }
-            }
-        }
         for (let piece of this.allLocalizedPieces()) {
             let pt = ray.intersectBox(piece.toBox(), 0.001);
             if (pt !== undefined) {
@@ -123,6 +113,18 @@ class UnitCellMap {
                     bestPiece = piece;
                     bestPt = pt;
                     bestNew = false;
+                }
+            }
+        }
+        for (let [dir, localizedPiece] of this.allNeighbors()) {
+            let pt = ray.intersectBox(localizedPiece.toNeighborExtensionBox(dir), 0.001);
+            if (pt !== undefined) {
+                if (bestPt === undefined || ray.firstPoint([bestPt, pt]) === pt) {
+                    if (bestPt === undefined || bestPt.minus(pt).length() > 0.0001) {
+                        bestPiece = localizedPiece;
+                        bestPt = pt;
+                        bestNew = true;
+                    }
                 }
             }
         }

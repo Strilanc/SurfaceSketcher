@@ -5,6 +5,7 @@ import {codeDistanceUnitCellSize} from "src/braid/CodeDistance.js";
 import {DetailedError} from "src/base/DetailedError.js";
 import {UnitCellSocket} from "src/braid/UnitCellSocket.js";
 import {PlumbingPiece} from "src/braid/PlumbingPiece.js";
+import {Rect} from "src/geo/Rect.js";
 
 const EXTENSION_LENGTH = 0.2;
 
@@ -80,7 +81,7 @@ class LocalizedPlumbingPiece {
                 c[i] = 0.7 * c[i] + highlight[i] * 0.3;
             }
         }
-        return this.toBox().toRenderData(c);
+        return this.toBox().toRenderData(c, this.piece.textureRect);
     }
 
     /**

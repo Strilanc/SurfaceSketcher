@@ -11,15 +11,28 @@ class RenderData {
      * @param {!Array.<!Array.<!int>>} indices Points identified by index from the points list.
      * @param {undefined|!RenderData} wireframe
      *     Render data for the same thing, but reformated for drawing wireframes.
+     * @param {undefined|!Array.<![!number, !number]>} uv
+     *     Render data for the same thing, but reformated for drawing wireframes.
      */
-    constructor(points, colors, indices, wireframe) {
+    constructor(points, colors, indices, wireframe, uv=undefined) {
         this.points = points;
         this.colors = colors;
         this.indices = indices;
+        if (uv === undefined) {
+            uv = [];
+            while (uv.length < colors.length) {
+                uv.push([0, 0]);
+            }
+        }
+        this.uv = uv;
 
         if (points.length !== colors.length) {
             throw new DetailedError("Number of colors doesn't match number of points.",
                 {colorCount: this.colors.length, pointCount: this.points.length});
+        }
+        if (uv.length !== colors.length) {
+            throw new DetailedError("Number of uvs doesn't match number of points.",
+                {uvCount: uv.length, pointCount: this.points.length});
         }
         for (let index of this.indices) {
             if (!Number.isInteger(index) || index < 0 || index >= this.points.length) {
@@ -28,29 +41,6 @@ class RenderData {
         }
 
         this.wireframe = wireframe === undefined ? this : wireframe;
-    }
-
-    /**
-     * @param {![!number, !number, !number, !number]} color1
-     * @param {![!number, !number, !number, !number]} color2
-     * @param {!Point} pt1
-     * @param {!Point} pt2
-     * @returns {!RenderData}
-     */
-    withColorsReplacedByGradient(color1, color2, pt1, pt2) {
-        let colors = [];
-        for (let i = 0; i < this.points.length; i++) {
-            colors.push(color_lerp_points(this.points[i], color1, color2, pt1, pt2));
-        }
-        if (this === this.wireframe) {
-            return new RenderData(this.points, colors, this.indices, undefined);
-        } else {
-            return new RenderData(
-                this.points,
-                colors,
-                this.indices,
-                this.wireframe.withColorsReplacedByGradient(color1, color2, pt1, pt2));
-        }
     }
 
     /**
@@ -111,6 +101,20 @@ class RenderData {
             }
         }
         return new Float32Array(colors);
+    }
+
+    /**
+     * @param {!Array.<!RenderData>} renderData
+     * @returns {!Float32Array}
+     */
+    static allUvData(renderData) {
+        let uvData = [];
+        for (let e of renderData) {
+            for (let uv of e.uv) {
+                uvData.push(...uv);
+            }
+        }
+        return new Float32Array(uvData);
     }
 
     /**

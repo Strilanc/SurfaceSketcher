@@ -1,13 +1,17 @@
+import {equate} from "src/base/Equate.js";
+
 class PlumbingPiece {
     /**
      * @param {!string} name
      * @param {!UnitCellSocket} socket
      * @param {![!number, !number, !number, !number]} color
+     * @param {undefined|!Rect} textureRect
      */
-    constructor(name, socket, color) {
+    constructor(name, socket, color, textureRect=undefined) {
         this.name = name;
         this.socket = socket;
         this.color = color;
+        this.textureRect = textureRect;
     }
 
     /**
@@ -18,14 +22,15 @@ class PlumbingPiece {
         return other instanceof PlumbingPiece &&
             this.name === other.name &&
             this.color === other.color &&
-            this.socket === other.socket;
+            this.socket === other.socket &&
+            equate(this.textureRect, other.textureRect);
     }
 
     /**
      * @returns {!PlumbingPiece}
      */
     clone() {
-        return new PlumbingPiece(this.name, this.socket, this.color);
+        return new PlumbingPiece(this.name, this.socket, this.color, this.textureRect);
     }
 
     /**

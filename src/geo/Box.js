@@ -31,27 +31,30 @@ class Box {
     }
 
     /**
-     * @returns {!Array.<!number>}
-     */
-    cornerCoords() {
-        let result = [];
-        for (let corner of this.corners()) {
-            result.push(corner.x, corner.y, corner.z);
-        }
-        return result;
-    }
-
-    /**
      * @param {![!number, !number, !number, !number]} color
+     * @param {undefined|!Rect} topTextureCoords
      * @returns {!RenderData}
      */
-    toRenderData(color) {
-        let positions = this.corners();
+    toRenderData(color, topTextureCoords=undefined) {
+        let positions = this.renderPoints();
         let colors = [];
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 24; i++) {
             colors.push(color);
         }
-        return new RenderData(positions, colors, BOX_TRIANGLE_INDICES, this._wireframeRenderData());
+        let textureCoordData = undefined;
+        if (topTextureCoords !== undefined) {
+            let {x, y, w, h} = topTextureCoords;
+            textureCoordData = [
+                [x, y],
+                [x+w, y],
+                [x+w, y+h],
+                [x, y+h],
+            ];
+            while (textureCoordData.length < 24) {
+                textureCoordData.push([0, 0]);
+            }
+        }
+        return new RenderData(positions, colors, BOX_TRIANGLE_INDICES, this._wireframeRenderData(), textureCoordData);
     }
 
     /**
@@ -83,12 +86,6 @@ class Box {
      */
     lineSegments() {
         let corners = this.corners();
-        // 0-----1
-        // |\    |\
-        // | 4-----5
-        // 2-|---3 |
-        //  \|    \|
-        //   6-----7
 
         let segments = [];
         for (let j = 0; j < 3; j++) {
@@ -133,6 +130,48 @@ class Box {
     }
 
     /**
+     * @param {!int} dir
+     * @param {!boolean} side
+     * @returns {![!Point, !Point, !Point, !Point]}
+     * @private
+     */
+    _facePoints(dir, side) {
+        let corners = this.corners();
+        let m = side ? 0b100 : 0;
+        return [0, 1, 3, 2].map(i => corners[rot3((i | m), dir)]);
+    }
+
+    /**
+     * @returns {!Array.<!Point>}
+     */
+    renderPoints() {
+        return [
+            ...this._facePoints(2, true),
+            ...this._facePoints(1, true),
+            ...this._facePoints(0, true),
+            ...this._facePoints(2, false),
+            ...this._facePoints(1, false),
+            ...this._facePoints(0, false),
+        ];
+    }
+
+    /**
+     * Returns the locations of corners making up the cube, with the following index-to-position mapping:
+     *
+     *   Y
+     *   |    0-----4
+     *   |    |\    |\
+     *   |    | 1-----5
+     *   |    2-|---6 |
+     *   |     \|    \|
+     *   |      3-----7
+     *   |
+     *   +----------------X
+     *    \
+     *     \
+     *      \
+     *       Z
+     *
      * @returns {!Array.<!Point>}
      */
     corners() {
@@ -176,17 +215,13 @@ class Box {
     }
 }
 
-const SQUARE_TRIANGLE_INDICES = [0, 1, 2, 1, 2, 3];
-const BOX_TRIANGLE_INDICES = [];
-for (let r = 0; r < 3; r++) {
-    for (let m of [0, 7]) {
-        for (let e of SQUARE_TRIANGLE_INDICES) {
-            e = ((e << r) | (e >> (3 - r))) & 7;
-            e ^= m;
-            BOX_TRIANGLE_INDICES.push(e);
-        }
-    }
-}
-
+const BOX_TRIANGLE_INDICES = [
+    0,  1,  2,      0,  2,  3,
+    4,  5,  6,      4,  6,  7,
+    8,  9,  10,     8,  10, 11,
+    12, 13, 14,     12, 14, 15,
+    16, 17, 18,     16, 18, 19,
+    20, 21, 22,     20, 22, 23,
+];
 
 export {Box, BOX_TRIANGLE_INDICES, rot3}

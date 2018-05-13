@@ -58,7 +58,7 @@ class Ray {
      * @returns {undefined|!Point}
      */
     intersectBox(box, epsilon) {
-        let corners = box.corners();
+        let corners = box.renderPoints();
         let pts = [];
         for (let i = 0; i < BOX_TRIANGLE_INDICES.length; i += 3) {
             let t = new Triangle(

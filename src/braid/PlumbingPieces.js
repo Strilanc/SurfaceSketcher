@@ -1,29 +1,19 @@
 import {DetailedError} from 'src/base/DetailedError.js'
-import {Vector} from "src/geo/Vector.js";
-import {Point} from "src/geo/Point.js";
 import {seq} from "src/base/Seq.js";
-import {FixupOperation} from "src/sim/util/FixupOperation.js";
-import {XYT} from "src/sim/util/XYT.js";
-import {GeneralSet} from "src/base/GeneralSet.js";
-import {XY} from "src/sim/util/XY.js";
-import {
-    codeDistanceToPipeSeparation,
-    codeDistanceToPipeSize,
-    codeDistanceUnitCellSize,
-    SMALL_DIAMETER,
-    LONG_DIAMETER,
-} from "src/braid/CodeDistance.js";
-import {UnitCellSocketFootprint} from "src/braid/UnitCellSocketFootprint.js";
-import {UnitCellSocket} from "src/braid/UnitCellSocket.js";
 import {PlumbingPiece} from "src/braid/PlumbingPiece.js";
 import {Sockets} from "src/braid/Sockets.js";
 import {GeneralMap} from "src/base/GeneralMap.js";
+import {Rect} from "src/geo/Rect.js";
+import {
+    H_ARROW_TEXTURE_RECT,
+    V_ARROW_TEXTURE_RECT,
+    S_TEXTURE_RECT,
+    H_INIT_TEXTURE_RECT,
+    DISPLAY_TEXTURE_RECT,
+} from "src/draw/shader.js";
 
 const PRIMAL_COLOR = [0.9, 0.9, 0.9, 1.0];
-const SHIFTED_PRIMAL_COLOR = [0.8, 0.8, 1.0, 1.0];
 const DUAL_COLOR = [0.4, 0.4, 0.4, 1.0];
-const SHIFTED_DUAL_COLOR = [0.4, 0.4, 0.6, 1.0];
-
 
 class PlumbingPieces {
 }
@@ -31,56 +21,71 @@ class PlumbingPieces {
 PlumbingPieces.PRIMAL_RIGHTWARD = new PlumbingPiece(
     'PRIMAL_RIGHTWARD',
     Sockets.XPrimal,
-    PRIMAL_COLOR);
+    PRIMAL_COLOR,
+    H_ARROW_TEXTURE_RECT);
 PlumbingPieces.PRIMAL_LEFTWARD = new PlumbingPiece(
     'PRIMAL_LEFTWARD',
     Sockets.XPrimal,
-    SHIFTED_PRIMAL_COLOR);
+    PRIMAL_COLOR,
+    H_ARROW_TEXTURE_RECT.flip());
+PlumbingPieces.PRIMAL_HORIZONTAL_S = new PlumbingPiece(
+    'PRIMAL_HORIZONTAL_S',
+    Sockets.XPrimal,
+    PRIMAL_COLOR,
+    S_TEXTURE_RECT);
+PlumbingPieces.PRIMAL_HORIZONTAL_INIT = new PlumbingPiece(
+    'PRIMAL_HORIZONTAL_INIT',
+    Sockets.XPrimal,
+    PRIMAL_COLOR,
+    H_INIT_TEXTURE_RECT);
 
 PlumbingPieces.PRIMAL_BACKWARD = new PlumbingPiece(
     'PRIMAL_BACKWARD',
     Sockets.ZPrimal,
-    PRIMAL_COLOR);
+    PRIMAL_COLOR,
+    V_ARROW_TEXTURE_RECT);
 PlumbingPieces.PRIMAL_FOREWARD = new PlumbingPiece(
     'PRIMAL_FOREWARD',
     Sockets.ZPrimal,
-    SHIFTED_PRIMAL_COLOR);
+    PRIMAL_COLOR,
+    V_ARROW_TEXTURE_RECT.flip());
 
 PlumbingPieces.PRIMAL_UPWARD = new PlumbingPiece(
     'PRIMAL_UPWARD',
     Sockets.YPrimal,
     PRIMAL_COLOR);
-PlumbingPieces.PRIMAL_DOWNARD = new PlumbingPiece(
-    'PRIMAL_DOWNWARD',
-    Sockets.YPrimal,
-    SHIFTED_PRIMAL_COLOR);
 
 PlumbingPieces.DUAL_RIGHTWARD = new PlumbingPiece(
     'DUAL_RIGHTWARD',
     Sockets.XDual,
-    DUAL_COLOR);
+    DUAL_COLOR,
+    H_ARROW_TEXTURE_RECT);
 PlumbingPieces.DUAL_LEFTWARD = new PlumbingPiece(
-    'DUAL_LETWARD',
+    'DUAL_LEFTWARD',
     Sockets.XDual,
-    SHIFTED_DUAL_COLOR);
+    DUAL_COLOR,
+    H_ARROW_TEXTURE_RECT.flip());
 
 PlumbingPieces.DUAL_BACKWARD = new PlumbingPiece(
     'DUAL_BACKWARD',
     Sockets.ZDual,
-    SHIFTED_DUAL_COLOR);
+    DUAL_COLOR,
+    V_ARROW_TEXTURE_RECT);
 PlumbingPieces.DUAL_FOREWARD = new PlumbingPiece(
     'DUAL_FOREWARD',
     Sockets.ZDual,
-    DUAL_COLOR);
+    DUAL_COLOR,
+    V_ARROW_TEXTURE_RECT.flip());
+PlumbingPieces.DUAL_Z_INSPECT = new PlumbingPiece(
+    'DUAL_Z_INSPECT',
+    Sockets.ZDual,
+    DUAL_COLOR,
+    DISPLAY_TEXTURE_RECT);
 
 PlumbingPieces.DUAL_UPWARD = new PlumbingPiece(
     'DUAL_UPWARD',
     Sockets.YDual,
     DUAL_COLOR);
-PlumbingPieces.DUAL_DOWNARD = new PlumbingPiece(
-    'DUAL_DOWNWARD',
-    Sockets.YDual,
-    SHIFTED_DUAL_COLOR);
 
 PlumbingPieces.PRIMAL_CENTER = new PlumbingPiece(
     'PRIMAL_CENTER',
@@ -98,15 +103,16 @@ PlumbingPieces.All = [
     PlumbingPieces.PRIMAL_UPWARD,
     PlumbingPieces.PRIMAL_LEFTWARD,
     PlumbingPieces.PRIMAL_FOREWARD,
-    PlumbingPieces.PRIMAL_DOWNARD,
     PlumbingPieces.DUAL_RIGHTWARD,
     PlumbingPieces.DUAL_BACKWARD,
     PlumbingPieces.DUAL_UPWARD,
     PlumbingPieces.DUAL_LEFTWARD,
     PlumbingPieces.DUAL_FOREWARD,
-    PlumbingPieces.DUAL_DOWNARD,
     PlumbingPieces.DUAL_CENTER,
     PlumbingPieces.PRIMAL_CENTER,
+    PlumbingPieces.PRIMAL_HORIZONTAL_S,
+    PlumbingPieces.PRIMAL_HORIZONTAL_INIT,
+    PlumbingPieces.DUAL_Z_INSPECT,
 ];
 
 PlumbingPieces.BySocket = new GeneralMap();

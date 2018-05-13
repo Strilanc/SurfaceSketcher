@@ -75,14 +75,4 @@ suite.test("corners", () => {
         new Point(5, 7, 3),
         new Point(5, 7, 9),
     ]);
-    assertThat(b.cornerCoords()).isEqualTo([
-        1, 2, 3,
-        1, 2, 9,
-        1, 7, 3,
-        1, 7, 9,
-        5, 2, 3,
-        5, 2, 9,
-        5, 7, 3,
-        5, 7, 9,
-    ]);
 });

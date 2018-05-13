@@ -51,7 +51,6 @@ class Mat4 {
         return r;
     }
 
-
     /**
      * @param {!number} sx
      * @param {!number} sy
@@ -146,6 +145,17 @@ class Mat4 {
             }
             return t;
         });
+    }
+
+    /**
+     * @param {...!Mat4} matrices
+     */
+    static product(...matrices) {
+        let result = Mat4.identity();
+        for (let m of matrices) {
+            result = result.times(m);
+        }
+        return result;
     }
 
     /**

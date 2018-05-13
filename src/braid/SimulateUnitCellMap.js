@@ -82,6 +82,7 @@ function simulate_map(codeDistance, map) {
         layer.measureEnabledStabilizers(surface, block.mask);
         layers.push(layer);
     }
+    surface.destruct();
     return layers;
 }
 
