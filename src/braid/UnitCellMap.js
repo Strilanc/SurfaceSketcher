@@ -95,7 +95,11 @@ class UnitCellMap {
      * @returns {!Array.<!RenderData>}
      */
     renderData() {
-        return this.allLocalizedPieces().map(e => e.toRenderData());
+        let result = [];
+        for (let e of this.allLocalizedPieces()) {
+            result.push(...e.piece.toLocalizedRenderData(e));
+        }
+        return result;
     }
 
     /**

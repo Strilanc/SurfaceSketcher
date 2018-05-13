@@ -6,12 +6,14 @@ class PlumbingPiece {
      * @param {!UnitCellSocket} socket
      * @param {![!number, !number, !number, !number]} color
      * @param {undefined|!Rect} textureRect
+     * @param {undefined|!function(!LocalizedPlumbingPiece) : !Array.<!RenderData>} customToRenderData
      */
-    constructor(name, socket, color, textureRect=undefined) {
+    constructor(name, socket, color, textureRect=undefined, customToRenderData=undefined) {
         this.name = name;
         this.socket = socket;
         this.color = color;
         this.textureRect = textureRect;
+        this.customToRenderData = customToRenderData;
     }
 
     /**
@@ -23,14 +25,28 @@ class PlumbingPiece {
             this.name === other.name &&
             this.color === other.color &&
             this.socket === other.socket &&
-            equate(this.textureRect, other.textureRect);
+            equate(this.textureRect, other.textureRect) &&
+            this.customToRenderData === other.customToRenderData;
+    }
+
+    /**
+     *
+     * @param {!LocalizedPlumbingPiece} localizedPiece
+     * @returns {!Array.<!RenderData>}
+     */
+    toLocalizedRenderData(localizedPiece) {
+        if (this.customToRenderData !== undefined) {
+            return this.customToRenderData(localizedPiece);
+        } else {
+            return [localizedPiece.toRenderData(undefined)];
+        }
     }
 
     /**
      * @returns {!PlumbingPiece}
      */
     clone() {
-        return new PlumbingPiece(this.name, this.socket, this.color, this.textureRect);
+        return new PlumbingPiece(this.name, this.socket, this.color, this.textureRect, this.customToRenderData);
     }
 
     /**

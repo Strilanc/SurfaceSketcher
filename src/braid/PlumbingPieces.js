@@ -4,6 +4,7 @@ import {PlumbingPiece} from "src/braid/PlumbingPiece.js";
 import {Sockets} from "src/braid/Sockets.js";
 import {GeneralMap} from "src/base/GeneralMap.js";
 import {Rect} from "src/geo/Rect.js";
+import {pyramidRenderData, lineSegmentPathRenderData} from "src/draw/Shapes.js";
 import {
     H_ARROW_TEXTURE_RECT,
     V_ARROW_TEXTURE_RECT,
@@ -11,11 +12,41 @@ import {
     H_INIT_TEXTURE_RECT,
     DISPLAY_TEXTURE_RECT,
 } from "src/draw/shader.js";
+import {Vector} from "src/geo/Vector.js";
+import {RenderData} from "src/geo/RenderData.js";
 
 const PRIMAL_COLOR = [0.9, 0.9, 0.9, 1.0];
 const DUAL_COLOR = [0.4, 0.4, 0.4, 1.0];
 
 class PlumbingPieces {
+}
+
+/**
+ * @param {!LocalizedPlumbingPiece} localizedPiece
+ * @param {!Vector} d
+ * @param {![!number, !number, !number, !number]} color
+ * @returns {!Array.<!RenderData>}
+ */
+function injectionSiteRenderData(localizedPiece, d, color) {
+    let box = localizedPiece.toBox();
+    let left = box.baseCorner.plus(box.diagonal.pointwiseMultiply(new Vector(1, 1, 1).minus(d).scaledBy(0.5)));
+    let tip = box.center();
+    let right = box.baseCorner.plus(box.diagonal.pointwiseMultiply(new Vector(1, 1, 1).plus(d).scaledBy(0.5)));
+    let leftCorner = box.baseCorner;
+    let rightCorner = box.baseCorner.plus(box.diagonal);
+    let a = pyramidRenderData(tip, left, leftCorner, color, [0, 0, 0, 1]);
+    let b = pyramidRenderData(tip, right, rightCorner, color, [0, 0, 0, 1]);
+    let w = 0.05;
+    let c = lineSegmentPathRenderData([
+        tip,
+        tip.plus(new Vector(0, w, 0)),
+        tip.plus(new Vector(w, w, 0)),
+        tip.plus(new Vector(w, 2 * w, 0)),
+        tip.plus(new Vector(-w, 2 * w, 0)),
+        tip.plus(new Vector(-w, 3 * w, 0)),
+        tip.plus(new Vector(w, 3 * w, 0))
+    ]);
+    return [a, b, c];
 }
 
 PlumbingPieces.PRIMAL_RIGHTWARD = new PlumbingPiece(
@@ -32,7 +63,8 @@ PlumbingPieces.PRIMAL_HORIZONTAL_S = new PlumbingPiece(
     'PRIMAL_HORIZONTAL_S',
     Sockets.XPrimal,
     PRIMAL_COLOR,
-    S_TEXTURE_RECT);
+    S_TEXTURE_RECT,
+    localizedPiece => injectionSiteRenderData(localizedPiece, new Vector(1, 0, 0), PRIMAL_COLOR));
 PlumbingPieces.PRIMAL_HORIZONTAL_INIT = new PlumbingPiece(
     'PRIMAL_HORIZONTAL_INIT',
     Sockets.XPrimal,
@@ -49,6 +81,12 @@ PlumbingPieces.PRIMAL_FOREWARD = new PlumbingPiece(
     Sockets.ZPrimal,
     PRIMAL_COLOR,
     V_ARROW_TEXTURE_RECT.flip());
+PlumbingPieces.PRIMAL_VERTICAL_S = new PlumbingPiece(
+    'PRIMAL_VERTICAL_S',
+    Sockets.ZPrimal,
+    PRIMAL_COLOR,
+    S_TEXTURE_RECT,
+    localizedPiece => injectionSiteRenderData(localizedPiece, new Vector(0, 0, 1), PRIMAL_COLOR));
 
 PlumbingPieces.PRIMAL_UPWARD = new PlumbingPiece(
     'PRIMAL_UPWARD',
@@ -65,6 +103,12 @@ PlumbingPieces.DUAL_LEFTWARD = new PlumbingPiece(
     Sockets.XDual,
     DUAL_COLOR,
     H_ARROW_TEXTURE_RECT.flip());
+PlumbingPieces.DUAL_HORIZONTAL_S = new PlumbingPiece(
+    'DUAL_HORIZONTAL_S',
+    Sockets.XDual,
+    DUAL_COLOR,
+    S_TEXTURE_RECT,
+    localizedPiece => injectionSiteRenderData(localizedPiece, new Vector(1, 0, 0), DUAL_COLOR));
 
 PlumbingPieces.DUAL_BACKWARD = new PlumbingPiece(
     'DUAL_BACKWARD',
@@ -76,6 +120,12 @@ PlumbingPieces.DUAL_FOREWARD = new PlumbingPiece(
     Sockets.ZDual,
     DUAL_COLOR,
     V_ARROW_TEXTURE_RECT.flip());
+PlumbingPieces.DUAL_VERTICAL_S = new PlumbingPiece(
+    'DUAL_VERTICAL_S',
+    Sockets.ZDual,
+    DUAL_COLOR,
+    S_TEXTURE_RECT,
+    localizedPiece => injectionSiteRenderData(localizedPiece, new Vector(0, 0, 1), DUAL_COLOR));
 PlumbingPieces.DUAL_Z_INSPECT = new PlumbingPiece(
     'DUAL_Z_INSPECT',
     Sockets.ZDual,
@@ -111,6 +161,9 @@ PlumbingPieces.All = [
     PlumbingPieces.DUAL_CENTER,
     PlumbingPieces.PRIMAL_CENTER,
     PlumbingPieces.PRIMAL_HORIZONTAL_S,
+    PlumbingPieces.PRIMAL_VERTICAL_S,
+    PlumbingPieces.DUAL_VERTICAL_S,
+    PlumbingPieces.DUAL_HORIZONTAL_S,
     PlumbingPieces.PRIMAL_HORIZONTAL_INIT,
     PlumbingPieces.DUAL_Z_INSPECT,
 ];

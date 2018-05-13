@@ -18,6 +18,7 @@ import {Vector} from "src/geo/Vector.js";
 import {codeDistanceUnitCellSize, codeDistanceToPipeSize} from "src/braid/CodeDistance.js";
 import {DirectedGraph} from "src/sim/util/DirectedGraph.js";
 import {gridRangeToString} from "src/sim/util/Util.js";
+import {pyramidRenderData} from "src/draw/Shapes.js";
 
 let HADAMARD = 'H';
 let CONTROL = 'C';
@@ -122,18 +123,18 @@ class LockstepSurfaceLayer {
             let init = this.initializations.get(xy);
             if (init !== undefined) {
                 if (init.is_z()) {
-                    subRenders.push(pyramidRenderData(pos(xy.y, xy.x, -1), -0.01, [0, 1, 0, 1]));
+                    subRenders.push(uprightPyramidRenderData(pos(xy.y, xy.x, -1), -0.01, [0, 1, 0, 1]));
                 } else {
-                    subRenders.push(pyramidRenderData(pos(xy.y, xy.x, -1), -0.01, [0, 0, 1, 1]));
+                    subRenders.push(uprightPyramidRenderData(pos(xy.y, xy.x, -1), -0.01, [0, 0, 1, 1]));
                 }
             }
 
             let measure = this.measurements.get(xy);
             if (measure !== undefined) {
                 if (measure.is_z()) {
-                    subRenders.push(pyramidRenderData(pos(xy.y, xy.x, d), +0.01, [0, 1, 0, 1]));
+                    subRenders.push(uprightPyramidRenderData(pos(xy.y, xy.x, d), +0.01, [0, 1, 0, 1]));
                 } else {
-                    subRenders.push(pyramidRenderData(pos(xy.y, xy.x, d), +0.01, [0, 0, 1, 1]));
+                    subRenders.push(uprightPyramidRenderData(pos(xy.y, xy.x, d), +0.01, [0, 0, 1, 1]));
                 }
             }
         }
@@ -468,22 +469,10 @@ function padPush(array1, array2, item1, item2, pad=undefined) {
  * @param {![!number, !number, !number, !number]} color
  * @returns {!RenderData}
  */
-function pyramidRenderData(tip, height, color) {
-    let points = [
-        tip,
-        tip.plus(new Vector(height, height, height)),
-        tip.plus(new Vector(height, height, -height)),
-        tip.plus(new Vector(-height, height, -height)),
-        tip.plus(new Vector(-height, height, height)),
-    ];
-    let colors = [color, color, color, color, color];
-    let indices = [
-        0, 1, 2,
-        0, 2, 3,
-        0, 3, 4,
-        0, 4, 1,
-    ];
-    return new RenderData(points, colors, indices, new RenderData([], [], [], undefined));
+function uprightPyramidRenderData(tip, height, color) {
+    let base = tip.plus(new Vector(0, height, 0));
+    let corner = base.plus(new Vector(height, 0, height));
+    return pyramidRenderData(tip, base, corner, color, [0, 0, 0, 1]);
 }
 
 /**
