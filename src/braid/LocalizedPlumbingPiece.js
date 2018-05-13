@@ -6,6 +6,8 @@ import {DetailedError} from "src/base/DetailedError.js";
 import {UnitCellSocket} from "src/braid/UnitCellSocket.js";
 import {PlumbingPiece} from "src/braid/PlumbingPiece.js";
 import {Rect} from "src/geo/Rect.js";
+import {XY} from "src/sim/util/XY.js";
+import {seq} from "src/base/Seq.js";
 
 const EXTENSION_LENGTH = 0.2;
 
@@ -50,8 +52,28 @@ class LocalizedPlumbingPiece {
      * @returns {!UnitCellSocketFootprint}
      */
     toFootprint(codeDistance) {
+        let {x, y} = this.toCellOriginXy(codeDistance);
+        return this.socket.footprint(codeDistance).offsetBy(x, y);
+    }
+
+    /**
+     * @param {!int} codeDistance
+     * @returns {!XY}
+     */
+    toCellOriginXy(codeDistance) {
         let {w, h} = codeDistanceUnitCellSize(codeDistance);
-        return this.socket.footprint(codeDistance).offsetBy(w * this.loc.x, h * this.loc.z);
+        return new XY(w * this.loc.x, h * this.loc.z);
+    }
+
+    /**
+     * @param {!int} codeDistance
+     * @returns {!XY}
+     */
+    toFootprintOriginXy(codeDistance) {
+        let xy = this.toCellOriginXy(codeDistance);
+        let dx = seq(this.socket.footprint(codeDistance).mask).map(e => e.x).min(0);
+        let dy = seq(this.socket.footprint(codeDistance).mask).map(e => e.y).min(0);
+        return xy.offsetBy(dx, dy);
     }
 
     /**

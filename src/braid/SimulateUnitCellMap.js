@@ -9,7 +9,6 @@ import {Point} from "src/geo/Point.js";
 import {seq} from "src/base/Seq.js";
 import {UnitCellMap} from "src/braid/UnitCellMap.js";
 import {LockstepSurfaceLayer} from "src/sim/LockstepSurfaceLayer.js";
-import {PLUMBING_PIECE_MAP} from "src/braid/Sockets.js";
 import {UnitCellSocketFootprint} from "src/braid/UnitCellSocketFootprint.js";
 import {FixupLayer} from "src/sim/FixupLayer.js";
 import {makeArrayGrid} from "src/sim/util/Util.js";
@@ -19,7 +18,8 @@ import {GeneralMap} from "src/base/GeneralMap.js";
 import {Tile} from "src/sim/Tile.js";
 import {TileStack} from "src/sim/TileStack.js";
 import {XY} from "src/sim/util/XY.js";
-
+import {SMALL_DIAMETER} from "src/braid/CodeDistance.js";
+import {IMPORTANT_UNIT_CELL_TIMES} from "src/braid/Sockets.js";
 
 /**
  * @param {!int} codeDistance
@@ -43,23 +43,27 @@ function combinedFootprint(codeDistance, pieces) {
  */
 function propagateSignals(tileStack, codeDistance, pieces) {
     for (let piece of pieces) {
-        piece.piece.propagateSignal(tileStack, piece, codeDistance);
+        piece.piece.propagateSignalEnter(tileStack, piece, codeDistance);
+        piece.piece.propagateSignalExit(tileStack, piece, codeDistance);
     }
 }
 
 /**
  * @param {!UnitCellMap} map
- * @param {!int} t
+ * @param {!int} unitCellIndex
+ * @param {!int} transitionIndex
  * @returns {!Array.<!LocalizedPlumbingPiece>}
  */
-function timeSlice(map, t) {
+function relevantPiecesAt(map, unitCellIndex, transitionIndex) {
     let result = [];
-    t /= 2;
+    let absoluteT = unitCellIndex + IMPORTANT_UNIT_CELL_TIMES[transitionIndex];
     for (let piece of map.allLocalizedPieces()) {
         let pt = piece.loc;
         let socket = piece.socket;
-        let c = socket.boxAt(pt).center();
-        if (t - 0.25 <= c.y && c.y <= t + 0.25) {
+        let box = socket.boxAt(pt);
+        let y1 = box.baseCorner.y;
+        let y2 = y1 + box.diagonal.y;
+        if (absoluteT + 0.001 > y1 && absoluteT - 0.001 < y2) {
             result.push(piece);
         }
     }
@@ -107,15 +111,17 @@ function unitCellMapToTileStacks(codeDistance, map) {
     let surface = new Surface(w, h);
     let tileStacks = [];
     tileStacks.push(makeClearXStabilizersTileStack(surface));
-    let count = seq(map.cells.keys()).map(e => (e.z + 2) * 2).max(0);
-    for (let t = 0; t < count; t++) {
-        let pieces = [...timeSlice(map, t)];
-        let tileStack = new TileStack();
-        tileStack.startNewTile();
-        propagateSignals(tileStack, codeDistance, pieces);
-        let block = combinedFootprint(codeDistance, pieces);
-        tileStack.measureEnabledStabilizers(surface, block.mask);
-        tileStacks.push(tileStack);
+    let max_z = seq(map.cells.keys()).map(e => e.z).max(-1);
+    for (let unitCellIndex = 0; unitCellIndex <= max_z; unitCellIndex++) {
+        for (let transitionIndex = 0; transitionIndex < IMPORTANT_UNIT_CELL_TIMES.length; transitionIndex++) {
+            let pieces = [...relevantPiecesAt(map, unitCellIndex, transitionIndex)];
+            let tileStack = new TileStack();
+            tileStack.startNewTile();
+            propagateSignals(tileStack, codeDistance, pieces);
+            let block = combinedFootprint(codeDistance, pieces);
+            tileStack.measureEnabledStabilizers(surface, block.mask);
+            tileStacks.push(tileStack);
+        }
     }
     surface.destruct();
     return tileStacks;

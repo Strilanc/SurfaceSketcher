@@ -159,12 +159,12 @@ class TileStack {
 
         // Move effects on the target out of quantum feedforward and into classical propagation.
         for (let control of this.feed.controlsAffecting(target)) {
-            let controlEffects = tile.pauliMapForControl(control);
+            let controlEffects = this.feed.pauliMapForControl(control);
             let flips = controlEffects.flips(target, axis);
 
             controlEffects.set(target, 0);
             if (flips) {
-                this.prop.includeEdge(control, id);
+                this.prop.toggleEdge(control, id);
             }
         }
     }

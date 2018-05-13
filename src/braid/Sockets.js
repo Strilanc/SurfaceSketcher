@@ -93,21 +93,19 @@ let zConnector = new UnitCellSocket(
 let genericPieces = [centerConnector, xConnector, yConnector, zConnector];
 let primalPieces = genericPieces.map(genericToPrimal);
 let dualPieces = genericPieces.map(genericToDual);
-const ALL_PLUMBING_PIECES = [...primalPieces, ...dualPieces];
-/** @type {!Map.<!string, !UnitCellSocket>} */
-const PLUMBING_PIECE_MAP = seq(ALL_PLUMBING_PIECES).keyedBy(e => e.name);
 
 class Sockets {
 }
-Sockets.XPrimal = PLUMBING_PIECE_MAP.get('XPrimal');
-Sockets.YPrimal = PLUMBING_PIECE_MAP.get('YPrimal');
-Sockets.ZPrimal = PLUMBING_PIECE_MAP.get('ZPrimal');
-Sockets.CPrimal = PLUMBING_PIECE_MAP.get('CenterPrimal');
-Sockets.XDual = PLUMBING_PIECE_MAP.get('XDual');
-Sockets.YDual = PLUMBING_PIECE_MAP.get('YDual');
-Sockets.ZDual = PLUMBING_PIECE_MAP.get('ZDual');
-Sockets.CDual = PLUMBING_PIECE_MAP.get('CenterDual');
-
+Sockets.All = [...primalPieces, ...dualPieces];
+Sockets.ByName = seq(Sockets.All).keyedBy(e => e.name);
+Sockets.XPrimal = Sockets.ByName.get('XPrimal');
+Sockets.YPrimal = Sockets.ByName.get('YPrimal');
+Sockets.ZPrimal = Sockets.ByName.get('ZPrimal');
+Sockets.CPrimal = Sockets.ByName.get('CenterPrimal');
+Sockets.XDual = Sockets.ByName.get('XDual');
+Sockets.YDual = Sockets.ByName.get('YDual');
+Sockets.ZDual = Sockets.ByName.get('ZDual');
+Sockets.CDual = Sockets.ByName.get('CenterDual');
 
 /**
  * @param {!UnitCellSocket} socket1
@@ -142,17 +140,6 @@ addNeighbors(Sockets.XDual, Sockets.CDual, new Vector(-1, 0, 0), false);
 addNeighbors(Sockets.YDual, Sockets.CDual, new Vector(0, -1, 0), false);
 addNeighbors(Sockets.ZDual, Sockets.CDual, new Vector(0, 0, -1), false);
 
-Sockets.All = [
-    Sockets.XPrimal,
-    Sockets.YPrimal,
-    Sockets.ZPrimal,
-    Sockets.XDual,
-    Sockets.YDual,
-    Sockets.ZDual,
-    Sockets.CPrimal,
-    Sockets.CDual,
-];
-Sockets.ByName = seq(Sockets.All).keyedBy(e => e.name);
 Sockets.forceGetByName = name => {
     let result = Sockets.ByName.get(name);
     if (result === undefined) {
@@ -161,8 +148,17 @@ Sockets.forceGetByName = name => {
     return result;
 };
 
+const importantPrimalTimes = [
+    0, // Transition out of vertical and into flat primal pieces.
+    SMALL_DIAMETER / 2, // Steady state for flat primal pieces.
+    SMALL_DIAMETER, // // Transition out of flat and into vertical primal pieces.
+    (SMALL_DIAMETER + 0.5) / 2, // Steady state for vertical primal pieces.
+];
+const importantDualTimes = importantPrimalTimes.map(e => e + 0.5);
+// const IMPORTANT_UNIT_CELL_TIMES = [...importantPrimalTimes, ...importantDualTimes];
+const IMPORTANT_UNIT_CELL_TIMES = [0.5, 0.5 + SMALL_DIAMETER];
+
 export {
-    ALL_PLUMBING_PIECES,
-    PLUMBING_PIECE_MAP,
     Sockets,
+    IMPORTANT_UNIT_CELL_TIMES,
 }

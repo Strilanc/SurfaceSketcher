@@ -1,3 +1,9 @@
+/**
+ * @param {!LocalizedPlumbingPiece} localizedPiece
+ * @param {!Vector} d
+ * @param {![!number, !number, !number, !number]} color
+ * @returns {!Array.<!RenderData>}
+ */
 import {DetailedError} from 'src/base/DetailedError.js'
 import {seq} from "src/base/Seq.js";
 import {PlumbingPiece} from "src/braid/PlumbingPiece.js";
@@ -23,7 +29,11 @@ import {
 } from "src/draw/shader.js";
 import {Vector} from "src/geo/Vector.js";
 import {RenderData} from "src/geo/RenderData.js";
-import {codeDistanceToPipeSeparation, codeDistanceToPipeSize} from "src/braid/CodeDistance.js";
+import {
+    codeDistanceToPipeSeparation,
+    codeDistanceToPipeSize,
+    codeDistanceUnitCellSize
+} from "src/braid/CodeDistance.js";
 import {XYT} from "src/sim/util/XYT.js";
 import {XY} from "src/sim/util/XY.js";
 
@@ -33,12 +43,6 @@ const DUAL_COLOR = [0.4, 0.4, 0.4, 1.0];
 class PlumbingPieces {
 }
 
-/**
- * @param {!LocalizedPlumbingPiece} localizedPiece
- * @param {!Vector} d
- * @param {![!number, !number, !number, !number]} color
- * @returns {!Array.<!RenderData>}
- */
 function injectionSiteRenderData(localizedPiece, d, color) {
     let box = localizedPiece.toBox();
     let left = box.baseCorner.plus(box.diagonal.pointwiseMultiply(new Vector(1, 1, 1).minus(d).scaledBy(0.5)));
@@ -75,18 +79,19 @@ function resultToKetRect(result) {
 
 /**
  * @param {!TileStack} tileStack
+ * @param {!LocalizedPlumbingPiece} piece
  * @param {!int} codeDistance
- * @param {!int} dx
- * @param {!int} dy
  */
-function propagateRightward(tileStack, codeDistance, dx, dy) {
+function propagateRightward(tileStack, piece, codeDistance) {
+    let {x: dx, y: dy} = piece.toFootprintOriginXy(codeDistance);
     let {w, h} = codeDistanceToPipeSize(codeDistance);
-    let s = codeDistanceToPipeSeparation(codeDistance);
-    for (let j = 0; j < h; j += 2) {
-        for (let i = 1; i < s; i += 2) {
-            let x = i + w + dx;
+    let s = codeDistanceUnitCellSize(codeDistance).h - h;
+    for (let j = 1; j <= s; j += 2) {
+        for (let i = 0; i < w; i += 2) {
+            let x = i + dx;
             let y = j + dy;
-            tileStack.feedforward_x(new XY(x, y), new XY(x + 2, y));
+            tileStack.measure(new XY(x, y));
+            tileStack.feedforward_x(new XY(x, y), new XY(x, y + 2));
         }
     }
 }
@@ -186,7 +191,10 @@ PlumbingPieces.DUAL_FOREWARD = new PlumbingPiece(
     'DUAL_FOREWARD',
     Sockets.ZDual,
     DUAL_COLOR,
-    V_ARROW_TEXTURE_RECT.flip());
+    V_ARROW_TEXTURE_RECT.flip(),
+    undefined,
+    undefined,
+    propagateRightward);
 PlumbingPieces.DUAL_VERTICAL_S = new PlumbingPiece(
     'DUAL_VERTICAL_S',
     Sockets.ZDual,

@@ -14,7 +14,9 @@ import {circleRenderData, lineSegmentPathRenderData} from "src/draw/Shapes.js";
 import {XYT} from "src/sim/util/XYT.js";
 import {DUAL_COLOR, PRIMAL_COLOR} from "src/braid/PlumbingPieces.js";
 import {PauliMap} from "src/sim/util/PauliMap.js";
+import {IMPORTANT_UNIT_CELL_TIMES} from "src/braid/Sockets.js";
 
+const OP_HEIGHT = 0.005;
 /**
  * @param {*} operationIdentifier
  * @returns {!XY}
@@ -57,6 +59,11 @@ function keyFrameLerp(time, ...keyframes) {
  * @returns {!Point}
  */
 function qubitPosition(codeDistance, xy, opIndex, tileIndex) {
+    tileIndex -= 1; // Clear X stabilizer measurements layer.
+    let unitCellIndex = Math.floor(tileIndex / IMPORTANT_UNIT_CELL_TIMES.length);
+    let transitionIndex = tileIndex % IMPORTANT_UNIT_CELL_TIMES.length;
+    let tileIndexY = tileIndex < 0 ? -1 : unitCellIndex + IMPORTANT_UNIT_CELL_TIMES[transitionIndex];
+
     let {y: row, x: col} = xy;
     let {w: uw, h: uh} = codeDistanceUnitCellSize(codeDistance);
     let {w: pw, h: ph} = codeDistanceToPipeSize(codeDistance);
@@ -68,7 +75,7 @@ function qubitPosition(codeDistance, xy, opIndex, tileIndex) {
     let sh = Math.floor((uh - 2*ph)/4) * 2;
     let x = keyFrameLerp(subX, [0, 0], [pw, 0.2], [pw + sw, 0.5], [pw*2 + sw, 0.7], [uw, 1]);
     let y = keyFrameLerp(subY, [0, 0], [ph, 0.2], [ph + sh, 0.5], [ph*2 + sh, 0.7], [uh, 1]);
-    return new Point(x + blockX, opIndex*0.01 + tileIndex*0.5 - 0.5, y + blockY)
+    return new Point(x + blockX, opIndex*OP_HEIGHT + tileIndexY, y + blockY)
 }
 
 /**
@@ -87,9 +94,9 @@ function _tileWireRenderData(tile, tileIndex, codeDistance, simResult) {
     // Initializations.
     for (let [xy, axis] of tile.initializations.entries()) {
         if (axis.is_z()) {
-            result.push(uprightPyramidRenderData(pos(xy, -1), -0.01, PRIMAL_COLOR));
+            result.push(uprightPyramidRenderData(pos(xy, -1), -OP_HEIGHT, PRIMAL_COLOR));
         } else {
-            result.push(uprightPyramidRenderData(pos(xy, -1), -0.01, DUAL_COLOR));
+            result.push(uprightPyramidRenderData(pos(xy, -1), -OP_HEIGHT, DUAL_COLOR));
         }
     }
 
@@ -109,7 +116,7 @@ function _tileWireRenderData(tile, tileIndex, codeDistance, simResult) {
         } else {
             color = DUAL_COLOR;
         }
-        result.push(uprightPyramidRenderData(pos(xy, depth + 1), +0.01, color));
+        result.push(uprightPyramidRenderData(pos(xy, depth + 1), +OP_HEIGHT, color));
     }
 
     // Data lines.
@@ -140,7 +147,7 @@ function _tileOperationToRenderData(tileColumn, tileIndex, opIndex, colXy, codeD
         pos(colXy),
         delta.x,
         delta.y,
-        0.004,
+        OP_HEIGHT/2,
         [0.9, 0.9, 0.9, 1],
         [0, 0, 0, 1]);
 
@@ -148,7 +155,7 @@ function _tileOperationToRenderData(tileColumn, tileIndex, opIndex, colXy, codeD
         pos(colXy.offsetBy(delta.x, delta.y)),
         -delta.x,
         -delta.y,
-        0.002,
+        OP_HEIGHT/8,
         [0, 0, 0, 1],
         undefined);
 

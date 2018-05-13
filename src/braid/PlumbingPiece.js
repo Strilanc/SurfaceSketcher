@@ -11,7 +11,9 @@ class PlumbingPiece {
      * @param {undefined|!function(
      *      !LocalizedPlumbingPiece, codeDistance: !int) : !UnitCellSocketFootprint} customFootprint
      * @param {undefined|!function(
-     *      tileStack: !TileStack, !LocalizedPlumbingPiece, codeDistance: !int)} customPropagateSignal
+     *      tileStack: !TileStack, !LocalizedPlumbingPiece, codeDistance: !int)} customPropagateSignalEnter
+     * @param {undefined|!function(
+     *      tileStack: !TileStack, !LocalizedPlumbingPiece, codeDistance: !int)} customPropagateSignalExit
      */
     constructor(name,
                 socket,
@@ -19,14 +21,16 @@ class PlumbingPiece {
                 textureRect=undefined,
                 customToRenderData=undefined,
                 customFootprint=undefined,
-                customPropagateSignal=undefined) {
+                customPropagateSignalEnter=undefined,
+                customPropagateSignalExit=undefined) {
         this.name = name;
         this.socket = socket;
         this.color = color;
         this.textureRect = textureRect;
         this.customToRenderData = customToRenderData;
         this.customFootprint = customFootprint;
-        this.customPropagateSignal = customPropagateSignal;
+        this.customPropagateSignalEnter = customPropagateSignalEnter;
+        this.customPropagateSignalExit = customPropagateSignalExit;
     }
 
     /**
@@ -41,7 +45,8 @@ class PlumbingPiece {
             equate(this.textureRect, other.textureRect) &&
             this.customToRenderData === other.customToRenderData &&
             this.customFootprint === other.customFootprint &&
-            this.customPropagateSignal === other.customPropagateSignal;
+            this.customPropagateSignalEnter === other.customPropagateSignalEnter &&
+            this.customPropagateSignalExit === other.customPropagateSignalExit;
     }
 
     /**
@@ -76,9 +81,20 @@ class PlumbingPiece {
      * @param {!LocalizedPlumbingPiece} localizedPiece
      * @param {!int} codeDistance
      */
-    propagateSignal(tileStack, localizedPiece, codeDistance) {
-        if (this.customPropagateSignal !== undefined) {
-            this.customPropagateSignal(tileStack, localizedPiece, codeDistance);
+    propagateSignalEnter(tileStack, localizedPiece, codeDistance) {
+        if (this.customPropagateSignalEnter !== undefined) {
+            this.customPropagateSignalEnter(tileStack, localizedPiece, codeDistance);
+        }
+    }
+
+    /**
+     * @param {!TileStack} tileStack
+     * @param {!LocalizedPlumbingPiece} localizedPiece
+     * @param {!int} codeDistance
+     */
+    propagateSignalExit(tileStack, localizedPiece, codeDistance) {
+        if (this.customPropagateSignalExit !== undefined) {
+            this.customPropagateSignalExit(tileStack, localizedPiece, codeDistance);
         }
     }
 
@@ -93,7 +109,8 @@ class PlumbingPiece {
             this.textureRect,
             this.customToRenderData,
             this.customFootprint,
-            this.customPropagateSignal);
+            this.customPropagateSignalEnter,
+            this.customPropagateSignalExit);
     }
 
     /**

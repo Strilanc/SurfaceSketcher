@@ -218,9 +218,9 @@ class Tile {
         if (ops !== undefined && ops.entries.length > 0) {
             throw new DetailedError('Initialization must come before operations.', {target, axis});
         }
-        if (this.measurements.has(target)) {
-            throw new DetailedError('Initialization must come before measurement.', {target, axis});
-        }
+        // if (this.measurements.has(target)) {
+        //     throw new DetailedError('Initialization must come before measurement.', {target, axis});
+        // }
         this.initializations.set(target, axis);
     }
 
