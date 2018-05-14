@@ -5,6 +5,7 @@ import {
     makeArrayGrid,
     setMembershipInOfTo,
     xorSetInto,
+    mergeGridRangeStrings,
 } from "src/sim/util/Util.js"
 
 let suite = new Suite("Util");
@@ -56,4 +57,12 @@ suite.test('xorSetInto', () => {
     xorSetInto(s1, s2);
     assertThat(s1).isEqualTo(new Set([2, 3, 5]));
     assertThat(s2).isEqualTo(new Set([1, 5]));
+});
+
+suite.test('mergeGridRangeStrings', () => {
+    assertThat(mergeGridRangeStrings(['abc\ndef\nghi', '123\n456\n789'], 100)).isEqualTo([
+        ['abc   123'],
+        ['def   456'],
+        ['ghi   789']
+    ].join('\n'));
 });

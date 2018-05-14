@@ -94,6 +94,13 @@ suite.test("z", () => {
     assertThat(s.toString()).isEqualTo('Z_(1, 2) * Z_b');
 });
 
+suite.test("removesDeadEntries", () => {
+    let s = new PauliMap();
+    s.x('a');
+    s.x('a');
+    assertThat(s.operations).isEqualTo(new GeneralMap());
+});
+
 suite.test("xyz", () => {
     let s = new PauliMap();
     assertThat(s.toString()).isEqualTo('I');

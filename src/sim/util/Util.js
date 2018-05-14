@@ -1,5 +1,3 @@
-import {Seq} from "src/base/Seq.js";
-
 /**
  * Creates a 2d array with elements initialized using the given generator function.
  *
@@ -11,6 +9,8 @@ import {Seq} from "src/base/Seq.js";
  * @returns {!Array.<!Array.<T>>}
  * @template T
  */
+import {seq, Seq} from "src/base/Seq.js";
+
 function makeArrayGrid(width, height, generator) {
     let result = [];
     for (let y = 0; y < height; y++) {
@@ -83,4 +83,48 @@ function gridRangeToString(minRow, maxRow, minCol, maxCol, func) {
     return rows.join('\n');
 }
 
-export {setMembershipInOfTo, toggleMembership, xorSetInto, makeArrayGrid, gridRangeToString}
+/**
+ * @param {!Array.<!string>} planes
+ * @param {!int} maxWidth
+ * @returns {!string}
+ */
+function mergeGridRangeStrings(planes, maxWidth) {
+    let p = planes[0].split('\n');
+    let cellWidth = p[0].length;
+    let cellHeight = p.length;
+    let done = [];
+    let cur = [];
+    let w = 0;
+    for (let plane of planes) {
+        let planeRows = plane.split('\n');
+        let d = planeRows[0].length;
+        if (w + d + 3 <= maxWidth) {
+            w += d + 3;
+            cur.push(planeRows);
+        } else {
+            done.push(cur);
+            cur = [];
+        }
+        w += d;
+    }
+    if (cur.length > 0) {
+        done.push(cur);
+    }
+
+    return done.map(rowCells => {
+        let rows = [];
+        for (let i = 0; i < cellHeight; i++) {
+            rows.push(rowCells.map(e => e[i]).join('   '));
+        }
+        return rows.join('\n');
+    }).join('\n\n');
+}
+
+export {
+    setMembershipInOfTo,
+    toggleMembership,
+    xorSetInto,
+    makeArrayGrid,
+    gridRangeToString,
+    mergeGridRangeStrings
+}

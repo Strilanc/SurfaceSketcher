@@ -1,6 +1,7 @@
 import {Point} from "src/geo/Point.js"
 import {RenderData} from "src/geo/RenderData.js"
 import {Vector} from "src/geo/Vector.js"
+import {lineSegmentPathWireframeRenderData} from "src/draw/Shapes.js"
 
 /**
  * A flat quadrilateral in 3d space.
@@ -42,9 +43,10 @@ class Quad {
     /**
      * @param {![!number, !number, !number, !number]} color
      * @param {undefined|!Rect} textureCoords
+     * @param {undefined|![!number, !number, !number, !number]} lineColor
      * @returns {!RenderData}
      */
-    toRenderData(color, textureCoords=undefined) {
+    toRenderData(color, textureCoords=undefined, lineColor=undefined) {
         let positions = this.corners();
         let colors = [];
         for (let i = 0; i < 4; i++) {
@@ -64,7 +66,7 @@ class Quad {
             positions,
             colors,
             QUAD_TRIANGLE_INDICES,
-            new RenderData([], [], [], undefined),
+            lineSegmentPathWireframeRenderData(positions, lineColor, true),
             textureCoordData);
     }
 

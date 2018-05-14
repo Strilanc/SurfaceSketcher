@@ -1,7 +1,7 @@
 /**
- * @param {!string} c
- * @returns {undefined|!XY}
+ * A parallel set of operations to perform.
  */
+
 import {seq, Seq} from "src/base/Seq.js";
 import {XY} from "src/sim/util/XY.js";
 import {Axis} from "src/sim/util/Axis.js";
@@ -16,8 +16,9 @@ import {Vector} from "src/geo/Vector.js";
 import {codeDistanceUnitCellSize, codeDistanceToPipeSize} from "src/braid/CodeDistance.js";
 import {DirectedGraph} from "src/sim/util/DirectedGraph.js";
 import {indent} from "src/base/Util.js";
-import {gridRangeToString} from "src/sim/util/Util.js";
+import {gridRangeToString, mergeGridRangeStrings} from "src/sim/util/Util.js";
 import {XYT} from "src/sim/util/XYT.js";
+import {equate_Iterables} from "src/base/Equate.js";
 
 let HADAMARD = 'H';
 let CONTROL = 'C';
@@ -33,8 +34,8 @@ SIM_ACTIONS.set(undefined, () => {});
 SIM_ACTIONS.set(CONTROL, () => {});
 SIM_ACTIONS.set(X_RIGHT, (surface, xy) => surface.cnot(xy.offsetBy(1, 0), xy));
 SIM_ACTIONS.set(X_LEFT, (surface, xy) => surface.cnot(xy.offsetBy(-1, 0), xy));
-SIM_ACTIONS.set(X_UP, (surface, xy) => surface.cnot(xy.offsetBy(0, +1), xy));
-SIM_ACTIONS.set(X_DOWN, (surface, xy) => surface.cnot(xy.offsetBy(0, -1), xy));
+SIM_ACTIONS.set(X_UP, (surface, xy) => surface.cnot(xy.offsetBy(0, -1), xy));
+SIM_ACTIONS.set(X_DOWN, (surface, xy) => surface.cnot(xy.offsetBy(0, +1), xy));
 SIM_ACTIONS.set(PAULI_X, (surface, xy) => {
     surface.hadamard(xy);
     surface.phase(xy);
@@ -62,6 +63,14 @@ class TileColumn {
      */
     padPush(other, thisValue, otherValue) {
         padPush(this.entries, other.entries, thisValue, otherValue);
+    }
+
+    /**
+     * @param {*} other
+     * @returns {!boolean}
+     */
+    isEqualTo(other) {
+        return other instanceof TileColumn && equate_Iterables(this.entries, other.entries);
     }
 }
 
@@ -232,86 +241,6 @@ class Tile {
         }
     }
 
-    /**
-     * @param {!Array.<!XY>} targets
-     * @param {!Axis} axis
-     */
-    measureAll(targets, axis=Axis.Z) {
-        for (let target of targets) {
-            this.measure(target, axis);
-        }
-    }
-
-    /**
-     * @param {!Array.<!XY>} targets
-     * @param {!Axis} axis
-     */
-    initAll(targets, axis=Axis.Z) {
-        for (let target of targets) {
-            this.init(target, axis);
-        }
-    }
-
-    /**
-     * @param {!Surface} surface
-     * @param {!Array.<!Array.<!boolean>>} disables
-     * @returns {!GeneralMap.<!XY, !MeasurementAdjustment>}
-     */
-    measureEnabledStabilizers(surface, disables) {
-        let xTargets = [];
-        let zTargets = [];
-        for (let row = 0; row < disables.length; row++) {
-            for (let col = 0; col < disables[row].length; col++) {
-                let xy = new XY(col, row);
-                if (!disables[row][col]) {
-                    if (surface.is_x(xy)) {
-                        xTargets.push(xy);
-                    }
-                    if (surface.is_z(xy)) {
-                        zTargets.push(xy);
-                    }
-                }
-            }
-        }
-        return this.measureStabilizers(xTargets, zTargets, xy => !disables[xy.y][xy.x]);
-    }
-
-    /**
-     * @param {!Array.<!XY>} xTargets
-     * @param {!Array.<!XY>} zTargets
-     * @param {!function(!XY): !boolean} isEnabled
-     */
-    measureStabilizers(xTargets, zTargets, isEnabled=() => true) {
-        this.initAll(xTargets, Axis.X);
-        this.initAll(zTargets, Axis.Z);
-
-        for (let i = 0; i < 4; i++) {
-            for (let xTarget of xTargets) {
-                let n = xTarget.neighbors()[i];
-                if (isEnabled(n)) {
-                    this.cnot(xTarget, n);
-                }
-            }
-            if (i < 2) {
-                this.padAllToDepth();
-            }
-        }
-        for (let i = 0; i < 4; i++) {
-            for (let zTarget of zTargets) {
-                let n = zTarget.neighbors()[i ^ 2];
-                if (isEnabled(n)) {
-                    this.cnot(n, zTarget);
-                }
-            }
-            if (i >= 2) {
-                this.padAllToDepth();
-            }
-        }
-
-        this.measureAll(xTargets, Axis.X);
-        this.measureAll(zTargets, Axis.Z);
-    }
-
     padAllToDepth() {
         let d = this.depth();
         for (let c of this.operations.values()) {
@@ -338,9 +267,13 @@ class Tile {
         let maxY = seq(this.operations.keys()).map(xy => xy.y).max(0);
         let d = this.depth();
         let planes = [];
+        let isInactive = xy => !this.initializations.has(xy) && !this.measurements.has(xy) && !this.operations.has(xy);
         planes.push(gridRangeToString(minY, maxY, minX, maxX, (row, col) => {
-            let init = this.initializations.get(new XY(col, row));
-            if (init === undefined) {
+            let xy = new XY(col, row);
+            let init = this.initializations.get(xy);
+            if (isInactive(xy)) {
+                return '#';
+            } else if (init === undefined) {
                 return ' ';
             } else if (init.is_z()) {
                 return '0';
@@ -350,8 +283,11 @@ class Tile {
         }));
         for (let z = 0; z < d; z++) {
             planes.push(gridRangeToString(minY, maxY, minX, maxX, (row, col) => {
-                let r = this.operations.get(new XY(col, row));
-                if (r === undefined) {
+                let xy = new XY(col, row);
+                let r = this.operations.get(xy);
+                if (isInactive(xy)) {
+                    return '#';
+                } else if (r === undefined) {
                     return ' ';
                 }
                 let result = r.entries[z];
@@ -359,8 +295,11 @@ class Tile {
             }));
         }
         planes.push(gridRangeToString(minY, maxY, minX, maxX, (row, col) => {
-            let init = this.measurements.get(new XY(col, row));
-            if (init === undefined) {
+            let xy = new XY(col, row);
+            let init = this.measurements.get(xy);
+            if (isInactive(xy)) {
+                return '#';
+            } else if (init === undefined) {
                 return ' ';
             } else if (init.is_z()) {
                 return 'M';
@@ -369,7 +308,18 @@ class Tile {
             }
         }));
 
-        return `Tile(entries=[${indent(planes.join('\n\n'))}\n])`;
+        return `Tile(entries=[\n${indent(mergeGridRangeStrings(planes, 200))}\n])`;
+    }
+
+    /**
+     * @param {*} other
+     * @returns {!boolean}
+     */
+    isEqualTo(other) {
+        return other instanceof Tile &&
+            this.initializations.isEqualTo(other.initializations) &&
+            this.operations.isEqualTo(other.operations) &&
+            this.measurements.isEqualTo(other.measurements);
     }
 }
 
@@ -392,4 +342,4 @@ function padPush(array1, array2, item1, item2, pad=undefined) {
     array2.push(item2);
 }
 
-export {Tile, CONTROL, X_RIGHT, X_LEFT, X_UP, X_DOWN, PAULI_X, PAULI_Z}
+export {Tile, TileColumn, CONTROL, X_RIGHT, X_LEFT, X_UP, X_DOWN, PAULI_X, PAULI_Z}

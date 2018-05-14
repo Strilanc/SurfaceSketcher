@@ -19,6 +19,9 @@ import {XY} from "src/sim/util/XY.js";
 import {SMALL_DIAMETER} from "src/braid/CodeDistance.js";
 import {IMPORTANT_UNIT_CELL_TIMES} from "src/braid/Sockets.js";
 
+const SIM_WIDTH = 16;
+const SIM_HEIGHT = 16;
+
 /**
  * @param {!int} codeDistance
  * @param {!Array.<!LocalizedPlumbingPiece>} pieces
@@ -104,8 +107,8 @@ function makeMeasureAllStabilizersTileStack(surface) {
  * @returns {!Array.<!TileStack>}
  */
 function unitCellMapToTileStacks(codeDistance, map) {
-    let w = 8;
-    let h = 16;
+    let w = SIM_WIDTH;
+    let h = SIM_HEIGHT;
     let surface = new Surface(w, h);
     let tileStacks = [];
     tileStacks.push(makeClearXStabilizersTileStack(surface));
@@ -131,8 +134,8 @@ function unitCellMapToTileStacks(codeDistance, map) {
  * @returns {!SimulationResults}
  */
 function runSimulation(tileStacks, tileIndex=0) {
-    let w = 8;
-    let h = 16;
+    let w = SIM_WIDTH;
+    let h = SIM_HEIGHT;
     let surface = new Surface(w, h);
     let measurements = new GeneralMap();
     for (let tileStack of tileStacks) {

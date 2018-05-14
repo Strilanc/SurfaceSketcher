@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import {DetailedError} from "src/base/DetailedError.js"
+import {GeneralSet} from "src/base/GeneralSet.js"
 
 const THROW_IF_EMPTY = { if_same_instance_as_this_then_throw: true };
 
@@ -822,7 +823,7 @@ class Seq {
     distinctBy(keySelector) {
         let seq = this;
         return Seq.fromGenerator(function() {
-            let keySet = new Set();
+            let keySet = new GeneralSet();
             return seq.filter(e => {
                 let key = keySelector(e);
                 if (keySet.has(key)) {

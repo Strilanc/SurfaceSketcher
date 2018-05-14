@@ -28,6 +28,7 @@ import {
     KET_ON_RECT,
 } from "src/draw/shader.js";
 import {Vector} from "src/geo/Vector.js";
+import {Axis} from "src/sim/util/Axis.js";
 import {RenderData} from "src/geo/RenderData.js";
 import {
     codeDistanceToPipeSeparation,
@@ -83,15 +84,18 @@ function resultToKetRect(result) {
  * @param {!int} codeDistance
  */
 function propagateRightward(tileStack, piece, codeDistance) {
-    let {x: dx, y: dy} = piece.toFootprintOriginXy(codeDistance);
-    let {w, h} = codeDistanceToPipeSize(codeDistance);
-    let s = codeDistanceUnitCellSize(codeDistance).h - h;
-    for (let j = 1; j <= s; j += 2) {
-        for (let i = 0; i < w; i += 2) {
-            let x = i + dx;
-            let y = j + dy;
-            tileStack.measure(new XY(x, y));
-            tileStack.feedforward_x(new XY(x, y), new XY(x, y + 2));
+    let firstY = undefined;
+    for (let xy of seq(piece.toFootprint(codeDistance).mask).sortedBy(e => e.x + e.y / 10000).toArray()) {
+        if ((xy.x & 1) !== (xy.y & 1)) {
+            if (firstY === undefined) {
+                firstY = xy.y;
+            }
+            tileStack.measure(xy, Axis.Z);
+            tileStack.feedforward_x(xy, xy.offsetBy(2, 0));
+            tileStack.feedforward_x(xy, xy.offsetBy(1, 1));
+            if (firstY === xy.y) {
+                tileStack.feedforward_x(xy, xy.offsetBy(1, -1));
+            }
         }
     }
 }
@@ -117,8 +121,7 @@ PlumbingPieces.PRIMAL_RIGHTWARD = new PlumbingPiece(
     PRIMAL_COLOR,
     H_ARROW_TEXTURE_RECT,
     undefined,
-    undefined,
-    propagateRightward);
+    undefined);
 PlumbingPieces.PRIMAL_LEFTWARD = new PlumbingPiece(
     'PRIMAL_LEFTWARD',
     Sockets.XPrimal,
@@ -222,7 +225,11 @@ PlumbingPieces.PRIMAL_CENTER = new PlumbingPiece(
 PlumbingPieces.DUAL_CENTER = new PlumbingPiece(
     'DUAL_CENTER',
     Sockets.CDual,
-    DUAL_COLOR);
+    DUAL_COLOR,
+    undefined,
+    undefined,
+    undefined,
+    propagateRightward);
 
 PlumbingPieces.All = [
     PlumbingPieces.PRIMAL_RIGHTWARD,

@@ -26,6 +26,15 @@ class PauliMap {
 
     /**
      * @param {*} target
+     * @param {!Axis} axis
+     * @returns {!PauliMap}
+     */
+    static justFlipOf(target, axis) {
+        return new PauliMap(new GeneralMap([target, axis.is_x() ? PauliMap.XMask : PauliMap.ZMask]))
+    }
+
+    /**
+     * @param {*} target
      * @param {undefined|!int} mask
      */
     set(target, mask) {

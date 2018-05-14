@@ -49,8 +49,8 @@ class ControlledPauliMaps {
     cnot(control, target) {
         for (let k of this.controlsAffecting(control, target)) {
             this._pauliMaps.get(k).cnot(control, target);
-            this._syncTargetToControlsFor(control, k);
-            this._syncTargetToControlsFor(target, k);
+            this.syncTargetToControlsFor(control, k);
+            this.syncTargetToControlsFor(target, k);
         }
     }
 
@@ -60,7 +60,7 @@ class ControlledPauliMaps {
     hadamard(target) {
         for (let k of this.controlsAffecting(target)) {
             this._pauliMaps.get(k).hadamard(target);
-            this._syncTargetToControlsFor(target, k);
+            this.syncTargetToControlsFor(target, k);
         }
     }
 
@@ -74,11 +74,31 @@ class ControlledPauliMaps {
 
     /**
      * @param {!XYT} control
+     */
+    deleteControlPauliMapIfEmpty(control) {
+        let map = this._pauliMaps.get(control);
+        if (map !== undefined && map.operations.size === 0) {
+            this._pauliMaps.delete(control);
+        }
+    }
+
+    /**
+     * @param {!XY} target
+     */
+    deleteTargetIndexIfEmpty(target) {
+        let map = this._targetToControls.get(target);
+        if (map !== undefined && map.size === 0) {
+            this._targetToControls.delete(target);
+        }
+    }
+
+    /**
+     * @param {!XYT} control
      * @param {!XY} target
      */
     feedforward_x(control, target) {
         this._pauliMaps.getOrInsert(control, () => new PauliMap()).x(target);
-        this._syncTargetToControlsFor(target, control);
+        this.syncTargetToControlsFor(target, control);
     }
 
     /**
@@ -87,7 +107,7 @@ class ControlledPauliMaps {
      */
     feedforward_z(control, target) {
         this._pauliMaps.getOrInsert(control, () => new PauliMap()).z(target);
-        this._syncTargetToControlsFor(target, control);
+        this.syncTargetToControlsFor(target, control);
     }
 
     /**
@@ -135,15 +155,16 @@ class ControlledPauliMaps {
      * Performs an incremental update of the target-to-control map, focused on the given pair.
      * @param {!XY} target
      * @param {!XYT} control
-     * @private
      */
-    _syncTargetToControlsFor(target, control) {
+    syncTargetToControlsFor(target, control) {
         let controlsForTarget = this._targetToControls.getOrInsert(target, () => new GeneralSet());
         let targetsForControl = this._pauliMaps.get(control);
         setMembershipInOfTo(
             controlsForTarget,
             control,
             targetsForControl !== undefined && targetsForControl.get(target) !== 0);
+        this.deleteControlPauliMapIfEmpty(control);
+        this.deleteTargetIndexIfEmpty(target);
     }
 
     /**

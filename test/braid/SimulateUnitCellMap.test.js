@@ -9,6 +9,10 @@ import {Surface} from "src/sim/Surface.js";
 import {XY} from "src/sim/util/XY.js";
 import {XYT} from "src/sim/util/XYT.js";
 import {Measurement} from "src/sim/Measurement.js";
+import {TileStack} from "src/sim/TileStack.js";
+import {GeneralSet} from "src/base/GeneralSet.js";
+import {Axis} from "src/sim/util/Axis.js";
+import {DirectedGraph} from "src/sim/util/DirectedGraph.js";
 
 let suite = new Suite("SimulateUnitCellMap");
 
@@ -46,6 +50,28 @@ suite.test('makeClearXStabilizersTileStack', () => {
     for (let [xyt, measurement] of results.measurements.entries()) {
         if (xyt.t > 0) {
             assertThat(measurement).isEqualTo(new Measurement(false, false));
+        }
+    }
+});
+
+suite.test('introducingHoleDoesNotAffectRemoteStabilizers', () => {
+    for (let hole of [new XY(2, 2), new XY(3, 3)]) {
+        let surface = new Surface(5, 5);
+        let t = makeClearXStabilizersTileStack(surface);
+        t.startNewTile();
+        t.measureEnabledStabilizers(surface, new GeneralSet(hole));
+        surface.destruct();
+        let result = runSimulation([t]);
+        for (let i = 0; i < surface.width; i++) {
+            for (let j = 0; j < surface.height; j++) {
+                let xy = new XY(i, j);
+                let m = result.measurements.get(new XYT(xy.x, xy.y, 1));
+                if (surface.is_data(xy) || hole.isEqualTo(xy)) {
+                    assertThat(m).withInfo({xy}).isEqualTo(undefined);
+                } else {
+                    assertThat(m).withInfo({xy}).isEqualTo(new Measurement(false, false));
+                }
+            }
         }
     }
 });

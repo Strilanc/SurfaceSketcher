@@ -85,6 +85,14 @@ class XY {
     neighbors() {
         return [this.rightNeighbor(), this.leftNeighbor(), this.belowNeighbor(), this.aboveNeighbor()];
     }
+
+    /**
+     * @param {!XY} other
+     * @returns {!boolean}
+     */
+    isAdjacent(other) {
+        return Math.abs(this.x - other.x) + Math.abs(this.y - other.y) === 1;
+    }
 }
 
 export {XY}

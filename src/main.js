@@ -30,6 +30,7 @@ import {initShaders} from "src/draw/shader.js";
 import {GeneralMap} from "src/base/GeneralMap.js";
 import {SimulationResults} from "src/braid/SimulateUnitCellMap.js";
 import {tileStackToRenderData} from "src/draw/TileDrawing.js";
+import {Quad} from "src/geo/Quad.js";
 
 let drawState = DrawState.defaultValue();
 let lastDrawnState = undefined;
@@ -272,6 +273,12 @@ canvas.addEventListener('mousewheel', ev => {
     let strafe = displacement.perpOnto(drawState.camera.direction()).scaledBy(-1);
     drawState.camera.distance += displacement.scalarProjectOnto(drawState.camera.direction());
     drawState.camera.focus_point = drawState.camera.focus_point.plus(strafe);
+
+    let minDist = 0.5;
+    if (drawState.camera.distance < minDist) {
+        moveCameraRelativeToFacing(0, 0, drawState.camera.distance - minDist);
+        drawState.camera.distance = minDist;
+    }
     revision.startedWorkingOnCommit();
 });
 

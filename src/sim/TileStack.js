@@ -70,7 +70,7 @@ class TileStack {
      * @param {!XY} target
      */
     propagate(control, target) {
-        this.prop.includeEdge(this.measurementOnLastTileAt(control), this.measurementOnLastTileAt(target));
+        this.prop.toggleEdge(this.measurementOnLastTileAt(control), this.measurementOnLastTileAt(target));
     }
 
     /**
@@ -89,6 +89,9 @@ class TileStack {
      * @param {!XY} target
      */
     feedforward_z(control, target) {
+        if (this.lastTile().measurements.has(target)) {
+            throw new DetailedError('Already measured.', {target});
+        }
         this.feed.feedforward_z(this.measurementOnLastTileAt(control), target);
     }
 
@@ -162,6 +165,7 @@ class TileStack {
             let flips = controlEffects.flips(target, axis);
 
             controlEffects.set(target, 0);
+            this.feed.syncTargetToControlsFor(target, control);
             if (flips) {
                 this.prop.toggleEdge(control, id);
             }
@@ -178,8 +182,9 @@ class TileStack {
 
         // Drop feedforward effects on the target.
         for (let control of this.feed.controlsAffecting(target)) {
-            let controlEffects = tile.pauliMapForControl(control);
+            let controlEffects = this.feed.pauliMapForControl(control);
             controlEffects.set(target, 0);
+            controlEffects.syncTargetToControlsFor(target, control);
         }
     }
 
@@ -286,7 +291,53 @@ class TileStack {
                 }
             }
         }
-        return this.lastTile().measureStabilizers(xTargets, zTargets, xy => avail.has(xy) && !disables.has(xy));
+        return this.measureStabilizers(xTargets, zTargets, xy => avail.has(xy) && !disables.has(xy));
+    }
+
+    /**
+     * @param {!Array.<!XY>} xTargets
+     * @param {!Array.<!XY>} zTargets
+     * @param {!function(!XY): !boolean} isEnabled
+     */
+    measureStabilizers(xTargets, zTargets, isEnabled=() => true) {
+        this.initAll(xTargets, Axis.X);
+        this.initAll(zTargets, Axis.Z);
+
+        for (let i = 0; i < 4; i++) {
+            for (let xTarget of xTargets) {
+                let n = xTarget.neighbors()[i];
+                if (isEnabled(n)) {
+                    this.cnot(xTarget, n);
+                }
+            }
+            if (i < 2) {
+                this.lastTile().padAllToDepth();
+            }
+        }
+        for (let i = 0; i < 4; i++) {
+            for (let zTarget of zTargets) {
+                let n = zTarget.neighbors()[i ^ 2];
+                if (isEnabled(n)) {
+                    this.cnot(n, zTarget);
+                }
+            }
+            if (i >= 2) {
+                this.lastTile().padAllToDepth();
+            }
+        }
+
+        this.measureAll(xTargets, Axis.X);
+        this.measureAll(zTargets, Axis.Z);
+    }
+
+    /**
+     * @param {!Array.<!XY>} targets
+     * @param {!Axis} axis
+     */
+    measureAll(targets, axis=Axis.Z) {
+        for (let target of targets) {
+            this.measure(target, axis);
+        }
     }
 }
 

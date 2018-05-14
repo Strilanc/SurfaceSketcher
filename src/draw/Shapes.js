@@ -131,4 +131,10 @@ function circleRenderData(center, horizontalDelta, verticalDelta, fillColor, lin
     return polygonRenderData(center, perimeterPoints, fillColor, lineColor);
 }
 
-export {pyramidRenderData, lineSegmentPathRenderData, circleRenderData, polygonRenderData}
+export {
+    pyramidRenderData,
+    lineSegmentPathRenderData,
+    circleRenderData,
+    polygonRenderData,
+    lineSegmentPathWireframeRenderData
+}
