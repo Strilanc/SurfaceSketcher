@@ -1,6 +1,3 @@
-/**
- * @param {!FixupLayer} layer
- */
 import {Suite, assertThat, assertTrue, EqualsTester} from "test/TestUtil.js"
 import {ControlledPauliMaps} from "src/sim/util/ControlledPauliMaps.js"
 import {Axis} from "src/sim/util/Axis.js"

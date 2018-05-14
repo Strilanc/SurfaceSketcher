@@ -6,7 +6,6 @@ import {seq, Seq} from "src/base/Seq.js";
 import {XY} from "src/sim/util/XY.js";
 import {Axis} from "src/sim/util/Axis.js";
 import {DetailedError} from "src/base/DetailedError.js";
-import {FixupLayer} from "src/sim/FixupLayer.js";
 import {GeneralMap} from "src/base/GeneralMap.js";
 import {makeArrayGrid} from "src/sim/util/Util.js";
 import {RenderData} from "src/geo/RenderData.js";

@@ -156,7 +156,7 @@ class ControlledPauliMaps {
     }
 
     /**
-     * @param {!FixupLayer|*} other
+     * @param {*} other
      * @returns {!boolean}
      */
     isEqualTo(other) {
