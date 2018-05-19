@@ -91,6 +91,34 @@ class Tile {
     }
 
     /**
+     * @returns {!{minX: !int, minY: !int, maxX: !int, maxY: !int}}
+     */
+    bounds() {
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        let update = xy => {
+            minX = Math.min(xy.x, minX);
+            minY = Math.min(xy.x, minY);
+            maxX = Math.max(xy.x, maxX);
+            maxY = Math.max(xy.x, maxY);
+        };
+
+        for (let xy of this.initializations.keys()) {
+            update(xy);
+        }
+        for (let xy of this.measurements.keys()) {
+            update(xy);
+        }
+        for (let xy of this.operations.keys()) {
+            update(xy);
+        }
+
+        return {minX, minY, maxX, maxY};
+    }
+
+    /**
      * @param {!XY} control
      * @param {!XY} target
      */

@@ -11,7 +11,7 @@ import {XY} from "src/sim/util/XY.js";
 import {X_DOWN, X_LEFT, X_RIGHT, X_UP} from "src/sim/Tile.js";
 import {pyramidRenderData, circleRenderData, lineSegmentPathRenderData, polygonRenderData} from "src/draw/Shapes.js";
 import {XYT} from "src/sim/util/XYT.js";
-import {DUAL_COLOR, PRIMAL_COLOR} from "src/braid/PlumbingPieces.js";
+import {Config} from "src/Config.js";
 import {PauliMap} from "src/sim/util/PauliMap.js";
 import {IMPORTANT_UNIT_CELL_TIMES} from "src/braid/Sockets.js";
 import {Quad} from "src/geo/Quad.js";
@@ -97,9 +97,9 @@ function _tileWireRenderData(tile, tileIndex, codeDistance, simResult) {
     // Initializations.
     for (let [xy, axis] of tile.initializations.entries()) {
         if (axis.is_z()) {
-            result.push(uprightPyramidRenderData(pos(xy, -1), -OP_HEIGHT, PRIMAL_COLOR));
+            result.push(uprightPyramidRenderData(pos(xy, -1), -OP_HEIGHT, Config.BRAIDING_PRIMAL_COLOR));
         } else {
-            result.push(uprightPyramidRenderData(pos(xy, -1), -OP_HEIGHT, DUAL_COLOR));
+            result.push(uprightPyramidRenderData(pos(xy, -1), -OP_HEIGHT, Config.BRAIDING_DUAL_COLOR));
         }
     }
 
@@ -115,9 +115,9 @@ function _tileWireRenderData(tile, tileIndex, codeDistance, simResult) {
                 color = [0.7, 0.4, 0.4, 1];
             }
         } else if (axis.is_z()) {
-            color = PRIMAL_COLOR;
+            color = Config.BRAIDING_PRIMAL_COLOR;
         } else {
-            color = DUAL_COLOR;
+            color = Config.BRAIDING_DUAL_COLOR;
         }
         result.push(uprightPyramidRenderData(pos(xy, depth + 1), +OP_HEIGHT, color));
     }
@@ -138,7 +138,7 @@ function _tileWireRenderData(tile, tileIndex, codeDistance, simResult) {
  * @returns {!Array.<!RenderData>}
  */
 function _tileSimplifiedWireRenderData(tile, tileIndex, codeDistance, simResult) {
-    let pos = xy => qubitPosition(codeDistance, xy, 0, tileIndex);
+    // let pos = xy => qubitPosition(codeDistance, xy, 0, tileIndex);
     let quadData = (xy, color) => {
         let c1 = qubitPosition(codeDistance, xy.offsetBy(-0.001, -0.001), 0, tileIndex);
         let c2 = qubitPosition(codeDistance, xy.offsetBy(0.999, 0.999), 0, tileIndex);
@@ -158,31 +158,54 @@ function _tileSimplifiedWireRenderData(tile, tileIndex, codeDistance, simResult)
     //     return polygonRenderData(center, [left, top, right, down], color, [0, 0, 0, 1]);
     // };
 
-
     let result = [];
 
-    // Measurements.
-    for (let [xy, axis] of tile.measurements.entries()) {
-        let color;
-        let m = simResult.measurements.get(new XYT(xy.x, xy.y, tileIndex));
+    let bounds = tile.bounds();
+    for (let x = bounds.minX; x <= bounds.maxX; x++) {
+        for (let y = bounds.minY; y <= bounds.maxY; y++) {
+            let xy = new XY(x, y);
+            let color = undefined;
+            let measurement = simResult.measurements.get(new XYT(xy.x, xy.y, tileIndex));
 
-        if (m !== undefined && m.result) {
-            if (axis.is_z()) {
-                color = [1, 0.8, 0.8, 1];
+            let measurementAxis = tile.measurements.get(xy);
+            let initAxis = tile.initializations.get(xy);
+            let isHeldData = measurementAxis === undefined && initAxis === undefined;
+            let isMeasuredData = measurementAxis !== undefined && initAxis === undefined;
+            let isStabilizer = measurementAxis !== undefined && initAxis !== undefined;
+            let isHole = !tile.operations.has(xy) && measurementAxis === undefined && initAxis === undefined;
+
+            if (isHole) {
+                color = Config.SIMPLIFIED_HOLE_COLOR;
+            } else if (isHeldData) {
+                color = Config.SIMPLIFIED_DATA_COLOR;
+            } else if (isStabilizer) {
+                if (measurement.result) {
+                    color = measurementAxis.is_z() ?
+                        Config.SIMPLIFIED_PRIMAL_COLOR_HIGHLIGHT :
+                        Config.SIMPLIFIED_DUAL_COLOR_HIGHLIGHT;
+                } else {
+                    color = measurementAxis.is_z() ?
+                        Config.SIMPLIFIED_PRIMAL_COLOR :
+                        Config.SIMPLIFIED_DUAL_COLOR;
+                }
+            } else if (isMeasuredData) {
+                if (measurement.result) {
+                    color = measurementAxis.is_z() ?
+                        Config.SIMPLIFIED_DATA_PRIMAL_MEASURE_ON_COLOR :
+                        Config.SIMPLIFIED_DATA_DUAL_MEASURE_ON_COLOR;
+                } else {
+                    color = measurementAxis.is_z() ?
+                        Config.SIMPLIFIED_DATA_PRIMAL_MEASURE_OFF_COLOR :
+                        Config.SIMPLIFIED_DATA_DUAL_MEASURE_OFF_COLOR;
+                }
             } else {
-                color = [0.6, 0.4, 0.4, 1];
+                // unknown
+                color = [1, 0, 0, 1];
             }
-        } else if (axis.is_z()) {
-            color = PRIMAL_COLOR;
-        } else {
-            color = DUAL_COLOR;
-        }
-        result.push(quadData(xy, color));
-    }
 
-    for (let xy of tile.operations.keys()) {
-        if (!tile.measurements.has(xy)) {
-            result.push(quadData(xy, [0.5, 0.5, 1, 1]));
+            if (color !== undefined) {
+                result.push(quadData(xy, color));
+            }
         }
     }
 
@@ -254,9 +277,9 @@ function _tileStackFeedToRenderData(tileStack, tileIndex, codeDistance, simplifi
             let targetPos = qubitPosition(codeDistance, target, 10, xyt.t + tileIndex);
             let targetColor;
             if (effect === PauliMap.XMask) {
-                targetColor = PRIMAL_COLOR;
+                targetColor = Config.BRAIDING_PRIMAL_COLOR;
             } else if (effect === PauliMap.ZMask) {
-                targetColor = DUAL_COLOR;
+                targetColor = Config.BRAIDING_DUAL_COLOR;
             } else if (effect === (PauliMap.XMask | PauliMap.ZMask)) {
                 targetColor = [0, 0, 1, 1];
             }
@@ -316,7 +339,7 @@ function _tileStackPropToRenderData(tileStack, tileIndex, codeDistance, simplifi
                 delta.x,
                 delta.y,
                 0.004,
-                PRIMAL_COLOR,
+                Config.BRAIDING_PRIMAL_COLOR,
                 [0, 0, 0, 1]);
 
             let controlToTargetLine = lineSegmentPathRenderData([controlPos, targetPos]);
@@ -359,7 +382,7 @@ function _tileStackPropToRenderDataSimplified(tileStack, tileIndex, codeDistance
                     cen.plus(d.scaledBy(2)),
                     cen.plus(d.scaledBy(0.5)),
                 ],
-                [0, 0, 0, 1],
+                Config.SIMPLIFIED_PROPAGATE_COLOR,
                 undefined);
             result.push(poly);
         }
@@ -381,11 +404,11 @@ function _tileStackFeedToRenderDataSimplified(tileStack, tileIndex, codeDistance
             let targetPos = qubitPosition(codeDistance, target.offsetBy(0.5, 0.5), 1, xyt.t + tileIndex);
             let targetColor;
             if (effect === PauliMap.XMask) {
-                targetColor = PRIMAL_COLOR;
+                targetColor = Config.SIMPLIFIED_PRIMAL_COLOR;
             } else if (effect === PauliMap.ZMask) {
-                targetColor = DUAL_COLOR;
+                targetColor = Config.SIMPLIFIED_DUAL_COLOR;
             } else if (effect === (PauliMap.XMask | PauliMap.ZMask)) {
-                targetColor = [0, 0, 1, 1];
+                targetColor = Config.SIMPLIFIED_DATA_COLOR;
             }
 
             let along = targetPos.minus(controlPos).unit().scaledBy(0.01);

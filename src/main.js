@@ -201,6 +201,10 @@ canvas.addEventListener('click', ev => {
         return;
     }
 
+    if (!drawState.drawBraids) {
+        return;
+    }
+
     let {loc, piece, socket} = drawState.selectedPiece;
     let unitCell = drawState.cellMap.cell(loc);
     let curPiece = unitCell.pieces.get(socket);

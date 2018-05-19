@@ -211,6 +211,38 @@ class TileStack {
     }
 
     /**
+     * @returns {!{minX: !int, minY: !int, maxX: !int, maxY: !int}}
+     */
+    bounds() {
+        let minX = 0;
+        let minY = 0;
+        let maxX = 0;
+        let maxY = 0;
+        let update = xy => {
+            minX = Math.min(xy.x, minX);
+            minY = Math.min(xy.x, minY);
+            maxX = Math.min(xy.x, maxX);
+            maxY = Math.min(xy.x, maxY);
+        };
+
+        for (let tile of this.tiles) {
+            let e = tile.bounds();
+            update(new XY(e.minX, e.minY));
+            update(new XY(e.maxX, e.maxY));
+        }
+        for (let xyt of this.prop.nodes()) {
+            update(xyt.xy);
+        }
+        for (let entry of this.feed.entries()) {
+            for (let xy of entry[1].targets()) {
+                update(xy);
+            }
+        }
+
+        return {minX, minY, maxX, maxY};
+    }
+
+    /**
      * Returns a combined tile formed by first applying this tile, and then the given next tile.
      * @param {!TileStack} nextTile The tile to concatenate on to this one.
      * @returns {!TileStack} The combined tile.
