@@ -1,3 +1,7 @@
+/**
+ * @param {!UnitCellSocket} pp
+ * @returns {!UnitCellSocket}
+ */
 import {DetailedError} from 'src/base/DetailedError.js'
 import {Box} from "src/geo/Box.js";
 import {Vector} from "src/geo/Vector.js";
@@ -17,17 +21,14 @@ import {
 import {UnitCellSocketFootprint} from "src/braid/UnitCellSocketFootprint.js";
 import {UnitCellSocket} from "src/braid/UnitCellSocket.js";
 import {UnitCellSocketNeighbor} from "src/braid/UnitCellSocketNeighbor.js";
+import {Rect} from "src/geo/Rect.js";
 
 
-/**
- * @param {!UnitCellSocket} pp
- * @returns {!UnitCellSocket}
- */
 function genericToPrimal(pp) {
     return new UnitCellSocket(
         pp.name + 'Primal',
         pp.box,
-        codeDistance => pp.footprint(codeDistance));
+        pp.footprintRect);
 }
 
 /**
@@ -42,7 +43,7 @@ function genericToDual(pp) {
             let unitSize = codeDistanceUnitCellSize(codeDistance);
             let dw = Math.floor((unitSize.w - 1) / 4) * 2 + 1;
             let dh = Math.floor((unitSize.h - 1) / 4) * 2 + 1;
-            return pp.footprint(codeDistance).offsetBy(dw, dh);
+            return pp.footprintRect(codeDistance).offsetBy(dw, dh);
         });
 }
 
@@ -53,7 +54,7 @@ let centerConnector = new UnitCellSocket(
         new Vector(SMALL_DIAMETER, SMALL_DIAMETER, SMALL_DIAMETER)),
     codeDistance => {
         let {w, h} = codeDistanceToPipeSize(codeDistance);
-        return UnitCellSocketFootprint.grid(0, 0, w, h);
+        return new Rect(0, 0, w, h);
     });
 
 let xConnector = new UnitCellSocket(
@@ -65,7 +66,7 @@ let xConnector = new UnitCellSocket(
         let {w, h} = codeDistanceToPipeSize(codeDistance);
         w *= 2;
         w += codeDistanceToPipeSeparation(codeDistance);
-        return UnitCellSocketFootprint.grid(0, 0, w, h);
+        return new Rect(0, 0, w, h);
     });
 
 let yConnector = new UnitCellSocket(
@@ -75,7 +76,7 @@ let yConnector = new UnitCellSocket(
         new Vector(SMALL_DIAMETER, LONG_DIAMETER, SMALL_DIAMETER)),
     codeDistance => {
         let {w, h} = codeDistanceToPipeSize(codeDistance);
-        return UnitCellSocketFootprint.grid(0, 0, w, h);
+        return new Rect(0, 0, w, h);
     });
 
 let zConnector = new UnitCellSocket(
@@ -87,7 +88,7 @@ let zConnector = new UnitCellSocket(
         let {w, h} = codeDistanceToPipeSize(codeDistance);
         h *= 2;
         h += codeDistanceToPipeSeparation(codeDistance);
-        return UnitCellSocketFootprint.grid(0, 0, w, h);
+        return new Rect(0, 0, w, h);
     });
 
 let genericPieces = [centerConnector, xConnector, yConnector, zConnector];

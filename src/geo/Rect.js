@@ -23,6 +23,24 @@ class Rect {
     }
 
     /**
+     * @param {!XY} xy
+     * @returns {!boolean}
+     */
+    contains(xy) {
+        let {x, y} = xy;
+        return x >= this.x && x < this.x + this.w && y >= this.y && y < this.y + this.y;
+    }
+
+    /**
+     * @param {!int} dx
+     * @param {!int} dy
+     * @returns {!Rect}
+     */
+    offsetBy(dx, dy) {
+        return new Rect(this.x + dx, this.y + dy, this.w, this.h);
+    }
+
+    /**
      * @param {*} other
      * @returns {!boolean}
      */

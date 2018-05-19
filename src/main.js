@@ -268,7 +268,7 @@ function moveCameraRelativeToFacing(dx, dy, dz) {
 }
 
 canvas.addEventListener('mousewheel', ev => {
-    let factor = Math.exp(-ev.wheelDelta / 1000.0);
+    let factor = Math.exp(-ev.wheelDelta / 2000.0);
     let scalarJump = drawState.camera.distance * (factor - 1);
     let canvasBox = canvas.getBoundingClientRect();
     let curMouse = [ev.clientX - canvasBox.left, ev.clientY - canvasBox.top];

@@ -76,6 +76,19 @@ class TileStack {
     /**
      * @param {!XY} control
      * @param {!XY} target
+     * @param {!Axis} axis
+     */
+    feedforward_pauli(control, target, axis) {
+        if (axis.is_z()) {
+            this.feedforward_z(control, target);
+        } else {
+            this.feedforward_x(control, target);
+        }
+    }
+
+    /**
+     * @param {!XY} control
+     * @param {!XY} target
      */
     feedforward_x(control, target) {
         if (this.lastTile().measurements.has(target)) {

@@ -79,25 +79,95 @@ function resultToKetRect(result) {
 }
 
 /**
+ * Expands a hole along a single unit-diameter ray, pushing errors and observables out of the way with feedforward.
+ *
+ * @param {!TileStack} tileStack Output object to append commands into.
+ * @param {!XY} root A location on the border within the existing hole.
+ * @param {!int} dx The direction to expand the hole along.
+ * @param {!int} dy The direction to expand the hole along.
+ * @param {!int} distance The length of the ray to create (including the root location and skipped even qubits).
+ * @param {!Axis} axis The hole type.
+ */
+function expandHoleAlongRay(tileStack, root, dx, dy, distance, axis) {
+    let op = axis.opposite();
+    for (let i = 1; i < distance; i += 2) {
+        let xy = new XY(root.x + i * dx, root.y + i * dy);
+        tileStack.measure(xy, axis);
+        let c = xy.offsetBy(dx, dy);
+        let p1 = c.offsetBy(dx, dy);
+        let p2 = c.offsetBy(-dy, dx);
+        let p3 = c.offsetBy(dy, -dx);
+        for (let p of [p1, p2, p3]) {
+            if (!tileStack.lastTile().measurements.has(p)) {
+                tileStack.feedforward_pauli(xy, p, op);
+            }
+        }
+    }
+}
+
+/**
+ * @param {!TileStack} tileStack Output object to append commands into.
+ * @param {!XY} rightHandedRoot
+ * @param {!int} dx
+ * @param {!int} dy
+ * @param {!int} distance
+ * @param {!int} sideLength
+ * @param {!Axis} axis The hole type.
+ */
+function expandHoleAlongSide(tileStack, rightHandedRoot, dx, dy, sideLength, distance, axis) {
+    let sx = dy;
+    let sy = -dx;
+
+    // Grow fingers.
+    for (let i = 0; i < sideLength; i += 2) {
+        let root = new XY(rightHandedRoot.x + sx * i, rightHandedRoot.y + sy * i);
+        expandHoleAlongRay(tileStack, root, dx, dy, distance, axis);
+    }
+
+    // Glue the fingers together.
+    for (let i = 1; i < sideLength; i += 2) {
+        let root = new XY(rightHandedRoot.x + sx * i + dx, rightHandedRoot.y + sy * i + dy);
+        expandHoleAlongRay(tileStack, root, dx, dy, distance, axis.opposite());
+    }
+}
+
+/**
+ * @param {!TileStack} tileStack Output object to append commands onto.
+ * @param {!Rect} rect The area to turn into a hole.
+ * @param {!XY} holeOrigin The location of the first measurement qubit to turn off. The full hole is made by propagating
+ *     outward from this point. It determines how errors / observables are pushed around by the hole creation process.
+ * @param {!Axis} axis The hole type.
+ */
+function startHole(tileStack, rect, holeOrigin, axis) {
+    if (((holeOrigin.x - rect.x) & 1) !== 0 || ((holeOrigin.y - rect.y) & 1) !== 0) {
+        throw new DetailedError('Holes must start on a stabilizer of the same type.', {rect, holeOrigin});
+    }
+    if (!rect.contains(holeOrigin)) {
+        throw new DetailedError('Holes must start inside themselves.', {rect, holeOrigin});
+    }
+
+    let rightWidth = rect.x + rect.w - holeOrigin.x;
+    let leftWidth = holeOrigin.x - rect.x + 1;
+    let aboveHeight = rect.y + rect.h - holeOrigin.y;
+    let belowHeight = holeOrigin.y - rect.y + 1;
+
+    // Make a complete row.
+    expandHoleAlongRay(tileStack, holeOrigin, 1, 0, rightWidth, axis);
+    expandHoleAlongRay(tileStack, holeOrigin, -1, 0, leftWidth, axis);
+
+    // Expand row into a square.
+    expandHoleAlongSide(tileStack, new XY(rect.x, holeOrigin.y), 0, 1, rect.w, aboveHeight, axis);
+    expandHoleAlongSide(tileStack, new XY(rect.x + rect.w - 1, holeOrigin.y), 0, -1, rect.w, belowHeight, axis);
+}
+
+/**
  * @param {!TileStack} tileStack
  * @param {!LocalizedPlumbingPiece} piece
  * @param {!int} codeDistance
  */
 function propagateRightward(tileStack, piece, codeDistance) {
-    let firstY = undefined;
-    for (let xy of seq(piece.toFootprint(codeDistance).mask).sortedBy(e => e.x + e.y / 10000).toArray()) {
-        if ((xy.x & 1) !== (xy.y & 1)) {
-            if (firstY === undefined) {
-                firstY = xy.y;
-            }
-            tileStack.measure(xy, Axis.Z);
-            tileStack.feedforward_x(xy, xy.offsetBy(2, 0));
-            tileStack.feedforward_x(xy, xy.offsetBy(1, 1));
-            if (firstY === xy.y) {
-                tileStack.feedforward_x(xy, xy.offsetBy(1, -1));
-            }
-        }
-    }
+    let foot = piece.toSocketFootprintRect(codeDistance);
+    startHole(tileStack, foot, new XY(foot.x, foot.y), Axis.Z);
 }
 
 /**

@@ -369,22 +369,7 @@ function _tileStackPropToRenderDataSimplified(tileStack, tileIndex, codeDistance
         let controlPos = qubitPosition(codeDistance, xyt.xy.offsetBy(0.5, 0.5), 1, xyt.t + tileIndex);
         for (let target of outs) {
             let targetPos = qubitPosition(codeDistance, target.xy.offsetBy(0.5, 0.5), 1, xyt.t + tileIndex);
-            let along = targetPos.minus(controlPos).unit().scaledBy(0.01);
-            let d = along.cross(new Vector(0, 1, 0));
-            let cen = targetPos.plus(along.scaledBy(-2));
-            let poly = polygonRenderData(
-                targetPos,
-                [
-                    controlPos,
-                    cen.plus(d.scaledBy(-0.5)),
-                    cen.plus(d.scaledBy(-2)),
-                    cen.plus(along.scaledBy(2)),
-                    cen.plus(d.scaledBy(2)),
-                    cen.plus(d.scaledBy(0.5)),
-                ],
-                Config.SIMPLIFIED_PROPAGATE_COLOR,
-                undefined);
-            result.push(poly);
+            result.push(arrowRenderData(targetPos, controlPos, Config.SIMPLIFIED_PROPAGATE_COLOR));
         }
     }
     return result;
@@ -410,23 +395,7 @@ function _tileStackFeedToRenderDataSimplified(tileStack, tileIndex, codeDistance
             } else if (effect === (PauliMap.XMask | PauliMap.ZMask)) {
                 targetColor = Config.SIMPLIFIED_DATA_COLOR;
             }
-
-            let along = targetPos.minus(controlPos).unit().scaledBy(0.01);
-            let d = along.cross(new Vector(0, 1, 0));
-            let cen = targetPos.plus(along.scaledBy(-2));
-            let poly = polygonRenderData(
-                targetPos,
-                [
-                    controlPos,
-                    cen.plus(d.scaledBy(-0.5)),
-                    cen.plus(d.scaledBy(-2)),
-                    cen.plus(along.scaledBy(2)),
-                    cen.plus(d.scaledBy(2)),
-                    cen.plus(d.scaledBy(0.5)),
-                ],
-                targetColor,
-                undefined);
-            result.push(poly);
+            result.push(arrowRenderData(targetPos, controlPos, targetColor));
         }
     }
     return result;
@@ -502,6 +471,33 @@ function tileStackToRenderData(tileStack, tileIndex, codeDistance, simResult, si
     result.push(..._tileStackFeedToRenderData(tileStack, tileIndex, codeDistance, simplified));
     result.push(..._tileStackPropToRenderData(tileStack, tileIndex, codeDistance, simplified));
     return result;
+}
+
+/**
+ * @param {!Point} targetPos
+ * @param {!Point} controlPos
+ * @param {![!number, !number, !number, !number]} fillColor
+ * @returns {!RenderData}
+ */
+function arrowRenderData(targetPos, controlPos, fillColor) {
+    let crossSpan = 0.3;
+    let alongSpan = 1.5;
+
+    let along = targetPos.minus(controlPos).unit().scaledBy(0.01);
+    let cross = along.cross(new Vector(0, 1, 0)).scaledBy(crossSpan);
+    let cen = targetPos.plus(along.scaledBy(-alongSpan));
+    return polygonRenderData(
+        targetPos,
+        [
+            controlPos,
+            cen.plus(cross.scaledBy(-0.5)),
+            cen.plus(cross.scaledBy(-2)),
+            targetPos,
+            cen.plus(cross.scaledBy(2)),
+            cen.plus(cross.scaledBy(0.5)),
+        ],
+        fillColor,
+        undefined);
 }
 
 export {tileToRenderData, tileStackToRenderData}

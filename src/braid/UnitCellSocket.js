@@ -9,12 +9,12 @@ class UnitCellSocket {
     /**
      * @param {!string} name
      * @param {!Box} box
-     * @param {!function(codeDistance: !int) : !UnitCellSocketFootprint} footprint
+     * @param {!function(codeDistance: !int) : !Rect} footprintRect
      */
-    constructor(name, box, footprint) {
+    constructor(name, box, footprintRect) {
         this.name = name;
         this.box = box;
-        this.footprint = footprint;
+        this.footprintRect = footprintRect;
         /** @type {!GeneralMap.<!Vector, !UnitCellSocketNeighbor>} */
         this.neighbors = new GeneralMap();
         /** @type {!Array.<UnitCellSocketNeighbor>} */
