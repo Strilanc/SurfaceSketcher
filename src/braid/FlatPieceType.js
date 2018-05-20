@@ -21,6 +21,20 @@ class FlatPieceType {
     }
 
     /**
+     * @returns {!boolean}
+     */
+    get vertical() {
+        return !this.horizontal;
+    }
+
+    /**
+     * @returns {!boolean}
+     */
+    get primal() {
+        return !this.dual;
+    }
+
+    /**
      * @returns {!Array.<!FlatPieceType>}
      */
     static all() {
@@ -69,14 +83,16 @@ class FlatPieceType {
  * Creates a group of four plumbing pieces, one for each choice of H-vs-V and Primal-vs-Dual.
  *
  * @param {!string} nameSuffix
- * @param {undefined|!function(!FlatPieceType) : undefined|!function(
- *      !LocalizedPlumbingPiece, !SimulationResults) : !Array.<!RenderData>} customRenderMaker
- * @param {undefined | !function(!FlatPieceType) : undefined|!function(!LocalizedPlumbingPiece,
+ * @param {undefined|!function(
+     *      !LocalizedPlumbingPiece, codeDistance: !int, id: !int) : !UnitCellSocketFootprint} footprint
+ * @param {undefined|!function(!FlatPieceType) : (undefined|!function(
+ *      !LocalizedPlumbingPiece, !SimulationResults) : !Array.<!RenderData>)} customRenderMaker
+ * @param {undefined | !function(!FlatPieceType) : (undefined|!function(!LocalizedPlumbingPiece,
  *                             !SimulationLayout,
  *                             codeDistance: !int,
  *                             id: !int) : !function(
  *      !Surface,
- *      !GeneralMap.<!Point, !GeneralMap.<!UnitCellSocket, !string>>)} customSimulationWorkMaker
+ *      !GeneralMap.<!Point, !GeneralMap.<!UnitCellSocket, !string>>))} customSimulationWorkMaker
  * @returns {!{
  *      ZPrimal: !PlumbingPiece,
  *      XPrimal: !PlumbingPiece,
@@ -85,7 +101,7 @@ class FlatPieceType {
  *      All: !Array.<!PlumbingPiece>
  * }}
  */
-function makeFlatGroup(nameSuffix, customRenderMaker, customSimulationWorkMaker) {
+function makeFlatGroup(nameSuffix, footprint, customRenderMaker, customSimulationWorkMaker) {
     if (customRenderMaker === undefined) {
         customRenderMaker = () => undefined;
     }
@@ -104,7 +120,7 @@ function makeFlatGroup(nameSuffix, customRenderMaker, customSimulationWorkMaker)
             type.braidColor(),
             texRect,
             customRenderMaker(type),
-            undefined,
+            footprint,
             customPropagate,
             customSimulationWorkMaker(type)));
     }

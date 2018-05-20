@@ -334,14 +334,14 @@ function* observableAround(layout, piece, codeDistance) {
 /**
  * @param {!LocalizedPlumbingPiece} localizedPiece
  * @param {!SimulationResults} simResults
- * @param {!boolean} flip
+ * @param {!boolean} vertical
  * @returns {!Array.<!RenderData>}
  */
-function displayResultAcrossGap(localizedPiece, simResults, flip) {
+function displayResultAcrossGap(localizedPiece, simResults, vertical) {
     let box = localizedPiece.toBox();
     let quad = box.faceQuad(new Vector(0, 1, 0)).
         offsetBy(new Vector(0, box.diagonal.y / 2, 0));
-    if (flip) {
+    if (vertical) {
         quad = quad.swapLegs().flipHorizontal();
     } else {
         quad = quad.flipHorizontal().flipVertical();
@@ -428,8 +428,9 @@ function ringAroundRenderData(piece) {
 const DEFAULT_FOOTPRINT = undefined;
 const NO_FOOTPRINT = () => new UnitCellSocketFootprint(new GeneralSet());
 
-let togglePieceGroup = makeFlatGroup(
+let toggleFlatPieceGroup = makeFlatGroup(
     'Toggle',
+    NO_FOOTPRINT,
     type => {
         let dir = type.dir();
         return piece => {
@@ -455,10 +456,30 @@ let togglePieceGroup = makeFlatGroup(
         }
     });
 
-PlumbingPieces.ZPrimalToggle = togglePieceGroup.ZPrimal;
-PlumbingPieces.XPrimalToggle = togglePieceGroup.XPrimal;
-PlumbingPieces.ZDualToggle = togglePieceGroup.ZDual;
-PlumbingPieces.XDualToggle = togglePieceGroup.XDual;
+PlumbingPieces.ZPrimalToggle = toggleFlatPieceGroup.ZPrimal;
+PlumbingPieces.XPrimalToggle = toggleFlatPieceGroup.XPrimal;
+PlumbingPieces.ZDualToggle = toggleFlatPieceGroup.ZDual;
+PlumbingPieces.XDualToggle = toggleFlatPieceGroup.XDual;
+
+let inspectFlatPieceGroup = makeFlatGroup(
+    'Inspect',
+    NO_FOOTPRINT,
+    type => {
+        return (localizedPiece, simResults) => displayResultAcrossGap(localizedPiece, simResults, type.vertical)
+    },
+    type => {
+        let observableMaker = type.horizontal ? horizontalObservable : verticalObservable;
+        let axis = type.dual ? Axis.Z : Axis.X;
+        return (piece, layout, codeDistance) => (surface, displays) => {
+            let ketText = peekObservableKetText(surface, [...observableMaker(layout, piece, codeDistance)], axis);
+            displays.getOrInsert(piece.loc, () => new GeneralMap()).set(piece.socket, ketText);
+        };
+    });
+
+PlumbingPieces.ZPrimalInspect = inspectFlatPieceGroup.ZPrimal;
+PlumbingPieces.XPrimalInspect = inspectFlatPieceGroup.XPrimal;
+PlumbingPieces.ZDualInspect = inspectFlatPieceGroup.ZDual;
+PlumbingPieces.XDualInspect = inspectFlatPieceGroup.XDual;
 
 PlumbingPieces.XPrimalRightward = new PlumbingPiece(
     'PRIMAL_RIGHTWARD',
@@ -486,18 +507,6 @@ PlumbingPieces.ZPrimalInitPlus = new PlumbingPiece(
     Sockets.ZPrimal,
     Config.BRAIDING_PRIMAL_COLOR,
     KET_PLUS_RECT);
-PlumbingPieces.ZPrimalInspect = new PlumbingPiece(
-    'PRIMAL_Z_INSPECT',
-    Sockets.ZPrimal,
-    Config.BRAIDING_PRIMAL_COLOR,
-    DISPLAY_TEXTURE_RECT,
-    (localizedPiece, simResults) => displayResultAcrossGap(localizedPiece, simResults, true),
-    NO_FOOTPRINT,
-    undefined,
-    (piece, layout, codeDistance) => (surface, displays) => {
-        let ketText = peekObservableKetText(surface, [...verticalObservable(layout, piece, codeDistance)], Axis.X);
-        displays.getOrInsert(piece.loc, () => new GeneralMap()).set(piece.socket, ketText);
-    });
 PlumbingPieces.TPrimalInspect = new PlumbingPiece(
     'TPrimalInspect',
     Sockets.YPrimal,
@@ -520,18 +529,6 @@ PlumbingPieces.TDualInspect = new PlumbingPiece(
     undefined,
     (piece, layout, codeDistance) => (surface, displays) => {
         let ketText = peekObservableKetText(surface, [...observableAround(layout, piece, codeDistance)], Axis.X);
-        displays.getOrInsert(piece.loc, () => new GeneralMap()).set(piece.socket, ketText);
-    });
-PlumbingPieces.XPrimalInspect = new PlumbingPiece(
-    'XPrimalInspect',
-    Sockets.XPrimal,
-    Config.BRAIDING_PRIMAL_COLOR,
-    DISPLAY_TEXTURE_RECT,
-    (localizedPiece, simResults) => displayResultAcrossGap(localizedPiece, simResults, false),
-    NO_FOOTPRINT,
-    undefined,
-    (piece, layout, codeDistance) => (surface, displays) => {
-        let ketText = peekObservableKetText(surface, [...horizontalObservable(layout, piece, codeDistance)], Axis.X);
         displays.getOrInsert(piece.loc, () => new GeneralMap()).set(piece.socket, ketText);
     });
 
@@ -624,18 +621,6 @@ PlumbingPieces.ZDualInjectS = new PlumbingPiece(
     Config.BRAIDING_DUAL_COLOR,
     S_TEXTURE_RECT,
     localizedPiece => injectionSiteRenderData(localizedPiece, new Vector(0, 0, 1), Config.BRAIDING_DUAL_COLOR));
-PlumbingPieces.ZDualInspect = new PlumbingPiece(
-    'DUAL_Z_INSPECT',
-    Sockets.ZDual,
-    Config.BRAIDING_DUAL_COLOR,
-    DISPLAY_TEXTURE_RECT,
-    (localizedPiece, simResults) => displayResultAcrossGap(localizedPiece, simResults, true),
-    NO_FOOTPRINT,
-    undefined,
-    (piece, layout, codeDistance) => (surface, displays) => {
-        let ketText = peekObservableKetText(surface, [...verticalObservable(layout, piece, codeDistance)], Axis.Z);
-        displays.getOrInsert(piece.loc, () => new GeneralMap()).set(piece.socket, ketText);
-    });
 PlumbingPieces.TDualToggle = new PlumbingPiece(
     'TDualToggle',
     Sockets.YDual,
@@ -690,7 +675,6 @@ PlumbingPieces.All = [
     PlumbingPieces.XPrimalLeftward,
     PlumbingPieces.ZPrimalForward,
     PlumbingPieces.XDualRightward,
-    PlumbingPieces.XPrimalInspect,
     PlumbingPieces.ZDualBackward,
     PlumbingPieces.DUAL_UPWARD,
     PlumbingPieces.XDualLeftward,
@@ -703,15 +687,14 @@ PlumbingPieces.All = [
     PlumbingPieces.ZDualInit,
     PlumbingPieces.XDualInjectS,
     PlumbingPieces.XPrimalInitPlus,
-    PlumbingPieces.ZDualInspect,
     PlumbingPieces.ZDualMeasure,
-    PlumbingPieces.ZPrimalInspect,
     PlumbingPieces.TDualToggle,
     PlumbingPieces.TPrimalToggle,
     PlumbingPieces.TPrimalInspect,
     PlumbingPieces.TDualInspect,
 
-    ...togglePieceGroup.All,
+    ...toggleFlatPieceGroup.All,
+    ...inspectFlatPieceGroup.All,
 ];
 
 PlumbingPieces.BySocket = new GeneralMap();
