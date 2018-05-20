@@ -178,7 +178,7 @@ function _tileSimplifiedWireRenderData(layout, tile, tileIndex, codeDistance, si
             } else if (isHeldData) {
                 color = Config.SIMPLIFIED_DATA_COLOR;
             } else if (isStabilizer) {
-                if (measurement.result) {
+                if (measurement !== undefined && measurement.result) {
                     color = measurementAxis.is_z() ?
                         Config.SIMPLIFIED_PRIMAL_COLOR_HIGHLIGHT :
                         Config.SIMPLIFIED_DUAL_COLOR_HIGHLIGHT;
@@ -188,7 +188,7 @@ function _tileSimplifiedWireRenderData(layout, tile, tileIndex, codeDistance, si
                         Config.SIMPLIFIED_DUAL_COLOR;
                 }
             } else if (isMeasuredData) {
-                if (measurement.result) {
+                if (measurement !== undefined && measurement.result) {
                     color = measurementAxis.is_z() ?
                         Config.SIMPLIFIED_DATA_PRIMAL_MEASURE_ON_COLOR :
                         Config.SIMPLIFIED_DATA_DUAL_MEASURE_ON_COLOR;
@@ -476,6 +476,20 @@ function tileStackToRenderData(layout, tileStack, tileIndex, codeDistance, simRe
 }
 
 /**
+ * @param {!SimulationLayout} layout
+ * @param {!int} tileIndex
+ * @param {!int} codeDistance
+ * @returns {!RenderData}
+ */
+function tileStackToOutlineRenderData(layout, tileIndex, codeDistance) {
+    let c1 = qubitPosition(codeDistance, new XY(layout.minX - 0.001, layout.minY - 0.001), 0, tileIndex);
+    let c2 = qubitPosition(codeDistance, new XY(layout.maxX + 0.999, layout.maxY + 0.999), 0, tileIndex);
+    let d = c2.minus(c1);
+    return new Quad(c1, new Vector(d.x, 0, 0), new Vector(0, 0, d.z)).toRenderData(
+        undefined, undefined, [0, 0, 0, 0.5]);
+}
+
+/**
  * @param {!Point} targetPos
  * @param {!Point} controlPos
  * @param {![!number, !number, !number, !number]} fillColor
@@ -502,4 +516,4 @@ function arrowRenderData(targetPos, controlPos, fillColor) {
         undefined);
 }
 
-export {tileToRenderData, tileStackToRenderData}
+export {tileToRenderData, tileStackToRenderData, tileStackToOutlineRenderData}

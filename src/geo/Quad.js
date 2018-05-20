@@ -41,7 +41,7 @@ class Quad {
     }
 
     /**
-     * @param {![!number, !number, !number, !number]} color
+     * @param {undefined|![!number, !number, !number, !number]} color
      * @param {undefined|!Rect} textureCoords
      * @param {undefined|![!number, !number, !number, !number]} lineColor
      * @returns {!RenderData}
@@ -62,11 +62,20 @@ class Quad {
                 [x, y+h],
             ]
         }
+        let indices = QUAD_TRIANGLE_INDICES;
+        let lineData = lineSegmentPathWireframeRenderData(positions, lineColor, true);
+
+        if (color === undefined) {
+            positions = [];
+            colors = [];
+            textureCoordData = [];
+            indices = [];
+        }
         return new RenderData(
             positions,
             colors,
-            QUAD_TRIANGLE_INDICES,
-            lineSegmentPathWireframeRenderData(positions, lineColor, true),
+            indices,
+            lineData,
             textureCoordData);
     }
 

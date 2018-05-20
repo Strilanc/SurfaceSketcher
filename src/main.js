@@ -20,7 +20,12 @@ import {RenderData} from "src/geo/RenderData.js";
 import {UnitCellMap} from "src/braid/UnitCellMap.js";
 import {PlumbingPieces} from "src/braid/PlumbingPieces.js";
 import {Sockets} from "src/braid/Sockets.js";
-import {unitCellMapToTileStacks, determineSimulationLayout, runSimulation} from "src/braid/SimulateUnitCellMap.js"
+import {
+    unitCellMapToTileStacks,
+    determineSimulationLayout,
+    runSimulation,
+    SimulationResults,
+} from "src/braid/SimulateUnitCellMap.js"
 import {equate} from "src/base/Equate.js";
 import {LocalizedPlumbingPiece} from "src/braid/LocalizedPlumbingPiece.js";
 import {Revision} from "src/base/Revision.js";
@@ -28,10 +33,16 @@ import {Reader, Writer} from "src/base/Serialize.js";
 import {DrawState} from "src/DrawState.js";
 import {initShaders} from "src/draw/shader.js";
 import {GeneralMap} from "src/base/GeneralMap.js";
-import {SimulationResults} from "src/braid/SimulateUnitCellMap.js";
-import {tileStackToRenderData} from "src/draw/TileDrawing.js";
+import {
+    tileStackToRenderData,
+    tileStackToOutlineRenderData,
+} from "src/draw/TileDrawing.js";
 import {Quad} from "src/geo/Quad.js";
+import {IMPORTANT_UNIT_CELL_TIMES} from "src/braid/Sockets.js";
+import {GeneralSet} from "src/base/GeneralSet.js";
+import {TileStack} from "src/sim/TileStack.js";
 
+/** @type {!DrawState} */
 let drawState = DrawState.defaultValue();
 let lastDrawnState = undefined;
 let lastSimState = undefined;
@@ -84,10 +95,24 @@ function makeRenderData() {
 
     if (drawState.drawOps) {
         let layout = determineSimulationLayout(drawState.cellMap, drawState.codeDistance);
-        let tileIndex = layout.minT;
-        for (let tileStack of simLayers) {
-            result.push(...tileStackToRenderData(layout, tileStack, tileIndex, drawState.codeDistance, simResults));
-            tileIndex += tileStack.tiles.length;
+        let tileStack = simLayers[drawState.focusedLayer - layout.minT];
+        if (tileStack === undefined) {
+            tileStack = new TileStack();
+            tileStack.startNewTile();
+            tileStack.measureEnabledStabilizers(layout, new GeneralSet());
+        }
+        result.push(...tileStackToRenderData(
+            layout,
+            tileStack,
+            drawState.focusedLayer,
+            drawState.codeDistance,
+            simResults));
+
+        for (let i = 0; i < simLayers.length; i++) {
+            result.push(tileStackToOutlineRenderData(
+                layout,
+                layout.minT + i,
+                drawState.codeDistance));
         }
     }
 
@@ -144,8 +169,6 @@ function drawScene(gl, programInfo, buffers, arrowTexture) {
     gl.clearDepth(1);
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
-    // gl.enable(gl.BLEND);
-    // gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -159,7 +182,12 @@ function drawScene(gl, programInfo, buffers, arrowTexture) {
     gl.uniform1i(programInfo.uniformLocations.texture, 0);
 
     let allRenderData = makeRenderData();
+
+    gl.disable(gl.BLEND);
     _drawSceneHelper(gl, programInfo, buffers, allRenderData, gl.TRIANGLES);
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     _drawSceneHelper(gl, programInfo, buffers, RenderData.allWireframes(allRenderData), gl.LINES);
 }
 
@@ -317,6 +345,22 @@ addKeyListener('2', () => {
 addKeyListener('3', () => {
     drawState.drawBraids = true;
     drawState.drawOps = true;
+});
+
+addKeyListener('B', () => {
+    let b = determineSimulationLayout(drawState.cellMap, drawState.codeDistance);
+    drawState.focusedLayer -= 1;
+    let m = b.minT + (b.maxT - b.minT) * IMPORTANT_UNIT_CELL_TIMES.length;
+    drawState.focusedLayer = Math.min(drawState.focusedLayer, m);
+    drawState.focusedLayer = Math.max(drawState.focusedLayer, b.minT);
+});
+
+addKeyListener('N', () => {
+    let b = determineSimulationLayout(drawState.cellMap, drawState.codeDistance);
+    drawState.focusedLayer += 1;
+    let m = b.minT + (b.maxT - b.minT) * IMPORTANT_UNIT_CELL_TIMES.length;
+    drawState.focusedLayer = Math.min(drawState.focusedLayer, m);
+    drawState.focusedLayer = Math.max(drawState.focusedLayer, b.minT);
 });
 
 addKeyListener(187, () => {

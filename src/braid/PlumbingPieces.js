@@ -281,8 +281,7 @@ PlumbingPieces.DUAL_FOREWARD = new PlumbingPiece(
     DUAL_COLOR,
     V_ARROW_TEXTURE_RECT.flip(),
     undefined,
-    undefined,
-    (tileStack, piece, codeDistance) => startHoleFromPiece(tileStack, piece, codeDistance, Axis.Z));
+    undefined);
 PlumbingPieces.DUAL_VERTICAL_S = new PlumbingPiece(
     'DUAL_VERTICAL_S',
     Sockets.ZDual,

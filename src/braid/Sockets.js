@@ -156,8 +156,7 @@ const importantPrimalTimes = [
     (SMALL_DIAMETER + 0.5) / 2, // Steady state for vertical primal pieces.
 ];
 const importantDualTimes = importantPrimalTimes.map(e => e + 0.5);
-// const IMPORTANT_UNIT_CELL_TIMES = [...importantPrimalTimes, ...importantDualTimes];
-const IMPORTANT_UNIT_CELL_TIMES = [0.5, 0.5 + SMALL_DIAMETER];
+const IMPORTANT_UNIT_CELL_TIMES = [...importantPrimalTimes, ...importantDualTimes];
 
 export {
     Sockets,

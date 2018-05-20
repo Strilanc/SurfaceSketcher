@@ -17,8 +17,9 @@ class DrawState {
      * @param {!boolean} drawBraids
      * @param {!boolean} drawOps
      * @param {undefined|!LocalizedPlumbingPiece} selectedPiece
+     * @param {!int} focusedLayer
      */
-    constructor(camera, codeDistance, cellMap, drawBraids, drawOps, selectedPiece) {
+    constructor(camera, codeDistance, cellMap, drawBraids, drawOps, selectedPiece, focusedLayer=0) {
         /** @type {!Camera} */
         this.camera = camera;
         /** @type {!int} */
@@ -31,6 +32,8 @@ class DrawState {
         this.drawOps = drawOps;
         /** @type {undefined|!LocalizedPlumbingPiece} */
         this.selectedPiece = selectedPiece;
+        /** @type {int} */
+        this.focusedLayer = focusedLayer;
     }
 
     /**
@@ -41,6 +44,7 @@ class DrawState {
         out.writeInt8(this.codeDistance);
         this.cellMap.write(out);
         out.writeBooleans(this.drawBraids, this.drawOps);
+        out.writeInt32(this.focusedLayer)
     }
 
     /**
@@ -55,7 +59,8 @@ class DrawState {
         let codeDistance = inp.readInt8();
         let cellMap = UnitCellMap.read(inp);
         let [drawBraids, drawOps] = inp.readBooleans(2);
-        return new DrawState(camera, codeDistance, cellMap, drawBraids, drawOps, undefined);
+        let focusedLayer = inp.isEndOfInput() ? 0 : inp.readInt32();
+        return new DrawState(camera, codeDistance, cellMap, drawBraids, drawOps, undefined, focusedLayer);
     }
 
     /**
@@ -128,7 +133,8 @@ class DrawState {
             this.cellMap.clone(),
             this.drawBraids,
             this.drawOps,
-            this.selectedPiece);
+            this.selectedPiece,
+            this.focusedLayer);
     }
 
     /**
@@ -142,7 +148,8 @@ class DrawState {
             this.cellMap.isEqualTo(other.cellMap) &&
             this.drawBraids === other.drawBraids &&
             this.drawOps === other.drawOps &&
-            equate(this.selectedPiece, other.selectedPiece);
+            equate(this.selectedPiece, other.selectedPiece) &&
+            this.focusedLayer === other.focusedLayer;
     }
 }
 

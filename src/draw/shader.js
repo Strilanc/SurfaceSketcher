@@ -44,7 +44,6 @@ const FRAGMENT_SHADER_SOURCE = `
     void main(void) {
         vec4 pixel = texture2D(uSampler, vTextureCoord);
         gl_FragColor = (pixel * pixel.a) + vColor * (1.0 - pixel.a);
-        gl_FragColor.a = 1.0;
     }`;
 
 /**

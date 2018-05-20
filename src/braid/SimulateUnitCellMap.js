@@ -146,14 +146,23 @@ function determineSimulationLayout(cellMap, codeDistance) {
         let r = p.toSocketFootprintRect(codeDistance);
         update(new XY(r.x, r.y));
         update(new XY(r.x + r.w - 1, r.y + r.h - 1));
-        minT = Math.min(minT, p.loc.y * IMPORTANT_UNIT_CELL_TIMES.length);
-        maxT = Math.max(maxT, p.loc.y * IMPORTANT_UNIT_CELL_TIMES.length);
+        minT = Math.min(minT, p.loc.y);
+        maxT = Math.max(maxT, p.loc.y);
     }
 
     minX = Math.floor(minX / 2) * 2 - 2;
     minY = Math.floor(minY / 2) * 2 - 2;
     maxX = Math.ceil(maxX / 2) * 2 + 2;
     maxY = Math.ceil(maxY / 2) * 2 + 2;
+
+    if (minX === Infinity) {
+        minX = 0;
+        minY = 0;
+        minT = 0;
+        maxX = 0;
+        maxY = 0;
+        maxT = 0;
+    }
 
     return new SimulationLayout(minX, maxX, minY, maxY, minT - 1, maxT);
 }
