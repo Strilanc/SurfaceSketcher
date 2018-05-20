@@ -9,11 +9,9 @@ class PlumbingPiece {
      * @param {undefined|!function(
      *      !LocalizedPlumbingPiece, !SimulationResults) : !Array.<!RenderData>} customToRenderData
      * @param {undefined|!function(
-     *      !LocalizedPlumbingPiece, codeDistance: !int) : !UnitCellSocketFootprint} customFootprint
+     *      !LocalizedPlumbingPiece, codeDistance: !int, id: !int) : !UnitCellSocketFootprint} customFootprint
      * @param {undefined|!function(
-     *      tileStack: !TileStack, !LocalizedPlumbingPiece, codeDistance: !int)} customPropagateSignalEnter
-     * @param {undefined|!function(
-     *      tileStack: !TileStack, !LocalizedPlumbingPiece, codeDistance: !int)} customPropagateSignalExit
+     *      tileStack: !TileStack, !LocalizedPlumbingPiece, codeDistance: !int, id: !int)} customPropagateSignal
      */
     constructor(name,
                 socket,
@@ -21,16 +19,14 @@ class PlumbingPiece {
                 textureRect=undefined,
                 customToRenderData=undefined,
                 customFootprint=undefined,
-                customPropagateSignalEnter=undefined,
-                customPropagateSignalExit=undefined) {
+                customPropagateSignal=undefined) {
         this.name = name;
         this.socket = socket;
         this.color = color;
         this.textureRect = textureRect;
         this.customToRenderData = customToRenderData;
         this.customFootprint = customFootprint;
-        this.customPropagateSignalEnter = customPropagateSignalEnter;
-        this.customPropagateSignalExit = customPropagateSignalExit;
+        this.customPropagateSignal = customPropagateSignal;
     }
 
     /**
@@ -45,8 +41,7 @@ class PlumbingPiece {
             equate(this.textureRect, other.textureRect) &&
             this.customToRenderData === other.customToRenderData &&
             this.customFootprint === other.customFootprint &&
-            this.customPropagateSignalEnter === other.customPropagateSignalEnter &&
-            this.customPropagateSignalExit === other.customPropagateSignalExit;
+            this.customPropagateSignal === other.customPropagateSignal;
     }
 
     /**
@@ -66,11 +61,12 @@ class PlumbingPiece {
     /**
      * @param {!LocalizedPlumbingPiece} localizedPiece
      * @param {!int} codeDistance
+     * @param {!int} id
      * @returns {!UnitCellSocketFootprint}
      */
-    toLocalizedFootprint(localizedPiece, codeDistance) {
+    toLocalizedFootprint(localizedPiece, codeDistance, id) {
         if (this.customFootprint !== undefined) {
-            return this.customFootprint(localizedPiece, codeDistance);
+            return this.customFootprint(localizedPiece, codeDistance, id);
         } else {
             return localizedPiece.toFootprint(codeDistance);
         }
@@ -80,21 +76,11 @@ class PlumbingPiece {
      * @param {!TileStack} tileStack
      * @param {!LocalizedPlumbingPiece} localizedPiece
      * @param {!int} codeDistance
+     * @param {!int} id
      */
-    propagateSignalEnter(tileStack, localizedPiece, codeDistance) {
-        if (this.customPropagateSignalEnter !== undefined) {
-            this.customPropagateSignalEnter(tileStack, localizedPiece, codeDistance);
-        }
-    }
-
-    /**
-     * @param {!TileStack} tileStack
-     * @param {!LocalizedPlumbingPiece} localizedPiece
-     * @param {!int} codeDistance
-     */
-    propagateSignalExit(tileStack, localizedPiece, codeDistance) {
-        if (this.customPropagateSignalExit !== undefined) {
-            this.customPropagateSignalExit(tileStack, localizedPiece, codeDistance);
+    propagateSignalAt(tileStack, localizedPiece, codeDistance, id) {
+        if (this.customPropagateSignal !== undefined) {
+            this.customPropagateSignal(tileStack, localizedPiece, codeDistance, id);
         }
     }
 
@@ -109,8 +95,7 @@ class PlumbingPiece {
             this.textureRect,
             this.customToRenderData,
             this.customFootprint,
-            this.customPropagateSignalEnter,
-            this.customPropagateSignalExit);
+            this.customPropagateSignal);
     }
 
     /**

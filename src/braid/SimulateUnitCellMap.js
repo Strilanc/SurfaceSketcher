@@ -23,12 +23,13 @@ import {SimulationLayout} from "src/braid/SimulationLayout.js";
 /**
  * @param {!int} codeDistance
  * @param {!Array.<!LocalizedPlumbingPiece>} pieces
+ * @param {!int} id
  * @returns {!UnitCellSocketFootprint}
  */
-function combinedFootprint(codeDistance, pieces) {
+function combinedFootprint(codeDistance, pieces, id) {
     let result = new GeneralSet();
     for (let piece of pieces) {
-        for (let xy of piece.piece.toLocalizedFootprint(piece, codeDistance).mask) {
+        for (let xy of piece.piece.toLocalizedFootprint(piece, codeDistance, id).mask) {
             result.add(xy);
         }
     }
@@ -38,12 +39,12 @@ function combinedFootprint(codeDistance, pieces) {
 /**
  * @param {!TileStack} tileStack
  * @param {!int} codeDistance
+ * @param {!int} id
  * @param {!Array.<!LocalizedPlumbingPiece>} pieces
  */
-function propagateSignals(tileStack, codeDistance, pieces) {
+function propagateSignals(tileStack, codeDistance, pieces, id) {
     for (let piece of pieces) {
-        piece.piece.propagateSignalEnter(tileStack, piece, codeDistance);
-        piece.piece.propagateSignalExit(tileStack, piece, codeDistance);
+        piece.piece.propagateSignalAt(tileStack, piece, codeDistance, id);
     }
 }
 
@@ -116,8 +117,8 @@ function unitCellMapToTileStacks(codeDistance, map) {
             let pieces = [...relevantPiecesAt(map, t, transitionIndex)];
             let tileStack = new TileStack();
             tileStack.startNewTile();
-            propagateSignals(tileStack, codeDistance, pieces);
-            let block = combinedFootprint(codeDistance, pieces);
+            propagateSignals(tileStack, codeDistance, pieces, transitionIndex);
+            let block = combinedFootprint(codeDistance, pieces, transitionIndex);
             tileStack.measureEnabledStabilizers(layout, block.mask);
             tileStacks.push(tileStack);
         }

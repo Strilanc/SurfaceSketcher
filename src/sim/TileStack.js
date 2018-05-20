@@ -334,7 +334,10 @@ class TileStack {
                 }
             }
         }
-        return this.measureStabilizers(xTargets, zTargets, xy => avail.has(xy) && !disables.has(xy));
+        return this.measureStabilizers(
+            xTargets,
+            zTargets,
+            xy => this.lastTile().initializations.has(xy) || (avail.has(xy) && !disables.has(xy)));
     }
 
     /**

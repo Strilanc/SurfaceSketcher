@@ -7,7 +7,7 @@
 import {DetailedError} from 'src/base/DetailedError.js'
 import {seq} from "src/base/Seq.js";
 import {PlumbingPiece} from "src/braid/PlumbingPiece.js";
-import {Sockets} from "src/braid/Sockets.js";
+import {Sockets, DUAL_ENTER_INDEX, DUAL_EXIT_INDEX} from "src/braid/Sockets.js";
 import {UnitCellSocketFootprint} from "src/braid/UnitCellSocketFootprint.js";
 import {GeneralMap} from "src/base/GeneralMap.js";
 import {GeneralSet} from "src/base/GeneralSet.js";
@@ -186,6 +186,45 @@ function startHoleFromPiece(tileStack, piece, codeDistance, axis) {
 }
 
 /**
+ * @param {!TileStack} tileStack
+ * @param {!LocalizedPlumbingPiece} piece
+ * @param {!int} codeDistance
+ * @param {!Axis} axis
+ */
+function endHoleFromPiece(tileStack, piece, codeDistance, axis) {
+    let foot = piece.toSocketFootprintRect(codeDistance);
+    let dataTargets = [];
+    let xTargets = [];
+    let zTargets = [];
+    for (let i = 0; i < foot.w; i++) {
+        for (let j = 0; j < foot.h; j++) {
+            let xy = new XY(foot.x + i, foot.y + j);
+            if ((xy.x & 1) !== 0 && ((xy.y & 1) !== 0)) {
+                xTargets.push(xy);
+            }
+            if ((xy.x & 1) !== (xy.y & 1)) {
+                dataTargets.push(xy);
+            }
+        }
+    }
+    tileStack.initAll(dataTargets, Axis.Z);
+    tileStack.measureStabilizers(xTargets, zTargets, () => true);
+
+    for (let i = 0; i < foot.w; i += 2) {
+        for (let j = 0; j < foot.h - 2; j += 2) {
+            let xy = new XY(foot.x + i, foot.y + j);
+            tileStack.feedforward_pauli(xy, xy.offsetBy(0, 1), Axis.Z);
+            tileStack.propagate(xy, xy.offsetBy(0, 2));
+        }
+    }
+    for (let i = 0; i < foot.w - 2; i += 2) {
+        let xy = new XY(foot.x + i, foot.y + foot.h - 1);
+        tileStack.feedforward_pauli(xy, xy.offsetBy(1, 0), Axis.Z);
+        tileStack.propagate(xy, xy.offsetBy(2, 0));
+    }
+}
+
+/**
  * @param {!LocalizedPlumbingPiece} localizedPiece
  * @param {!SimulationResults} simResults
  * @returns {!Array.<!RenderData>}
@@ -313,7 +352,13 @@ PlumbingPieces.DUAL_CENTER = new PlumbingPiece(
     undefined,
     undefined,
     undefined,
-    (tileStack, piece, codeDistance) => startHoleFromPiece(tileStack, piece, codeDistance, Axis.Z));
+    (tileStack, piece, codeDistance, id) => {
+        if (id === DUAL_ENTER_INDEX) {
+            startHoleFromPiece(tileStack, piece, codeDistance, Axis.Z)
+        } else if (id === DUAL_EXIT_INDEX) {
+            endHoleFromPiece(tileStack, piece, codeDistance, Axis.Z)
+        }
+    });
 
 PlumbingPieces.All = [
     PlumbingPieces.PRIMAL_RIGHTWARD,

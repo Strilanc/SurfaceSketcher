@@ -158,7 +158,16 @@ const importantPrimalTimes = [
 const importantDualTimes = importantPrimalTimes.map(e => e + 0.5);
 const IMPORTANT_UNIT_CELL_TIMES = [...importantPrimalTimes, ...importantDualTimes];
 
+const PRIMAL_ENTER_INDEX = 0;
+const PRIMAL_EXIT_INDEX = 2;
+const DUAL_ENTER_INDEX = 4;
+const DUAL_EXIT_INDEX = 6;
+
 export {
     Sockets,
     IMPORTANT_UNIT_CELL_TIMES,
+    PRIMAL_ENTER_INDEX,
+    PRIMAL_EXIT_INDEX,
+    DUAL_ENTER_INDEX,
+    DUAL_EXIT_INDEX,
 }

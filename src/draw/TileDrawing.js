@@ -197,6 +197,10 @@ function _tileSimplifiedWireRenderData(layout, tile, tileIndex, codeDistance, si
                         Config.SIMPLIFIED_DATA_PRIMAL_MEASURE_OFF_COLOR :
                         Config.SIMPLIFIED_DATA_DUAL_MEASURE_OFF_COLOR;
                 }
+            } else if (initAxis !== undefined) {
+                color = initAxis.is_z() ?
+                    Config.BRAIDING_PRIMAL_COLOR:
+                    Config.BRAIDING_DUAL_COLOR;
             } else {
                 // unknown
                 color = [1, 0, 0, 1];
