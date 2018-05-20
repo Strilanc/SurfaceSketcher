@@ -53,6 +53,10 @@ const DUAL_COLOR = [0.4, 0.4, 0.4, 1.0];
 class PlumbingPieces {
 }
 
+/**
+ * @param {!{x: !number, y: !number, z: !number}} v
+ * @returns {!string}
+ */
 function blochVecToKetText(v) {
     if (v.x === +1) {
         return '-';
@@ -289,10 +293,22 @@ function cutHoleByFootprint(tileStack, foot, axis) {
  * @param {!LocalizedPlumbingPiece} piece
  * @param {!int} codeDistance
  */
-function* observableAcross(layout, piece, codeDistance) {
+function* verticalObservable(layout, piece, codeDistance) {
     let footprint = piece.toSocketFootprintRect(codeDistance);
     for (let i = 1; i < footprint.h; i += 2) {
         yield layout.locToQubit(new XY(footprint.x, footprint.y + i));
+    }
+}
+
+/**
+ * @param {!SimulationLayout} layout
+ * @param {!LocalizedPlumbingPiece} piece
+ * @param {!int} codeDistance
+ */
+function* horizontalObservable(layout, piece, codeDistance) {
+    let footprint = piece.toSocketFootprintRect(codeDistance);
+    for (let i = 1; i < footprint.w; i += 2) {
+        yield layout.locToQubit(new XY(footprint.x + i, footprint.y));
     }
 }
 
@@ -328,6 +344,52 @@ function displayResult(localizedPiece, simResults) {
     return [quad.toRenderData(Config.DisplayColor, ketRect, [0, 0, 0, 0])];
 }
 
+/**
+ * @param {!Surface} surface
+ * @param {!Array.<!XY>} qubits
+ * @param {!Axis} axis
+ * @returns {!string}
+ */
+function peekObservableKetText(surface, qubits, axis) {
+    /** @type {!Surface} */
+    let tempClone = surface.clone();
+    try {
+        for (let i = 1; i < qubits.length; i++) {
+            if (axis.is_z()) {
+                tempClone.cnot(qubits[i], qubits[0]);
+            } else {
+                tempClone.cnot(qubits[0], qubits[i]);
+            }
+        }
+        return blochVecToKetText(tempClone.peek_bloch_vector(qubits[0]));
+    } finally {
+        tempClone.destruct();
+    }
+}
+
+/**
+ * @param {!LocalizedPlumbingPiece} piece
+ * @returns {!Array.<!RenderData>}
+ */
+function ringAroundRenderData(piece) {
+    let box = piece.toBox();
+    let c = box.center();
+    let w = box.diagonal.x;
+    let h = box.diagonal.z;
+    return [
+        piece.toRenderData(),
+        lineSegmentPathRenderData(
+            [
+                c.plus(new Vector(w, 0, h)),
+                c.plus(new Vector(w, 0, -h)),
+                c.plus(new Vector(-w, 0, -h)),
+                c.plus(new Vector(-w, 0, h))
+            ],
+            [1, 0, 0, 1],
+            true)
+    ];
+}
+
 PlumbingPieces.XPrimalRightward = new PlumbingPiece(
     'PRIMAL_RIGHTWARD',
     Sockets.XPrimal,
@@ -351,47 +413,69 @@ PlumbingPieces.XPrimalInitPlus = new PlumbingPiece(
     Sockets.XPrimal,
     PRIMAL_COLOR,
     KET_PLUS_RECT);
-PlumbingPieces.PRIMAL_Z_INSPECT = new PlumbingPiece(
+PlumbingPieces.ZPrimalInitPlus = new PlumbingPiece(
+    'ZPrimalInitPlus',
+    Sockets.ZPrimal,
+    PRIMAL_COLOR,
+    KET_PLUS_RECT);
+PlumbingPieces.ZPrimalInspect = new PlumbingPiece(
     'PRIMAL_Z_INSPECT',
     Sockets.ZPrimal,
     PRIMAL_COLOR,
     DISPLAY_TEXTURE_RECT,
     displayResult,
-    () => new UnitCellSocketFootprint(new GeneralSet()));
+    () => new UnitCellSocketFootprint(new GeneralSet()),
+    undefined,
+    (piece, layout, codeDistance) => (surface, displays) => {
+        let ketText = peekObservableKetText(surface, [...verticalObservable(layout, piece, codeDistance)], Axis.X);
+        displays.getOrInsert(piece.loc, () => new GeneralMap()).set(piece.socket, ketText);
+    });
+PlumbingPieces.XPrimalInspect = new PlumbingPiece(
+    'XPrimalInspect',
+    Sockets.XPrimal,
+    PRIMAL_COLOR,
+    DISPLAY_TEXTURE_RECT,
+    displayResult,
+    () => new UnitCellSocketFootprint(new GeneralSet()),
+    undefined,
+    (piece, layout, codeDistance) => (surface, displays) => {
+        let ketText = peekObservableKetText(surface, [...horizontalObservable(layout, piece, codeDistance)], Axis.X);
+        displays.getOrInsert(piece.loc, () => new GeneralMap()).set(piece.socket, ketText);
+    });
 
-PlumbingPieces.PRIMAL_BACKWARD = new PlumbingPiece(
+PlumbingPieces.ZPrimalBackward = new PlumbingPiece(
     'PRIMAL_BACKWARD',
     Sockets.ZPrimal,
     PRIMAL_COLOR,
     V_ARROW_TEXTURE_RECT);
-PlumbingPieces.PRIMAL_FOREWARD = new PlumbingPiece(
+PlumbingPieces.ZPrimalForward = new PlumbingPiece(
     'PRIMAL_FOREWARD',
     Sockets.ZPrimal,
     PRIMAL_COLOR,
     V_ARROW_TEXTURE_RECT.flip());
-PlumbingPieces.PRIMAL_VERTICAL_S = new PlumbingPiece(
+PlumbingPieces.ZPrimalInjectS = new PlumbingPiece(
     'PRIMAL_VERTICAL_S',
     Sockets.ZPrimal,
     PRIMAL_COLOR,
     S_TEXTURE_RECT,
     localizedPiece => injectionSiteRenderData(localizedPiece, new Vector(0, 0, 1), PRIMAL_COLOR));
 
-PlumbingPieces.PRIMAL_UPWARD = new PlumbingPiece(
+PlumbingPieces.TPrimal = new PlumbingPiece(
     'PRIMAL_UPWARD',
     Sockets.YPrimal,
     PRIMAL_COLOR);
 
-PlumbingPieces.DUAL_RIGHTWARD = new PlumbingPiece(
+PlumbingPieces.XDualRightward = new PlumbingPiece(
     'DUAL_RIGHTWARD',
     Sockets.XDual,
     DUAL_COLOR,
     H_ARROW_TEXTURE_RECT);
-PlumbingPieces.DUAL_LEFTWARD = new PlumbingPiece(
+PlumbingPieces.XDualLeftward = new PlumbingPiece(
     'DUAL_LEFTWARD',
     Sockets.XDual,
     DUAL_COLOR,
     H_ARROW_TEXTURE_RECT.flip());
-PlumbingPieces.DUAL_HORIZONTAL_S = new PlumbingPiece(
+PlumbingPieces.XDualInjectS = new PlumbingPiece(
     'DUAL_HORIZONTAL_S',
     Sockets.XDual,
     DUAL_COLOR,
@@ -457,18 +541,8 @@ PlumbingPieces.ZDualInspect = new PlumbingPiece(
     () => new UnitCellSocketFootprint(new GeneralSet()),
     undefined,
     (piece, layout, codeDistance) => (surface, displays) => {
-        /** @type {!Surface} */
-        let tempClone = surface.clone();
-        try {
-            let qs = [...observableAcross(layout, piece, codeDistance)];
-            for (let i = 1; i < qs.length; i++) {
-                tempClone.cnot(qs[i], qs[0]);
-            }
-            let qubitState = blochVecToKetText(tempClone.peek_bloch_vector(qs[0]));
-            displays.getOrInsert(piece.loc, () => new GeneralMap()).set(piece.socket, qubitState)
-        } finally {
-            tempClone.destruct();
-        }
+        let ketText = peekObservableKetText(surface, [...verticalObservable(layout, piece, codeDistance)], Axis.Z);
+        displays.getOrInsert(piece.loc, () => new GeneralMap()).set(piece.socket, ketText);
     });
 PlumbingPieces.ZDualToggle = new PlumbingPiece(
     'DUAL_Z_TOGGLE',
@@ -485,7 +559,7 @@ PlumbingPieces.ZDualToggle = new PlumbingPiece(
     undefined,
     (piece, layout, codeDistance, id) => surface => {
         if (id === DUAL_FLAT_INTERIOR_INDEX) {
-            for (let q of observableAcross(layout, piece, codeDistance)) {
+            for (let q of verticalObservable(layout, piece, codeDistance)) {
                 surface.phase_toggle(q);
                 surface.toggle(q);
             }
@@ -496,30 +570,28 @@ PlumbingPieces.TDualToggle = new PlumbingPiece(
     Sockets.YDual,
     DUAL_COLOR,
     undefined,
-    piece => {
-        let box = piece.toBox();
-        let c = box.center();
-        let w = box.diagonal.x;
-        let h = box.diagonal.z;
-        return [
-            piece.toRenderData(),
-            lineSegmentPathRenderData(
-                [
-                    c.plus(new Vector(w, 0, h)),
-                    c.plus(new Vector(w, 0, -h)),
-                    c.plus(new Vector(-w, 0, -h)),
-                    c.plus(new Vector(-w, 0, h))
-                ],
-                [1, 0, 0, 1],
-                true)
-        ];
-    },
+    ringAroundRenderData,
     undefined,
     undefined,
     (piece, layout, codeDistance, id) => surface => {
         if (id === PRIMAL_FLAT_INTERIOR_INDEX) {
             for (let q of observableAround(layout, piece, codeDistance)) {
                 surface.toggle(q);
+            }
+        }
+    });
+PlumbingPieces.TPrimalToggle = new PlumbingPiece(
+    'TPrimalToggle',
+    Sockets.YPrimal,
+    PRIMAL_COLOR,
+    undefined,
+    ringAroundRenderData,
+    undefined,
+    undefined,
+    (piece, layout, codeDistance, id) => surface => {
+        if (id === DUAL_FLAT_INTERIOR_INDEX) {
+            for (let q of observableAround(layout, piece, codeDistance)) {
+                surface.phase_toggle(q);
             }
         }
     });
@@ -541,28 +613,31 @@ PlumbingPieces.CDual = new PlumbingPiece(
 
 PlumbingPieces.All = [
     PlumbingPieces.XPrimalRightward,
-    PlumbingPieces.PRIMAL_BACKWARD,
-    PlumbingPieces.PRIMAL_UPWARD,
+    PlumbingPieces.ZPrimalInitPlus,
+    PlumbingPieces.ZPrimalBackward,
+    PlumbingPieces.TPrimal,
     PlumbingPieces.XPrimalLeftward,
-    PlumbingPieces.PRIMAL_FOREWARD,
-    PlumbingPieces.DUAL_RIGHTWARD,
+    PlumbingPieces.ZPrimalForward,
+    PlumbingPieces.XDualRightward,
+    PlumbingPieces.XPrimalInspect,
     PlumbingPieces.ZDualBackward,
     PlumbingPieces.DUAL_UPWARD,
-    PlumbingPieces.DUAL_LEFTWARD,
+    PlumbingPieces.XDualLeftward,
     PlumbingPieces.ZDualForeward,
     PlumbingPieces.CDual,
     PlumbingPieces.PRIMAL_CENTER,
     PlumbingPieces.XPrimalInjectS,
-    PlumbingPieces.PRIMAL_VERTICAL_S,
+    PlumbingPieces.ZPrimalInjectS,
     PlumbingPieces.ZDualInjectS,
     PlumbingPieces.ZDualInit,
-    PlumbingPieces.DUAL_HORIZONTAL_S,
+    PlumbingPieces.XDualInjectS,
     PlumbingPieces.XPrimalInitPlus,
     PlumbingPieces.ZDualInspect,
     PlumbingPieces.ZDualToggle,
     PlumbingPieces.ZDualMeasure,
-    PlumbingPieces.PRIMAL_Z_INSPECT,
+    PlumbingPieces.ZPrimalInspect,
     PlumbingPieces.TDualToggle,
+    PlumbingPieces.TPrimalToggle,
 ];
 
 PlumbingPieces.BySocket = new GeneralMap();
@@ -581,9 +656,9 @@ PlumbingPieces.forceGetByName = name => {
 
 PlumbingPieces.Defaults = new GeneralMap(
     [Sockets.XPrimal, PlumbingPieces.XPrimalRightward],
-    [Sockets.YPrimal, PlumbingPieces.PRIMAL_UPWARD],
-    [Sockets.ZPrimal, PlumbingPieces.PRIMAL_BACKWARD],
-    [Sockets.XDual, PlumbingPieces.DUAL_RIGHTWARD],
+    [Sockets.YPrimal, PlumbingPieces.TPrimal],
+    [Sockets.ZPrimal, PlumbingPieces.ZPrimalBackward],
+    [Sockets.XDual, PlumbingPieces.XDualRightward],
     [Sockets.YDual, PlumbingPieces.DUAL_UPWARD],
     [Sockets.ZDual, PlumbingPieces.ZDualForeward],
     [Sockets.CPrimal, PlumbingPieces.PRIMAL_CENTER],

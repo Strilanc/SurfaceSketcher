@@ -350,16 +350,14 @@ addKeyListener('3', () => {
 addKeyListener('B', () => {
     let b = determineSimulationLayout(drawState.cellMap, drawState.codeDistance);
     drawState.focusedLayer -= 1;
-    let m = b.minT + (b.maxT - b.minT) * IMPORTANT_UNIT_CELL_TIMES.length;
-    drawState.focusedLayer = Math.min(drawState.focusedLayer, m);
+    drawState.focusedLayer = Math.min(drawState.focusedLayer, b.maxT);
     drawState.focusedLayer = Math.max(drawState.focusedLayer, b.minT);
 });
 
 addKeyListener('N', () => {
     let b = determineSimulationLayout(drawState.cellMap, drawState.codeDistance);
     drawState.focusedLayer += 1;
-    let m = b.minT + (b.maxT - b.minT) * IMPORTANT_UNIT_CELL_TIMES.length;
-    drawState.focusedLayer = Math.min(drawState.focusedLayer, m);
+    drawState.focusedLayer = Math.min(drawState.focusedLayer, b.maxT);
     drawState.focusedLayer = Math.max(drawState.focusedLayer, b.minT);
 });
 

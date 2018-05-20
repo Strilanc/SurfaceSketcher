@@ -129,6 +129,9 @@ function unitCellMapToTileStacks(codeDistance, map) {
     tileStacks.push(makeClearXStabilizersTileStack(layout));
     for (let t = layout.minT + 1; t <= layout.maxT; t += IMPORTANT_UNIT_CELL_TIMES.length) {
         for (let transitionIndex = 0; transitionIndex < IMPORTANT_UNIT_CELL_TIMES.length; transitionIndex++) {
+            if (t + transitionIndex > layout.maxT) {
+                break;
+            }
             let pieces = [...relevantPiecesAt(map, t / IMPORTANT_UNIT_CELL_TIMES.length, transitionIndex)];
             let tileStack = new TileStack();
             tileStack.startNewTile();
