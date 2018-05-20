@@ -143,36 +143,40 @@ class Tile {
 
     /**
      * @param {!Surface} surface
+     * @param {!SimulationLayout} layout
      * @param {!int} tileIndex
      * @param {!GeneralMap.<!XYT, !Measurement>} measurementResultsOut
      */
-    simulateOn(surface, tileIndex, measurementResultsOut) {
-        this._simulateInit(surface);
-        this._simulateOps(surface);
-        this._simulateMeasurements(surface, tileIndex, measurementResultsOut);
+    simulateOn(surface, layout, tileIndex, measurementResultsOut) {
+        this._simulateInit(surface, layout);
+        this._simulateOps(surface, layout);
+        this._simulateMeasurements(surface, layout, tileIndex, measurementResultsOut);
     }
 
     /**
      * @param {!Surface} surface
+     * @param {!SimulationLayout} layout
      */
-    _simulateInit(surface) {
+    _simulateInit(surface, layout) {
         for (let [xy, axis] of this.initializations.entries()) {
-            if (surface.measure(xy).result) {
-                surface.hadamard(xy);
-                surface.phase(xy);
-                surface.phase(xy);
-                surface.hadamard(xy);
+            let q = layout.locToQubit(xy);
+            if (surface.measure(q).result) {
+                surface.hadamard(q);
+                surface.phase(q);
+                surface.phase(q);
+                surface.hadamard(q);
             }
             if (axis.is_x()) {
-                surface.hadamard(xy);
+                surface.hadamard(q);
             }
         }
     }
 
     /**
      * @param {!Surface} surface
+     * @param {!SimulationLayout} layout
      */
-    _simulateOps(surface) {
+    _simulateOps(surface, layout) {
         let d = this.depth();
         for (let i = 0; i < d; i++) {
             for (let [xy, col] of this.operations.entries()) {
@@ -181,28 +185,31 @@ class Tile {
                 if (action === undefined) {
                     throw new DetailedError('Unrecognized', {op});
                 }
-                action(surface, xy);
+                let q = layout.locToQubit(xy);
+                action(surface, q);
             }
         }
     }
 
     /**
      * @param {!Surface} surface
+     * @param {!SimulationLayout} layout
      * @param {!int} tileIndex
      * @param {!GeneralMap.<!XYT, !Measurement>} measurementResultsOut
      */
-    _simulateMeasurements(surface, tileIndex, measurementResultsOut) {
+    _simulateMeasurements(surface, layout, tileIndex, measurementResultsOut) {
         for (let [xy, axis] of this.measurements.entries()) {
+            let q = layout.locToQubit(xy);
             if (axis.is_x()) {
-                surface.hadamard(xy);
+                surface.hadamard(q);
             }
-            let result = surface.measure(xy);
+            let result = surface.measure(q);
             measurementResultsOut.set(new XYT(xy.x, xy.y, tileIndex), result);
             if (result.result) {
-                surface.hadamard(xy);
-                surface.phase(xy);
-                surface.phase(xy);
-                surface.hadamard(xy);
+                surface.hadamard(q);
+                surface.phase(q);
+                surface.phase(q);
+                surface.hadamard(q);
             }
         }
     }
@@ -289,9 +296,9 @@ class Tile {
      * @returns {!string}
      */
     toString() {
-        let minX = Math.min(0, seq(this.operations.keys()).map(xy => xy.x).min(0));
+        let minX = seq(this.operations.keys()).map(xy => xy.x).min(0);
         let maxX = seq(this.operations.keys()).map(xy => xy.x).max(0);
-        let minY = Math.min(0, seq(this.operations.keys()).map(xy => xy.y).min(0));
+        let minY = seq(this.operations.keys()).map(xy => xy.y).min(0);
         let maxY = seq(this.operations.keys()).map(xy => xy.y).max(0);
         let d = this.depth();
         let planes = [];
@@ -336,7 +343,7 @@ class Tile {
             }
         }));
 
-        return `Tile(entries=[\n${indent(mergeGridRangeStrings(planes, 200))}\n])`;
+        return `Tile(minX=${minX}, minY=${minY}, entries=[\n${indent(mergeGridRangeStrings(planes, 200))}\n])`;
     }
 
     /**

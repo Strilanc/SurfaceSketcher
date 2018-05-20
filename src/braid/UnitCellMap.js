@@ -60,6 +60,27 @@ class UnitCellMap {
     }
 
     /**
+     * @returns {!{minX: !int, minY: !int, minZ: !int, maxX: !int, maxY: !int, maxZ: !int}}
+     */
+    bounds() {
+        let minX = Infinity;
+        let maxX = -Infinity;
+        let minY = Infinity;
+        let maxY = -Infinity;
+        let minZ = Infinity;
+        let maxZ = -Infinity;
+        for (let pt of this.cells.keys()) {
+            minX = Math.min(minX, pt.x);
+            minY = Math.min(minY, pt.y);
+            minZ = Math.min(minZ, pt.z);
+            maxX = Math.max(maxX, pt.x);
+            maxY = Math.max(maxY, pt.y);
+            maxZ = Math.max(maxZ, pt.z);
+        }
+        return {minX, minY, minZ, maxX, maxY, maxZ};
+    }
+
+    /**
      * @returns {!Array.<!LocalizedPlumbingPiece>}
      */
     allLocalizedPieces() {

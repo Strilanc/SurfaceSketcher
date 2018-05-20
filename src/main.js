@@ -20,7 +20,7 @@ import {RenderData} from "src/geo/RenderData.js";
 import {UnitCellMap} from "src/braid/UnitCellMap.js";
 import {PlumbingPieces} from "src/braid/PlumbingPieces.js";
 import {Sockets} from "src/braid/Sockets.js";
-import {unitCellMapToTileStacks, runSimulation} from "src/braid/SimulateUnitCellMap.js"
+import {unitCellMapToTileStacks, determineSimulationLayout, runSimulation} from "src/braid/SimulateUnitCellMap.js"
 import {equate} from "src/base/Equate.js";
 import {LocalizedPlumbingPiece} from "src/braid/LocalizedPlumbingPiece.js";
 import {Revision} from "src/base/Revision.js";
@@ -83,10 +83,10 @@ function makeRenderData() {
     }
 
     if (drawState.drawOps) {
-        let tileIndex = 0;
-        for (let i = 0; i < simLayers.length; i++) {
-            let tileStack = simLayers[i];
-            result.push(...tileStackToRenderData(tileStack, tileIndex, drawState.codeDistance, simResults));
+        let layout = determineSimulationLayout(drawState.cellMap, drawState.codeDistance);
+        let tileIndex = layout.minT;
+        for (let tileStack of simLayers) {
+            result.push(...tileStackToRenderData(layout, tileStack, tileIndex, drawState.codeDistance, simResults));
             tileIndex += tileStack.tiles.length;
         }
     }
@@ -124,7 +124,8 @@ function drawScene(gl, programInfo, buffers, arrowTexture) {
     if (!drawState.cellMap.isEqualTo(lastSimState)) {
         lastSimState = drawState.cellMap.clone();
         simLayers = unitCellMapToTileStacks(drawState.codeDistance, lastSimState);
-        simResults = runSimulation(simLayers);
+        let layout = determineSimulationLayout(lastSimState, drawState.codeDistance);
+        simResults = runSimulation(layout, simLayers);
 
         let writer = new Writer();
         drawState.write(writer);

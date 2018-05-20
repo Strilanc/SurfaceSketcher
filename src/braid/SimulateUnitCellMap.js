@@ -18,9 +18,7 @@ import {TileStack} from "src/sim/TileStack.js";
 import {XY} from "src/sim/util/XY.js";
 import {SMALL_DIAMETER} from "src/braid/CodeDistance.js";
 import {IMPORTANT_UNIT_CELL_TIMES} from "src/braid/Sockets.js";
-
-const SIM_WIDTH = 16;
-const SIM_HEIGHT = 16;
+import {SimulationLayout} from "src/braid/SimulationLayout.js";
 
 /**
  * @param {!int} codeDistance
@@ -72,18 +70,21 @@ function relevantPiecesAt(map, unitCellIndex, transitionIndex) {
 }
 
 /**
- * @param {!Surface} surface
+ * @param {!SimulationLayout} layout
  * @returns {!TileStack}
  */
-function makeClearXStabilizersTileStack(surface) {
-    let t = makeMeasureAllStabilizersTileStack(surface);
-    for (let j = 1; j < surface.height; j += 2) {
-        for (let i = (surface.width | 1) - 2; i >= 1; i -= 2) {
-            if (i >= 1) {
-                t.feedforward_z(new XY(i, j), new XY(i - 1, j));
-            }
-            if (i >= 2) {
-                t.propagate(new XY(i, j), new XY(i - 2, j));
+function makeClearXStabilizersTileStack(layout) {
+    let t = makeMeasureAllStabilizersTileStack(layout);
+    for (let x = layout.maxX; x >= layout.minX; x--) {
+        for (let y = layout.minY; y <= layout.maxY; y++) {
+            let xy = new XY(x, y);
+            if (layout.is_x(xy)) {
+                if (x - 1 >= layout.minX) {
+                    t.feedforward_z(xy, xy.offsetBy(-1, 0));
+                }
+                if (x - 2 >= layout.minX) {
+                    t.propagate(xy, xy.offsetBy(-2, 0));
+                }
             }
         }
     }
@@ -91,13 +92,13 @@ function makeClearXStabilizersTileStack(surface) {
 }
 
 /**
- * @param {!Surface} surface
+ * @param {!SimulationLayout} layout
  * @returns {!TileStack}
  */
-function makeMeasureAllStabilizersTileStack(surface) {
+function makeMeasureAllStabilizersTileStack(layout) {
     let t = new TileStack();
     t.startNewTile();
-    t.measureEnabledStabilizers(surface, new GeneralSet());
+    t.measureEnabledStabilizers(layout, new GeneralSet());
     return t;
 }
 
@@ -107,39 +108,67 @@ function makeMeasureAllStabilizersTileStack(surface) {
  * @returns {!Array.<!TileStack>}
  */
 function unitCellMapToTileStacks(codeDistance, map) {
-    let w = SIM_WIDTH;
-    let h = SIM_HEIGHT;
-    let surface = new Surface(w, h);
+    let layout = determineSimulationLayout(map, codeDistance);
     let tileStacks = [];
-    tileStacks.push(makeClearXStabilizersTileStack(surface));
-    let max_z = seq(map.cells.keys()).map(e => e.z).max(-1);
-    for (let unitCellIndex = 0; unitCellIndex <= max_z; unitCellIndex++) {
+    tileStacks.push(makeClearXStabilizersTileStack(layout));
+    for (let t = layout.minT + 1; t <= layout.maxT; t++) {
         for (let transitionIndex = 0; transitionIndex < IMPORTANT_UNIT_CELL_TIMES.length; transitionIndex++) {
-            let pieces = [...relevantPiecesAt(map, unitCellIndex, transitionIndex)];
+            let pieces = [...relevantPiecesAt(map, t, transitionIndex)];
             let tileStack = new TileStack();
             tileStack.startNewTile();
             propagateSignals(tileStack, codeDistance, pieces);
             let block = combinedFootprint(codeDistance, pieces);
-            tileStack.measureEnabledStabilizers(surface, block.mask);
+            tileStack.measureEnabledStabilizers(layout, block.mask);
             tileStacks.push(tileStack);
         }
     }
-    surface.destruct();
     return tileStacks;
 }
 
 /**
+ * @param {!UnitCellMap} cellMap
+ * @param {!int} codeDistance
+ */
+function determineSimulationLayout(cellMap, codeDistance) {
+    let minX = Infinity;
+    let minY = Infinity;
+    let minT = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    let maxT = -Infinity;
+    let update = xy => {
+        minX = Math.min(xy.x, minX);
+        minY = Math.min(xy.y, minY);
+        maxX = Math.max(xy.x, maxX);
+        maxY = Math.max(xy.y, maxY);
+    };
+    for (let p of cellMap.allLocalizedPieces()) {
+        let r = p.toSocketFootprintRect(codeDistance);
+        update(new XY(r.x, r.y));
+        update(new XY(r.x + r.w - 1, r.y + r.h - 1));
+        minT = Math.min(minT, p.loc.y * IMPORTANT_UNIT_CELL_TIMES.length);
+        maxT = Math.max(maxT, p.loc.y * IMPORTANT_UNIT_CELL_TIMES.length);
+    }
+
+    minX = Math.floor(minX / 2) * 2 - 2;
+    minY = Math.floor(minY / 2) * 2 - 2;
+    maxX = Math.ceil(maxX / 2) * 2 + 2;
+    maxY = Math.ceil(maxY / 2) * 2 + 2;
+
+    return new SimulationLayout(minX, maxX, minY, maxY, minT - 1, maxT);
+}
+
+/**
+ * @param {!SimulationLayout} layout
  * @param {!Array.<!TileStack>} tileStacks
- * @param {!int} tileIndex
  * @returns {!SimulationResults}
  */
-function runSimulation(tileStacks, tileIndex=0) {
-    let w = SIM_WIDTH;
-    let h = SIM_HEIGHT;
-    let surface = new Surface(w, h);
+function runSimulation(layout, tileStacks) {
+    let surface = new Surface(layout.maxX - layout.minX + 1, layout.maxY - layout.minY + 1);
     let measurements = new GeneralMap();
+    let tileIndex = layout.minT;
     for (let tileStack of tileStacks) {
-        tileStack.simulateOn(surface, tileIndex, measurements);
+        tileStack.simulateOn(surface, layout, tileIndex, measurements);
         tileIndex += tileStack.tiles.length;
     }
     surface.destruct();
@@ -176,5 +205,6 @@ export {
     SimulationResults,
     runSimulation,
     makeMeasureAllStabilizersTileStack,
-    makeClearXStabilizersTileStack
+    makeClearXStabilizersTileStack,
+    determineSimulationLayout,
 }

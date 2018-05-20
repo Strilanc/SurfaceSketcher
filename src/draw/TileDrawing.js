@@ -62,10 +62,9 @@ function keyFrameLerp(time, ...keyframes) {
  * @returns {!Point}
  */
 function qubitPosition(codeDistance, xy, opIndex, tileIndex) {
-    tileIndex -= 1; // Clear X stabilizer measurements layer.
     let unitCellIndex = Math.floor(tileIndex / IMPORTANT_UNIT_CELL_TIMES.length);
-    let transitionIndex = tileIndex % IMPORTANT_UNIT_CELL_TIMES.length;
-    let tileIndexY = tileIndex < 0 ? -1 : unitCellIndex + IMPORTANT_UNIT_CELL_TIMES[transitionIndex];
+    let transitionIndex = tileIndex - unitCellIndex * IMPORTANT_UNIT_CELL_TIMES.length;
+    let tileIndexY = unitCellIndex + IMPORTANT_UNIT_CELL_TIMES[transitionIndex];
 
     let {y: row, x: col} = xy;
     let {w: uw, h: uh} = codeDistanceUnitCellSize(codeDistance);
@@ -131,13 +130,14 @@ function _tileWireRenderData(tile, tileIndex, codeDistance, simResult) {
 }
 
 /**
+ * @param {!SimulationLayout} layout
  * @param {!Tile} tile
  * @param {!int} tileIndex
  * @param {!int} codeDistance
  * @param {!SimulationResults} simResult
  * @returns {!Array.<!RenderData>}
  */
-function _tileSimplifiedWireRenderData(tile, tileIndex, codeDistance, simResult) {
+function _tileSimplifiedWireRenderData(layout, tile, tileIndex, codeDistance, simResult) {
     // let pos = xy => qubitPosition(codeDistance, xy, 0, tileIndex);
     let quadData = (xy, color) => {
         let c1 = qubitPosition(codeDistance, xy.offsetBy(-0.001, -0.001), 0, tileIndex);
@@ -160,9 +160,8 @@ function _tileSimplifiedWireRenderData(tile, tileIndex, codeDistance, simResult)
 
     let result = [];
 
-    let bounds = tile.bounds();
-    for (let x = bounds.minX; x <= bounds.maxX; x++) {
-        for (let y = bounds.minY; y <= bounds.maxY; y++) {
+    for (let x = layout.minX; x <= layout.maxX; x++) {
+        for (let y = layout.minY; y <= layout.maxY; y++) {
             let xy = new XY(x, y);
             let color = undefined;
             let measurement = simResult.measurements.get(new XYT(xy.x, xy.y, tileIndex));
@@ -434,6 +433,7 @@ function flatCrossedCircleRenderDataMulti(center, dx, dz, radius, centerColor, b
 }
 
 /**
+ * @param {!SimulationLayout} layout
  * @param {!Tile} tile
  * @param {!int} tileIndex
  * @param {!int} codeDistance
@@ -441,9 +441,9 @@ function flatCrossedCircleRenderDataMulti(center, dx, dz, radius, centerColor, b
  * @param {!boolean} simplified
  * @returns {!Array.<!RenderData>}
  */
-function tileToRenderData(tile, tileIndex, codeDistance, simResult, simplified) {
+function tileToRenderData(layout, tile, tileIndex, codeDistance, simResult, simplified) {
     if (simplified) {
-        return _tileSimplifiedWireRenderData(tile, tileIndex, codeDistance, simResult);
+        return _tileSimplifiedWireRenderData(layout, tile, tileIndex, codeDistance, simResult);
     }
 
     let result = _tileWireRenderData(tile, tileIndex, codeDistance, simResult);
@@ -456,6 +456,7 @@ function tileToRenderData(tile, tileIndex, codeDistance, simResult, simplified) 
 }
 
 /**
+ * @param {!SimulationLayout} layout
  * @param {!TileStack} tileStack
  * @param {!int} tileIndex
  * @param {!int} codeDistance
@@ -463,10 +464,11 @@ function tileToRenderData(tile, tileIndex, codeDistance, simResult, simplified) 
  * @param {!boolean} simplified
  * @returns {!Array.<!RenderData>}
  */
-function tileStackToRenderData(tileStack, tileIndex, codeDistance, simResult, simplified=true) {
+function tileStackToRenderData(layout, tileStack, tileIndex, codeDistance, simResult, simplified=true) {
     let result = [];
     for (let i = 0; i < tileStack.tiles.length; i++) {
-        result.push(...tileToRenderData(tileStack.tiles[i], tileIndex + i, codeDistance, simResult, simplified));
+        result.push(
+            ...tileToRenderData(layout, tileStack.tiles[i], tileIndex + i, codeDistance, simResult, simplified));
     }
     result.push(..._tileStackFeedToRenderData(tileStack, tileIndex, codeDistance, simplified));
     result.push(..._tileStackPropToRenderData(tileStack, tileIndex, codeDistance, simplified));

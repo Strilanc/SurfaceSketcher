@@ -119,13 +119,14 @@ class TileStack {
 
     /**
      * @param {!Surface} surface
+     * @param {!SimulationLayout} layout
      * @param {!int} tileIndex
      * @param {!GeneralMap.<!XYT, !Measurement>} measurementResultsOut
      */
-    simulateOn(surface, tileIndex, measurementResultsOut) {
+    simulateOn(surface, layout, tileIndex, measurementResultsOut) {
         let measurements = new GeneralMap();
         for (let i = 0; i < this.tiles.length; i++) {
-            this.tiles[i].simulateOn(surface, i, measurements);
+            this.tiles[i].simulateOn(surface, layout, i, measurements);
         }
 
         // Classical propagation.
@@ -142,15 +143,12 @@ class TileStack {
         for (let [control, feed] of this.feed.entries()) {
             if (measurements.get(control).result) {
                 for (let [target, mask] of feed.operations.entries()) {
+                    let q = layout.locToQubit(target);
                     if ((PauliMap.ZMask & mask) !== 0) {
-                        surface.phase(target);
-                        surface.phase(target);
+                        surface.phase_toggle(q);
                     }
                     if ((PauliMap.XMask & mask) !== 0) {
-                        surface.hadamard(target);
-                        surface.phase(target);
-                        surface.phase(target);
-                        surface.hadamard(target);
+                        surface.toggle(q);
                     }
                 }
             }
@@ -227,10 +225,10 @@ class TileStack {
      * @returns {!{minX: !int, minY: !int, maxX: !int, maxY: !int}}
      */
     bounds() {
-        let minX = 0;
-        let minY = 0;
-        let maxX = 0;
-        let maxY = 0;
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
         let update = xy => {
             minX = Math.min(xy.x, minX);
             minY = Math.min(xy.x, minY);
@@ -312,25 +310,25 @@ class TileStack {
     }
 
     /**
-     * @param {!Surface} surface
+     * @param {!SimulationLayout} layout
      * @param {!GeneralSet.<!XY>} disables
      * @returns {!GeneralMap.<!XY, !MeasurementAdjustment>}
      */
-    measureEnabledStabilizers(surface, disables) {
+    measureEnabledStabilizers(layout, disables) {
         let xTargets = [];
         let zTargets = [];
         let avail = new GeneralSet();
-        for (let row = 0; row < surface.height; row++) {
-            for (let col = 0; col < surface.width; col++) {
-                let xy = new XY(col, row);
+        for (let x = layout.minX; x <= layout.maxX; x++) {
+            for (let y = layout.minY; y <= layout.maxY; y++) {
+                let xy = new XY(x, y);
                 if (!disables.has(xy)) {
-                    if (surface.is_x(xy)) {
+                    if (layout.is_x(xy)) {
                         xTargets.push(xy);
                         avail.add(xy);
-                    } else if (surface.is_z(xy)) {
+                    } else if (layout.is_z(xy)) {
                         zTargets.push(xy);
                         avail.add(xy);
-                    } else if (surface.is_data(xy)) {
+                    } else if (layout.is_data(xy)) {
                         avail.add(xy);
                     }
                 }

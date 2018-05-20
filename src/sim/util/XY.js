@@ -22,6 +22,46 @@ class XY {
     }
 
     /**
+     * @param {!XY} dxy
+     * @returns {!XY}
+     */
+    plus(dxy) {
+        return new XY(this.x + dxy.x, this.y + dxy.y, this.must_be_active);
+    }
+
+    /**
+     * @returns {!XY}
+     */
+    negate() {
+        return new XY(-this.x, -this.y, this.must_be_active);
+    }
+
+    /**
+     * @param {!XY} dxy
+     * @param {!int} factor
+     * @returns {!XY}
+     */
+    plusScaled(dxy, factor) {
+        return new XY(this.x + dxy.x * factor, this.y + dxy.y * factor, this.must_be_active);
+    }
+
+    /**
+     * @returns {!XY}
+     */
+    rotatedClockwise() {
+        //noinspection JSSuspiciousNameCombination
+        return new XY(-this.y, this.x, this.must_be_active);
+    }
+
+    /**
+     * @returns {!XY}
+     */
+    rotatedCounterClockwise() {
+        //noinspection JSSuspiciousNameCombination
+        return new XY(this.y, -this.x, this.must_be_active);
+    }
+
+    /**
      * @returns {!string}
      */
     toString() {

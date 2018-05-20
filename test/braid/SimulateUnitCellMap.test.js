@@ -13,18 +13,18 @@ import {TileStack} from "src/sim/TileStack.js";
 import {GeneralSet} from "src/base/GeneralSet.js";
 import {Axis} from "src/sim/util/Axis.js";
 import {DirectedGraph} from "src/sim/util/DirectedGraph.js";
+import {SimulationLayout} from "src/braid/SimulationLayout.js";
 
 let suite = new Suite("SimulateUnitCellMap");
 
 suite.test('makeMeasureAllStabilizersTileStack_stabilizes', () => {
-    let surface = new Surface(2, 2);
+    let layout = new SimulationLayout(0, 1, 0, 1, 0, 1);
     let tileStacks = [
-        makeMeasureAllStabilizersTileStack(surface),
-        makeMeasureAllStabilizersTileStack(surface)
+        makeMeasureAllStabilizersTileStack(layout),
+        makeMeasureAllStabilizersTileStack(layout)
     ];
-    surface.destruct();
 
-    let results = runSimulation(tileStacks, 0);
+    let results = runSimulation(layout, tileStacks);
 
     let r = results.measurements.get(new XYT(1, 1, 0));
     assertTrue(r.random);
@@ -39,14 +39,13 @@ suite.test('makeMeasureAllStabilizersTileStack_stabilizes', () => {
 });
 
 suite.test('makeClearXStabilizersTileStack', () => {
-    let surface = new Surface(4, 4);
+    let layout = new SimulationLayout(0, 3, 0, 3, 0, 1);
     let tileStacks = [
-        makeClearXStabilizersTileStack(surface),
-        makeMeasureAllStabilizersTileStack(surface)
+        makeClearXStabilizersTileStack(layout),
+        makeMeasureAllStabilizersTileStack(layout)
     ];
-    surface.destruct();
 
-    let results = runSimulation(tileStacks, 0);
+    let results = runSimulation(layout, tileStacks);
     for (let [xyt, measurement] of results.measurements.entries()) {
         if (xyt.t > 0) {
             assertThat(measurement).isEqualTo(new Measurement(false, false));
@@ -56,17 +55,16 @@ suite.test('makeClearXStabilizersTileStack', () => {
 
 suite.test('introducingHoleDoesNotAffectRemoteStabilizers', () => {
     for (let hole of [new XY(2, 2), new XY(3, 3)]) {
-        let surface = new Surface(5, 5);
-        let t = makeClearXStabilizersTileStack(surface);
+        let layout = new SimulationLayout(0, 4, 0, 4, 0, 1);
+        let t = makeClearXStabilizersTileStack(layout);
         t.startNewTile();
-        t.measureEnabledStabilizers(surface, new GeneralSet(hole));
-        surface.destruct();
-        let result = runSimulation([t]);
-        for (let i = 0; i < surface.width; i++) {
-            for (let j = 0; j < surface.height; j++) {
-                let xy = new XY(i, j);
+        t.measureEnabledStabilizers(layout, new GeneralSet(hole));
+        let result = runSimulation(layout, [t]);
+        for (let x = layout.minX; x <= layout.maxX; x++) {
+            for (let y = layout.minY; y <= layout.maxY; y++) {
+                let xy = new XY(x, y);
                 let m = result.measurements.get(new XYT(xy.x, xy.y, 1));
-                if (surface.is_data(xy) || hole.isEqualTo(xy)) {
+                if (layout.is_data(xy) || hole.isEqualTo(xy)) {
                     assertThat(m).withInfo({xy}).isEqualTo(undefined);
                 } else {
                     assertThat(m).withInfo({xy}).isEqualTo(new Measurement(false, false));
