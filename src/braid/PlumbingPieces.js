@@ -1,9 +1,7 @@
 /**
- * @param {!LocalizedPlumbingPiece} localizedPiece
- * @param {!Vector} d
- * @param {![!number, !number, !number, !number]} color
- * @returns {!Array.<!RenderData>}
+ * Creates all the plumbing piece types.
  */
+
 import {DetailedError} from 'src/base/DetailedError.js'
 import {seq} from "src/base/Seq.js";
 import {PlumbingPiece} from "src/braid/PlumbingPiece.js";
@@ -46,6 +44,7 @@ import {
 import {XYT} from "src/sim/util/XYT.js";
 import {XY} from "src/sim/util/XY.js";
 import {describe} from "src/base/Describe.js";
+import {makeFlatGroup} from "src/braid/FlatPieceType.js";
 
 class PlumbingPieces {
 }
@@ -72,6 +71,12 @@ function blochVecToKetText(v) {
     }
 }
 
+/**
+ * @param {!LocalizedPlumbingPiece} localizedPiece
+ * @param {!Vector} d
+ * @param {![!number, !number, !number, !number]} color
+ * @returns {!Array.<!RenderData>}
+ */
 function injectionSiteRenderData(localizedPiece, d, color) {
     let box = localizedPiece.toBox();
     let left = box.baseCorner.plus(box.diagonal.pointwiseMultiply(new Vector(1, 1, 1).minus(d).scaledBy(0.5)));
@@ -418,107 +423,6 @@ function ringAroundRenderData(piece) {
             [1, 0, 0, 1],
             true)
     ];
-}
-
-class FlatPieceType {
-    constructor(dual, horizontal) {
-        this.dual = dual;
-        this.horizontal = horizontal;
-    }
-
-    /**
-     * @returns {!Array.<!FlatPieceType>}
-     */
-    static all() {
-        return [
-            new FlatPieceType(false, false),
-            new FlatPieceType(false, true),
-            new FlatPieceType(true, false),
-            new FlatPieceType(true, true),
-        ];
-    }
-
-    /**
-     * @returns {!Vector}
-     */
-    dir() {
-        return this.horizontal ? new Vector(1, 0, 0) : new Vector(0, 0, 1);
-    }
-
-    /**
-     * @returns {!string}
-     */
-    namePrefix() {
-        return (this.horizontal ? 'X' : 'Z') + (this.dual ? 'Dual' : 'Primal');
-
-    }
-
-    /**
-     * @returns {!UnitCellSocket}
-     */
-    socket() {
-        if (this.horizontal) {
-            return this.dual ? Sockets.XDual : Sockets.XPrimal
-        }
-        return this.dual ? Sockets.ZDual : Sockets.ZPrimal;
-    }
-
-    /**
-     * @returns {![!number, !number, !number, !number]}
-     */
-    braidColor() {
-        return this.dual ? Config.BRAIDING_DUAL_COLOR : Config.BRAIDING_PRIMAL_COLOR;
-    }
-}
-
-/**
- * @param {!string} nameSuffix
- * @param {undefined|!function(!FlatPieceType) : undefined|!function(
- *      !LocalizedPlumbingPiece, !SimulationResults) : !Array.<!RenderData>} customRenderMaker
- * @param {undefined | !function(!FlatPieceType) : undefined|!function(!LocalizedPlumbingPiece,
-     *                             !SimulationLayout,
-     *                             codeDistance: !int,
-     *                             id: !int) : !function(
-     *      !Surface,
-     *      !GeneralMap.<!Point, !GeneralMap.<!UnitCellSocket, !string>>)} customSimulationWorkMaker
- * @returns {!{
- *      ZPrimal: !PlumbingPiece,
- *      XPrimal: !PlumbingPiece,
- *      ZDual: !PlumbingPiece,
- *      XDual: !PlumbingPiece,
- *      All: !Array.<!PlumbingPiece>
- * }}
- */
-function makeFlatGroup(nameSuffix, customRenderMaker, customSimulationWorkMaker) {
-    if (customRenderMaker === undefined) {
-        customRenderMaker = () => undefined;
-    }
-    if (customSimulationWorkMaker === undefined) {
-        customSimulationWorkMaker = () => undefined;
-    }
-
-    let result = [];
-    for (let type of FlatPieceType.all()) {
-        let texRect = undefined;
-        let customPropagate = undefined;
-
-        result.push(new PlumbingPiece(
-            type.namePrefix() + nameSuffix,
-            type.socket(),
-            type.braidColor(),
-            texRect,
-            customRenderMaker(type),
-            NO_FOOTPRINT,
-            customPropagate,
-            customSimulationWorkMaker(type)));
-    }
-    return {
-        ZPrimal: result[0],
-        XPrimal: result[1],
-        ZDual: result[2],
-        XDual: result[3],
-        All: result
-    };
 }
 
 const DEFAULT_FOOTPRINT = undefined;
