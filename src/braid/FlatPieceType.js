@@ -77,6 +77,23 @@ class FlatPieceType {
     braidColor() {
         return this.dual ? Config.BRAIDING_DUAL_COLOR : Config.BRAIDING_PRIMAL_COLOR;
     }
+
+    /**
+     * Returns a quad oriented so that using a texture containing text will read along the long direction.
+     * @param {!LocalizedPlumbingPiece} localizedPiece
+     * @param {!number} inset The amount to shift the face downward, times the height of the box.
+     * @returns {!Quad}
+     */
+    orientedTopFaceQuad(localizedPiece, inset=0) {
+        let box = localizedPiece.toBox();
+        let quad = box.faceQuad(new Vector(0, 1, 0)).offsetBy(new Vector(0, box.diagonal.y * inset, 0));
+        if (this.vertical) {
+            quad = quad.swapLegs().flipHorizontal();
+        } else {
+            quad = quad.flipHorizontal().flipVertical();
+        }
+        return quad;
+    }
 }
 
 /**
@@ -93,6 +110,8 @@ class FlatPieceType {
  *                             id: !int) : !function(
  *      !Surface,
  *      !GeneralMap.<!Point, !GeneralMap.<!UnitCellSocket, !string>>))} customSimulationWorkMaker
+ * @param {undefined | !function(!FlatPieceType) : (undefined|!function(
+ *      tileStack: !TileStack, !LocalizedPlumbingPiece, codeDistance: !int, id: !int))} customPropagateSignalMaker
  * @returns {!{
  *      ZPrimal: !PlumbingPiece,
  *      XPrimal: !PlumbingPiece,
@@ -101,18 +120,24 @@ class FlatPieceType {
  *      All: !Array.<!PlumbingPiece>
  * }}
  */
-function makeFlatGroup(nameSuffix, footprint, customRenderMaker, customSimulationWorkMaker) {
+function makeFlatGroup(nameSuffix,
+                       footprint,
+                       customRenderMaker,
+                       customSimulationWorkMaker,
+                       customPropagateSignalMaker) {
     if (customRenderMaker === undefined) {
         customRenderMaker = () => undefined;
     }
     if (customSimulationWorkMaker === undefined) {
         customSimulationWorkMaker = () => undefined;
     }
+    if (customPropagateSignalMaker === undefined) {
+        customPropagateSignalMaker = () => undefined;
+    }
 
     let result = [];
     for (let type of FlatPieceType.all()) {
         let texRect = undefined;
-        let customPropagate = undefined;
 
         result.push(new PlumbingPiece(
             type.namePrefix() + nameSuffix,
@@ -121,7 +146,7 @@ function makeFlatGroup(nameSuffix, footprint, customRenderMaker, customSimulatio
             texRect,
             customRenderMaker(type),
             footprint,
-            customPropagate,
+            customPropagateSignalMaker(type),
             customSimulationWorkMaker(type)));
     }
     return {

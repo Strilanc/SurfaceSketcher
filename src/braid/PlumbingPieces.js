@@ -10,6 +10,8 @@ import {
     DUAL_FLAT_ENTER_INDEX,
     DUAL_FLAT_EXIT_INDEX,
     DUAL_FLAT_INTERIOR_INDEX,
+    PRIMAL_FLAT_ENTER_INDEX,
+    PRIMAL_FLAT_EXIT_INDEX,
     PRIMAL_FLAT_INTERIOR_INDEX,
 } from "src/braid/Sockets.js";
 import {UnitCellSocketFootprint} from "src/braid/UnitCellSocketFootprint.js";
@@ -257,8 +259,9 @@ function endHoleByFootprint(tileStack, foot, axis) {
  * @param {!TileStack} tileStack
  * @param {!Rect} foot
  * @param {!Axis} axis
+ * @param {!boolean} vertical
  */
-function cutHoleByFootprint(tileStack, foot, axis) {
+function cutHoleByFootprint(tileStack, foot, axis, vertical) {
     let dataTargets = [];
     let xTargets = [];
     let zTargets = [];
@@ -277,14 +280,26 @@ function cutHoleByFootprint(tileStack, foot, axis) {
         }
     }
     tileStack.initAll(dataTargets, axis);
-    tileStack.measureStabilizers(xTargets, zTargets, xy => xy.y >= foot.y && xy.y < foot.y + foot.h);
-
-    for (let i = 0; i < foot.w; i += 2) {
-        for (let j = 1; j < foot.h; j += 2) {
-            let xy = new XY(foot.x + i, foot.y + j);
-            tileStack.feedforward_pauli(xy, xy.offsetBy(0, 1), axis);
-            if (j < foot.h - 2) {
-                tileStack.propagate(xy, xy.offsetBy(0, 2));
+    if (vertical) {
+        tileStack.measureStabilizers(xTargets, zTargets, xy => xy.y >= foot.y && xy.y < foot.y + foot.h);
+        for (let i = 0; i < foot.w; i += 2) {
+            for (let j = 1; j < foot.h; j += 2) {
+                let xy = new XY(foot.x + i, foot.y + j);
+                tileStack.feedforward_pauli(xy, xy.offsetBy(0, 1), axis);
+                if (j < foot.h - 2) {
+                    tileStack.propagate(xy, xy.offsetBy(0, 2));
+                }
+            }
+        }
+    } else {
+        tileStack.measureStabilizers(xTargets, zTargets, xy => xy.x >= foot.x && xy.x < foot.x + foot.w);
+        for (let j = 0; j < foot.h; j += 2) {
+            for (let i = 1; i < foot.w; i += 2) {
+                let xy = new XY(foot.x + i, foot.y + j);
+                tileStack.feedforward_pauli(xy, xy.offsetBy(1, 0), axis);
+                if (i < foot.w - 2) {
+                    tileStack.propagate(xy, xy.offsetBy(2, 0));
+                }
             }
         }
     }
@@ -329,25 +344,6 @@ function* observableAround(layout, piece, codeDistance) {
         yield layout.locToQubit(new XY(footprint.x + i, footprint.y - 1));
         yield layout.locToQubit(new XY(footprint.x + i, footprint.y + footprint.h));
     }
-}
-
-/**
- * @param {!LocalizedPlumbingPiece} localizedPiece
- * @param {!SimulationResults} simResults
- * @param {!boolean} vertical
- * @returns {!Array.<!RenderData>}
- */
-function displayResultAcrossGap(localizedPiece, simResults, vertical) {
-    let box = localizedPiece.toBox();
-    let quad = box.faceQuad(new Vector(0, 1, 0)).
-        offsetBy(new Vector(0, box.diagonal.y / 2, 0));
-    if (vertical) {
-        quad = quad.swapLegs().flipHorizontal();
-    } else {
-        quad = quad.flipHorizontal().flipVertical();
-    }
-    let ketRect = resultToKetRect(simResults.getDisplayVal(localizedPiece.loc, localizedPiece.socket));
-    return [quad.toRenderData(Config.DisplayColor, ketRect, [0, 0, 0, 0])];
 }
 
 /**
@@ -426,6 +422,9 @@ function ringAroundRenderData(piece) {
 }
 
 const DEFAULT_FOOTPRINT = undefined;
+const DEFAULT_RENDER = undefined;
+const NO_EXTRA_SIMULATION_ACTIONS = undefined;
+const NO_PROPAGATION = undefined;
 const NO_FOOTPRINT = () => new UnitCellSocketFootprint(new GeneralSet());
 
 let toggleFlatPieceGroup = makeFlatGroup(
@@ -454,7 +453,8 @@ let toggleFlatPieceGroup = makeFlatGroup(
                 }
             }
         }
-    });
+    },
+    NO_PROPAGATION);
 
 PlumbingPieces.ZPrimalToggle = toggleFlatPieceGroup.ZPrimal;
 PlumbingPieces.XPrimalToggle = toggleFlatPieceGroup.XPrimal;
@@ -465,7 +465,11 @@ let inspectFlatPieceGroup = makeFlatGroup(
     'Inspect',
     NO_FOOTPRINT,
     type => {
-        return (localizedPiece, simResults) => displayResultAcrossGap(localizedPiece, simResults, type.vertical)
+        return (localizedPiece, simResults) => {
+            let quad = type.orientedTopFaceQuad(localizedPiece, 0.5);
+            let ketRect = resultToKetRect(simResults.getDisplayVal(localizedPiece.loc, localizedPiece.socket));
+            return [quad.toRenderData(Config.DisplayColor, ketRect, [0, 0, 0, 0])];
+        };
     },
     type => {
         let observableMaker = type.horizontal ? horizontalObservable : verticalObservable;
@@ -474,39 +478,86 @@ let inspectFlatPieceGroup = makeFlatGroup(
             let ketText = peekObservableKetText(surface, [...observableMaker(layout, piece, codeDistance)], axis);
             displays.getOrInsert(piece.loc, () => new GeneralMap()).set(piece.socket, ketText);
         };
-    });
+    },
+    NO_PROPAGATION);
 
 PlumbingPieces.ZPrimalInspect = inspectFlatPieceGroup.ZPrimal;
 PlumbingPieces.XPrimalInspect = inspectFlatPieceGroup.XPrimal;
 PlumbingPieces.ZDualInspect = inspectFlatPieceGroup.ZDual;
 PlumbingPieces.XDualInspect = inspectFlatPieceGroup.XDual;
 
-PlumbingPieces.XPrimalRightward = new PlumbingPiece(
-    'PRIMAL_RIGHTWARD',
-    Sockets.XPrimal,
-    Config.BRAIDING_PRIMAL_COLOR,
-    H_ARROW_TEXTURE_RECT);
-PlumbingPieces.XPrimalLeftward = new PlumbingPiece(
-    'PRIMAL_LEFTWARD',
-    Sockets.XPrimal,
-    Config.BRAIDING_PRIMAL_COLOR,
-    H_ARROW_TEXTURE_RECT.flip());
-PlumbingPieces.XPrimalInjectS = new PlumbingPiece(
-    'PRIMAL_HORIZONTAL_S',
-    Sockets.XPrimal,
-    Config.BRAIDING_PRIMAL_COLOR,
-    S_TEXTURE_RECT,
-    localizedPiece => injectionSiteRenderData(localizedPiece, new Vector(1, 0, 0), Config.BRAIDING_PRIMAL_COLOR));
-PlumbingPieces.XPrimalInitPlus = new PlumbingPiece(
-    'PRIMAL_HORIZONTAL_INIT',
-    Sockets.XPrimal,
-    Config.BRAIDING_PRIMAL_COLOR,
-    KET_PLUS_RECT);
-PlumbingPieces.ZPrimalInitPlus = new PlumbingPiece(
-    'ZPrimalInitPlus',
-    Sockets.ZPrimal,
-    Config.BRAIDING_PRIMAL_COLOR,
-    KET_PLUS_RECT);
+let initFlatPieceGroup = makeFlatGroup(
+    'Init',
+    DEFAULT_FOOTPRINT,
+    type => {
+        let color = type.braidColor();
+        let state = type.dual ? KET_OFF_RECT : KET_PLUS_RECT;
+        return localizedPiece => {
+            return [localizedPiece.toBox().toRenderData(color, state)];
+        }
+    },
+    NO_EXTRA_SIMULATION_ACTIONS,
+    type => {
+        let enterThreshold = type.dual ? DUAL_FLAT_ENTER_INDEX : PRIMAL_FLAT_ENTER_INDEX;
+        let exitThreshold = type.dual ? DUAL_FLAT_EXIT_INDEX : PRIMAL_FLAT_EXIT_INDEX;
+        let axis = type.dual ? Axis.Z : Axis.X;
+        return (tileStack, piece, codeDistance, id) => {
+            if (id === enterThreshold) {
+                let foot = piece.toSocketFootprintRect(codeDistance);
+                startHoleByFootprint(tileStack, foot, axis);
+            } else if (id === exitThreshold) {
+                let foot = piece.toSocketFootprintRect(codeDistance);
+                let s = codeDistanceToPipeSize(codeDistance);
+                if (type.vertical) {
+                    foot.y += s.h;
+                    foot.h -= s.h * 2;
+                } else {
+                    foot.x += s.w;
+                    foot.w -= s.w * 2;
+                }
+                cutHoleByFootprint(tileStack, foot, axis, type.vertical);
+            }
+        }
+    });
+
+PlumbingPieces.XPrimalInitPlus = initFlatPieceGroup.XPrimal;
+PlumbingPieces.ZPrimalInitPlus = initFlatPieceGroup.ZPrimal;
+PlumbingPieces.ZDualInitZero = initFlatPieceGroup.ZDual;
+PlumbingPieces.XDualInitZero = initFlatPieceGroup.XDual;
+
+let defaultFlatPieceGroup = makeFlatGroup(
+    '', DEFAULT_FOOTPRINT, DEFAULT_RENDER, NO_EXTRA_SIMULATION_ACTIONS, NO_PROPAGATION);
+
+PlumbingPieces.XPrimalDefault = defaultFlatPieceGroup.XPrimal;
+PlumbingPieces.ZPrimalDefault = defaultFlatPieceGroup.ZPrimal;
+PlumbingPieces.ZDualDefault = defaultFlatPieceGroup.ZDual;
+PlumbingPieces.XDualDefault = defaultFlatPieceGroup.XDual;
+
+// PlumbingPieces.XPrimalInjectS = new PlumbingPiece(
+//     'PRIMAL_HORIZONTAL_S',
+//     Sockets.XPrimal,
+//     Config.BRAIDING_PRIMAL_COLOR,
+//     S_TEXTURE_RECT,
+//     localizedPiece => injectionSiteRenderData(localizedPiece, new Vector(1, 0, 0), Config.BRAIDING_PRIMAL_COLOR));
+// PlumbingPieces.ZPrimalInjectS = new PlumbingPiece(
+//     'PRIMAL_VERTICAL_S',
+//     Sockets.ZPrimal,
+//     Config.BRAIDING_PRIMAL_COLOR,
+//     S_TEXTURE_RECT,
+//     localizedPiece => injectionSiteRenderData(localizedPiece, new Vector(0, 0, 1), Config.BRAIDING_PRIMAL_COLOR));
+// PlumbingPieces.XDualInjectS = new PlumbingPiece(
+//     'DUAL_HORIZONTAL_S',
+//     Sockets.XDual,
+//     Config.BRAIDING_DUAL_COLOR,
+//     S_TEXTURE_RECT,
+//     localizedPiece => injectionSiteRenderData(localizedPiece, new Vector(1, 0, 0), Config.BRAIDING_DUAL_COLOR));
+// PlumbingPieces.ZDualInjectS = new PlumbingPiece(
+//     'DUAL_VERTICAL_S',
+//     Sockets.ZDual,
+//     Config.BRAIDING_DUAL_COLOR,
+//     S_TEXTURE_RECT,
+//     localizedPiece => injectionSiteRenderData(localizedPiece, new Vector(0, 0, 1), Config.BRAIDING_DUAL_COLOR));
+
 PlumbingPieces.TPrimalInspect = new PlumbingPiece(
     'TPrimalInspect',
     Sockets.YPrimal,
@@ -532,64 +583,11 @@ PlumbingPieces.TDualInspect = new PlumbingPiece(
         displays.getOrInsert(piece.loc, () => new GeneralMap()).set(piece.socket, ketText);
     });
 
-PlumbingPieces.ZPrimalBackward = new PlumbingPiece(
-    'PRIMAL_BACKWARD',
-    Sockets.ZPrimal,
-    Config.BRAIDING_PRIMAL_COLOR,
-    V_ARROW_TEXTURE_RECT);
-PlumbingPieces.ZPrimalForward = new PlumbingPiece(
-    'PRIMAL_FOREWARD',
-    Sockets.ZPrimal,
-    Config.BRAIDING_PRIMAL_COLOR,
-    V_ARROW_TEXTURE_RECT.flip());
-PlumbingPieces.ZPrimalInjectS = new PlumbingPiece(
-    'PRIMAL_VERTICAL_S',
-    Sockets.ZPrimal,
-    Config.BRAIDING_PRIMAL_COLOR,
-    S_TEXTURE_RECT,
-    localizedPiece => injectionSiteRenderData(localizedPiece, new Vector(0, 0, 1), Config.BRAIDING_PRIMAL_COLOR));
-
 PlumbingPieces.TPrimal = new PlumbingPiece(
     'PRIMAL_UPWARD',
     Sockets.YPrimal,
     Config.BRAIDING_PRIMAL_COLOR);
 
-PlumbingPieces.XDualRightward = new PlumbingPiece(
-    'DUAL_RIGHTWARD',
-    Sockets.XDual,
-    Config.BRAIDING_DUAL_COLOR,
-    H_ARROW_TEXTURE_RECT);
-PlumbingPieces.XDualLeftward = new PlumbingPiece(
-    'DUAL_LEFTWARD',
-    Sockets.XDual,
-    Config.BRAIDING_DUAL_COLOR,
-    H_ARROW_TEXTURE_RECT.flip());
-PlumbingPieces.XDualInjectS = new PlumbingPiece(
-    'DUAL_HORIZONTAL_S',
-    Sockets.XDual,
-    Config.BRAIDING_DUAL_COLOR,
-    S_TEXTURE_RECT,
-    localizedPiece => injectionSiteRenderData(localizedPiece, new Vector(1, 0, 0), Config.BRAIDING_DUAL_COLOR));
-
-PlumbingPieces.ZDualInit = new PlumbingPiece(
-    'DUAL_VERTICAL_INIT',
-    Sockets.ZDual,
-    Config.BRAIDING_DUAL_COLOR,
-    KET_OFF_RECT,
-    undefined,
-    undefined,
-    (tileStack, piece, codeDistance, id) => {
-        if (id === DUAL_FLAT_ENTER_INDEX) {
-            let foot = piece.toSocketFootprintRect(codeDistance);
-            startHoleByFootprint(tileStack, foot, Axis.Z);
-        } else if (id === DUAL_FLAT_EXIT_INDEX) {
-            let foot = piece.toSocketFootprintRect(codeDistance);
-            let s = codeDistanceToPipeSize(codeDistance).h;
-            foot.y += s;
-            foot.h -= s*2;
-            cutHoleByFootprint(tileStack, foot, Axis.Z)
-        }
-    });
 PlumbingPieces.ZDualMeasure = new PlumbingPiece(
     'ZDualMeasure',
     Sockets.ZDual,
@@ -603,24 +601,6 @@ PlumbingPieces.ZDualMeasure = new PlumbingPiece(
             endHoleByFootprint(tileStack, foot, Axis.Z)
         }
     });
-PlumbingPieces.ZDualBackward = new PlumbingPiece(
-    'DUAL_BACKWARD',
-    Sockets.ZDual,
-    Config.BRAIDING_DUAL_COLOR,
-    V_ARROW_TEXTURE_RECT);
-PlumbingPieces.ZDualForeward = new PlumbingPiece(
-    'DUAL_FOREWARD',
-    Sockets.ZDual,
-    Config.BRAIDING_DUAL_COLOR,
-    V_ARROW_TEXTURE_RECT.flip(),
-    undefined,
-    undefined);
-PlumbingPieces.ZDualInjectS = new PlumbingPiece(
-    'DUAL_VERTICAL_S',
-    Sockets.ZDual,
-    Config.BRAIDING_DUAL_COLOR,
-    S_TEXTURE_RECT,
-    localizedPiece => injectionSiteRenderData(localizedPiece, new Vector(0, 0, 1), Config.BRAIDING_DUAL_COLOR));
 PlumbingPieces.TDualToggle = new PlumbingPiece(
     'TDualToggle',
     Sockets.YDual,
@@ -652,12 +632,12 @@ PlumbingPieces.TPrimalToggle = new PlumbingPiece(
         }
     });
 
-PlumbingPieces.DUAL_UPWARD = new PlumbingPiece(
+PlumbingPieces.TDual = new PlumbingPiece(
     'DUAL_UPWARD',
     Sockets.YDual,
     Config.BRAIDING_DUAL_COLOR);
 
-PlumbingPieces.PRIMAL_CENTER = new PlumbingPiece(
+PlumbingPieces.CPrimal = new PlumbingPiece(
     'PRIMAL_CENTER',
     Sockets.CPrimal,
     Config.BRAIDING_PRIMAL_COLOR);
@@ -668,31 +648,22 @@ PlumbingPieces.CDual = new PlumbingPiece(
     Config.BRAIDING_DUAL_COLOR);
 
 PlumbingPieces.All = [
-    PlumbingPieces.XPrimalRightward,
-    PlumbingPieces.ZPrimalInitPlus,
-    PlumbingPieces.ZPrimalBackward,
     PlumbingPieces.TPrimal,
-    PlumbingPieces.XPrimalLeftward,
-    PlumbingPieces.ZPrimalForward,
-    PlumbingPieces.XDualRightward,
-    PlumbingPieces.ZDualBackward,
-    PlumbingPieces.DUAL_UPWARD,
-    PlumbingPieces.XDualLeftward,
-    PlumbingPieces.ZDualForeward,
+    PlumbingPieces.TDual,
+    // PlumbingPieces.ZPrimalInjectS,
+    // PlumbingPieces.ZDualInjectS,
+    // PlumbingPieces.XDualInjectS,
+    // PlumbingPieces.XPrimalInjectS,
     PlumbingPieces.CDual,
-    PlumbingPieces.PRIMAL_CENTER,
-    PlumbingPieces.XPrimalInjectS,
-    PlumbingPieces.ZPrimalInjectS,
-    PlumbingPieces.ZDualInjectS,
-    PlumbingPieces.ZDualInit,
-    PlumbingPieces.XDualInjectS,
-    PlumbingPieces.XPrimalInitPlus,
+    PlumbingPieces.CPrimal,
     PlumbingPieces.ZDualMeasure,
     PlumbingPieces.TDualToggle,
     PlumbingPieces.TPrimalToggle,
     PlumbingPieces.TPrimalInspect,
     PlumbingPieces.TDualInspect,
 
+    ...defaultFlatPieceGroup.All,
+    ...initFlatPieceGroup.All,
     ...toggleFlatPieceGroup.All,
     ...inspectFlatPieceGroup.All,
 ];
@@ -712,13 +683,13 @@ PlumbingPieces.forceGetByName = name => {
 };
 
 PlumbingPieces.Defaults = new GeneralMap(
-    [Sockets.XPrimal, PlumbingPieces.XPrimalRightward],
+    [Sockets.XPrimal, PlumbingPieces.XPrimalDefault],
+    [Sockets.ZPrimal, PlumbingPieces.ZPrimalDefault],
+    [Sockets.XDual, PlumbingPieces.XDualDefault],
+    [Sockets.ZDual, PlumbingPieces.ZDualDefault],
     [Sockets.YPrimal, PlumbingPieces.TPrimal],
-    [Sockets.ZPrimal, PlumbingPieces.ZPrimalBackward],
-    [Sockets.XDual, PlumbingPieces.XDualRightward],
-    [Sockets.YDual, PlumbingPieces.DUAL_UPWARD],
-    [Sockets.ZDual, PlumbingPieces.ZDualForeward],
-    [Sockets.CPrimal, PlumbingPieces.PRIMAL_CENTER],
+    [Sockets.YDual, PlumbingPieces.TDual],
+    [Sockets.CPrimal, PlumbingPieces.CPrimal],
     [Sockets.CDual, PlumbingPieces.CDual],
 );
 
