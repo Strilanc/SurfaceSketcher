@@ -19,7 +19,7 @@ import {GeneralMap} from "src/base/GeneralMap.js";
 import {GeneralSet} from "src/base/GeneralSet.js";
 import {Rect} from "src/geo/Rect.js";
 import {Config} from "src/Config.js";
-import {pyramidRenderData, lineSegmentPathRenderData} from "src/draw/Shapes.js";
+import {polygonRenderData, pyramidRenderData, lineSegmentPathRenderData} from "src/draw/Shapes.js";
 import {
     H_ARROW_TEXTURE_RECT,
     V_ARROW_TEXTURE_RECT,
@@ -332,16 +332,49 @@ function* observableAround(layout, piece, codeDistance) {
 /**
  * @param {!LocalizedPlumbingPiece} localizedPiece
  * @param {!SimulationResults} simResults
+ * @param {!boolean} flip
  * @returns {!Array.<!RenderData>}
  */
-function displayResult(localizedPiece, simResults) {
+function displayResultAcrossGap(localizedPiece, simResults, flip) {
     let box = localizedPiece.toBox();
     let quad = box.faceQuad(new Vector(0, 1, 0)).
-        swapLegs().
-        flipHorizontal().
         offsetBy(new Vector(0, box.diagonal.y / 2, 0));
+    if (flip) {
+        quad = quad.swapLegs().flipHorizontal();
+    } else {
+        quad = quad.flipHorizontal().flipVertical();
+    }
     let ketRect = resultToKetRect(simResults.getDisplayVal(localizedPiece.loc, localizedPiece.socket));
     return [quad.toRenderData(Config.DisplayColor, ketRect, [0, 0, 0, 0])];
+}
+
+/**
+ * @param {!LocalizedPlumbingPiece} localizedPiece
+ * @param {!SimulationResults} simResults
+ * @returns {!Array.<!RenderData>}
+ */
+function displayObservableAroundBar(localizedPiece, simResults) {
+    let box = localizedPiece.toBox();
+    let quad = box.faceQuad(new Vector(0, 1, 0)).
+        offsetBy(new Vector(0, box.diagonal.y / 2, 0));
+    let ketRect = resultToKetRect(simResults.getDisplayVal(localizedPiece.loc, localizedPiece.socket));
+    let displayQuads = [
+        quad.offsetBy(quad.horizontal.scaledBy(-1)).swapLegs().flipVertical(),
+        quad.offsetBy(quad.horizontal).swapLegs().flipHorizontal(),
+        quad.offsetBy(quad.vertical),
+        quad.offsetBy(quad.vertical.scaledBy(-1)).flipVertical().flipHorizontal(),
+    ];
+    let fillQuads = [
+        [1, 1],
+        [1, -1],
+        [-1, 1],
+        [-1, -1]
+    ].map(([dx, dy]) => quad.offsetBy(quad.horizontal.scaledBy(dx)).offsetBy(quad.vertical.scaledBy(dy)));
+    return [
+        localizedPiece.toRenderData(),
+        ...displayQuads.map(q => q.toRenderData(Config.DisplayColor, ketRect, [0, 0, 0, 0])),
+        ...fillQuads.map(q => q.toRenderData(Config.DisplayColor, undefined, [0, 0, 0, 0])),
+    ];
 }
 
 /**
@@ -390,13 +423,14 @@ function ringAroundRenderData(piece) {
     ];
 }
 
+const DEFAULT_FOOTPRINT = undefined;
+const NO_FOOTPRINT = () => new UnitCellSocketFootprint(new GeneralSet());
+
 PlumbingPieces.XPrimalRightward = new PlumbingPiece(
     'PRIMAL_RIGHTWARD',
     Sockets.XPrimal,
     PRIMAL_COLOR,
-    H_ARROW_TEXTURE_RECT,
-    undefined,
-    undefined);
+    H_ARROW_TEXTURE_RECT);
 PlumbingPieces.XPrimalLeftward = new PlumbingPiece(
     'PRIMAL_LEFTWARD',
     Sockets.XPrimal,
@@ -423,11 +457,35 @@ PlumbingPieces.ZPrimalInspect = new PlumbingPiece(
     Sockets.ZPrimal,
     PRIMAL_COLOR,
     DISPLAY_TEXTURE_RECT,
-    displayResult,
-    () => new UnitCellSocketFootprint(new GeneralSet()),
+    (localizedPiece, simResults) => displayResultAcrossGap(localizedPiece, simResults, true),
+    NO_FOOTPRINT,
     undefined,
     (piece, layout, codeDistance) => (surface, displays) => {
         let ketText = peekObservableKetText(surface, [...verticalObservable(layout, piece, codeDistance)], Axis.X);
+        displays.getOrInsert(piece.loc, () => new GeneralMap()).set(piece.socket, ketText);
+    });
+PlumbingPieces.TPrimalInspect = new PlumbingPiece(
+    'TPrimalInspect',
+    Sockets.YPrimal,
+    PRIMAL_COLOR,
+    DISPLAY_TEXTURE_RECT,
+    displayObservableAroundBar,
+    DEFAULT_FOOTPRINT,
+    undefined,
+    (piece, layout, codeDistance) => (surface, displays) => {
+        let ketText = peekObservableKetText(surface, [...observableAround(layout, piece, codeDistance)], Axis.Z);
+        displays.getOrInsert(piece.loc, () => new GeneralMap()).set(piece.socket, ketText);
+    });
+PlumbingPieces.TDualInspect = new PlumbingPiece(
+    'TDualInspect',
+    Sockets.YDual,
+    DUAL_COLOR,
+    DISPLAY_TEXTURE_RECT,
+    displayObservableAroundBar,
+    DEFAULT_FOOTPRINT,
+    undefined,
+    (piece, layout, codeDistance) => (surface, displays) => {
+        let ketText = peekObservableKetText(surface, [...observableAround(layout, piece, codeDistance)], Axis.X);
         displays.getOrInsert(piece.loc, () => new GeneralMap()).set(piece.socket, ketText);
     });
 PlumbingPieces.XPrimalInspect = new PlumbingPiece(
@@ -435,8 +493,8 @@ PlumbingPieces.XPrimalInspect = new PlumbingPiece(
     Sockets.XPrimal,
     PRIMAL_COLOR,
     DISPLAY_TEXTURE_RECT,
-    displayResult,
-    () => new UnitCellSocketFootprint(new GeneralSet()),
+    (localizedPiece, simResults) => displayResultAcrossGap(localizedPiece, simResults, false),
+    NO_FOOTPRINT,
     undefined,
     (piece, layout, codeDistance) => (surface, displays) => {
         let ketText = peekObservableKetText(surface, [...horizontalObservable(layout, piece, codeDistance)], Axis.X);
@@ -537,8 +595,8 @@ PlumbingPieces.ZDualInspect = new PlumbingPiece(
     Sockets.ZDual,
     DUAL_COLOR,
     DISPLAY_TEXTURE_RECT,
-    displayResult,
-    () => new UnitCellSocketFootprint(new GeneralSet()),
+    (localizedPiece, simResults) => displayResultAcrossGap(localizedPiece, simResults, true),
+    NO_FOOTPRINT,
     undefined,
     (piece, layout, codeDistance) => (surface, displays) => {
         let ketText = peekObservableKetText(surface, [...verticalObservable(layout, piece, codeDistance)], Axis.Z);
@@ -555,12 +613,51 @@ PlumbingPieces.ZDualToggle = new PlumbingPiece(
             [box.faceQuad(new Vector(0, 0, -1)).center(), box.faceQuad(new Vector(0, 0, +1)).center()],
             [1, 0, 0, 1])];
     },
-    () => new UnitCellSocketFootprint(new GeneralSet()),
+    NO_FOOTPRINT,
     undefined,
     (piece, layout, codeDistance, id) => surface => {
         if (id === DUAL_FLAT_INTERIOR_INDEX) {
             for (let q of verticalObservable(layout, piece, codeDistance)) {
                 surface.phase_toggle(q);
+            }
+        }
+    });
+PlumbingPieces.ZPrimalToggle = new PlumbingPiece(
+    'ZPrimalToggle',
+    Sockets.ZPrimal,
+    PRIMAL_COLOR,
+    undefined,
+    piece => {
+        let box = piece.toBox();
+        return [lineSegmentPathRenderData(
+            [box.faceQuad(new Vector(0, 0, -1)).center(), box.faceQuad(new Vector(0, 0, +1)).center()],
+            [1, 0, 0, 1])];
+    },
+    NO_FOOTPRINT,
+    undefined,
+    (piece, layout, codeDistance, id) => surface => {
+        if (id === PRIMAL_FLAT_INTERIOR_INDEX) {
+            for (let q of verticalObservable(layout, piece, codeDistance)) {
+                surface.toggle(q);
+            }
+        }
+    });
+PlumbingPieces.XPrimalToggle = new PlumbingPiece(
+    'XPrimalToggle',
+    Sockets.XPrimal,
+    PRIMAL_COLOR,
+    undefined,
+    piece => {
+        let box = piece.toBox();
+        return [lineSegmentPathRenderData(
+            [box.faceQuad(new Vector(-1, 0, 0)).center(), box.faceQuad(new Vector(+1, 0, 0)).center()],
+            [1, 0, 0, 1])];
+    },
+    NO_FOOTPRINT,
+    undefined,
+    (piece, layout, codeDistance, id) => surface => {
+        if (id === PRIMAL_FLAT_INTERIOR_INDEX) {
+            for (let q of horizontalObservable(layout, piece, codeDistance)) {
                 surface.toggle(q);
             }
         }
@@ -638,6 +735,10 @@ PlumbingPieces.All = [
     PlumbingPieces.ZPrimalInspect,
     PlumbingPieces.TDualToggle,
     PlumbingPieces.TPrimalToggle,
+    PlumbingPieces.TPrimalInspect,
+    PlumbingPieces.TDualInspect,
+    PlumbingPieces.ZPrimalToggle,
+    PlumbingPieces.XPrimalToggle,
 ];
 
 PlumbingPieces.BySocket = new GeneralMap();

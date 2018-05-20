@@ -40,6 +40,13 @@ class Quad {
     }
 
     /**
+     * @returns {!Quad}
+     */
+    flipVertical() {
+        return new Quad(this.origin.plus(this.vertical), this.horizontal, this.vertical.scaledBy(-1));
+    }
+
+    /**
      * @param {!Vector} delta
      * @returns {!Quad}
      */
