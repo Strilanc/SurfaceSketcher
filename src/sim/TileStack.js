@@ -122,11 +122,12 @@ class TileStack {
      * @param {!SimulationLayout} layout
      * @param {!int} tileIndex
      * @param {!GeneralMap.<!XYT, !Measurement>} measurementResultsOut
+     * @param {!GeneralMap.<!Point, !GeneralMap.<!UnitCellSocket, !string>>} displaysOut
      */
-    simulateOn(surface, layout, tileIndex, measurementResultsOut) {
+    simulateOn(surface, layout, tileIndex, measurementResultsOut, displaysOut) {
         let measurements = new GeneralMap();
         for (let i = 0; i < this.tiles.length; i++) {
-            this.tiles[i].simulateOn(surface, layout, i, measurements);
+            this.tiles[i].simulateOn(surface, layout, i, measurements, displaysOut);
         }
 
         // Classical propagation.
@@ -195,7 +196,7 @@ class TileStack {
         for (let control of this.feed.controlsAffecting(target)) {
             let controlEffects = this.feed.pauliMapForControl(control);
             controlEffects.set(target, 0);
-            controlEffects.syncTargetToControlsFor(target, control);
+            this.feed.syncTargetToControlsFor(target, control);
         }
     }
 

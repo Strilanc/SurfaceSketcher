@@ -85,10 +85,9 @@ let zConnector = new UnitCellSocket(
         new Point(0, 0, SMALL_DIAMETER),
         new Vector(SMALL_DIAMETER, SMALL_DIAMETER, LONG_DIAMETER)),
     codeDistance => {
-        let {w, h} = codeDistanceToPipeSize(codeDistance);
-        h *= 2;
-        h += codeDistanceToPipeSeparation(codeDistance);
-        return new Rect(0, 0, w, h);
+        let pipe = codeDistanceToPipeSize(codeDistance);
+        let sep = codeDistanceToPipeSeparation(codeDistance);
+        return new Rect(0, 0, pipe.w, sep + pipe.h * 2);
     });
 
 let genericPieces = [centerConnector, xConnector, yConnector, zConnector];
@@ -158,16 +157,20 @@ const importantPrimalTimes = [
 const importantDualTimes = importantPrimalTimes.map(e => e + 0.5);
 const IMPORTANT_UNIT_CELL_TIMES = [...importantPrimalTimes, ...importantDualTimes];
 
-const PRIMAL_ENTER_INDEX = 0;
-const PRIMAL_EXIT_INDEX = 2;
-const DUAL_ENTER_INDEX = 4;
-const DUAL_EXIT_INDEX = 6;
+const PRIMAL_FLAT_ENTER_INDEX = 0;
+const PRIMAL_FLAT_INTERIOR_INDEX = 1;
+const PRIMAL_FLAT_EXIT_INDEX = 2;
+const DUAL_FLAT_ENTER_INDEX = 4;
+const DUAL_FLAT_INTERIOR_INDEX = 5;
+const DUAL_FLAT_EXIT_INDEX = 6;
 
 export {
     Sockets,
     IMPORTANT_UNIT_CELL_TIMES,
-    PRIMAL_ENTER_INDEX,
-    PRIMAL_EXIT_INDEX,
-    DUAL_ENTER_INDEX,
-    DUAL_EXIT_INDEX,
+    PRIMAL_FLAT_ENTER_INDEX,
+    PRIMAL_FLAT_INTERIOR_INDEX,
+    DUAL_FLAT_INTERIOR_INDEX,
+    PRIMAL_FLAT_EXIT_INDEX,
+    DUAL_FLAT_ENTER_INDEX,
+    DUAL_FLAT_EXIT_INDEX,
 }

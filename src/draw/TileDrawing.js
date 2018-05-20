@@ -15,6 +15,7 @@ import {Config} from "src/Config.js";
 import {PauliMap} from "src/sim/util/PauliMap.js";
 import {IMPORTANT_UNIT_CELL_TIMES} from "src/braid/Sockets.js";
 import {Quad} from "src/geo/Quad.js";
+import {KET_OFF_RECT, KET_PLUS_RECT} from "src/draw/shader.js";
 
 const OP_HEIGHT = 0.005;
 /**
@@ -139,11 +140,11 @@ function _tileWireRenderData(tile, tileIndex, codeDistance, simResult) {
  */
 function _tileSimplifiedWireRenderData(layout, tile, tileIndex, codeDistance, simResult) {
     // let pos = xy => qubitPosition(codeDistance, xy, 0, tileIndex);
-    let quadData = (xy, color) => {
+    let quadData = (xy, color, tex=undefined) => {
         let c1 = qubitPosition(codeDistance, xy.offsetBy(-0.001, -0.001), 0, tileIndex);
         let c2 = qubitPosition(codeDistance, xy.offsetBy(0.999, 0.999), 0, tileIndex);
         let d = c2.minus(c1);
-        return new Quad(c1, new Vector(d.x, 0, 0), new Vector(0, 0, d.z)).toRenderData(color, undefined, [0, 0, 0, 1]);
+        return new Quad(c1, new Vector(d.x, 0, 0), new Vector(0, 0, d.z)).toRenderData(color, tex, [0, 0, 0, 1]);
     };
     // let circleData = (xy, color) => {
     //     let center = pos(xy);
@@ -164,6 +165,7 @@ function _tileSimplifiedWireRenderData(layout, tile, tileIndex, codeDistance, si
         for (let y = layout.minY; y <= layout.maxY; y++) {
             let xy = new XY(x, y);
             let color = undefined;
+            let tex = undefined;
             let measurement = simResult.measurements.get(new XYT(xy.x, xy.y, tileIndex));
 
             let measurementAxis = tile.measurements.get(xy);
@@ -198,16 +200,17 @@ function _tileSimplifiedWireRenderData(layout, tile, tileIndex, codeDistance, si
                         Config.SIMPLIFIED_DATA_DUAL_MEASURE_OFF_COLOR;
                 }
             } else if (initAxis !== undefined) {
-                color = initAxis.is_z() ?
-                    Config.BRAIDING_PRIMAL_COLOR:
-                    Config.BRAIDING_DUAL_COLOR;
+                color = Config.SIMPLIFIED_DATA_COLOR;
+                tex = initAxis.is_z() ?
+                    KET_OFF_RECT :
+                    KET_PLUS_RECT;
             } else {
                 // unknown
                 color = [1, 0, 0, 1];
             }
 
             if (color !== undefined) {
-                result.push(quadData(xy, color));
+                result.push(quadData(xy, color, tex));
             }
         }
     }

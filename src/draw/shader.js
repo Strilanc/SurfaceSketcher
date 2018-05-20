@@ -213,6 +213,8 @@ function createArrowTexture(gl) {
         textCell(3, 1, '|-\u27E9');
         textCell(3, 2, '|+i\u27E9');
         textCell(3, 3, '|-i\u27E9');
+
+        textCell(0, 2, 'Slam');
     });
 }
 
@@ -246,11 +248,13 @@ function textureCell(x, y) {
 /** @type {!Rect} */
 const H_ARROW_TEXTURE_RECT = textureCell(0, 0);
 /** @type {!Rect} */
+const H_INIT_TEXTURE_RECT = textureCell(0, 1);
+/** @type {!Rect} */
+const SLAM_TEXTURE_RECT = textureCell(0, 2);
+/** @type {!Rect} */
 const V_ARROW_TEXTURE_RECT = textureCell(1, 0);
 /** @type {!Rect} */
 const S_TEXTURE_RECT = textureCell(1, 1);
-/** @type {!Rect} */
-const H_INIT_TEXTURE_RECT = textureCell(0, 1);
 /** @type {!Rect} */
 const DISPLAY_TEXTURE_RECT = textureCell(2, 0);
 /** @type {!Rect} */
@@ -282,4 +286,5 @@ export {
     KET_MINUS_RECT,
     KET_OFF_RECT,
     KET_ON_RECT,
+    SLAM_TEXTURE_RECT,
 }

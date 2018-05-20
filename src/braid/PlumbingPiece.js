@@ -12,6 +12,12 @@ class PlumbingPiece {
      *      !LocalizedPlumbingPiece, codeDistance: !int, id: !int) : !UnitCellSocketFootprint} customFootprint
      * @param {undefined|!function(
      *      tileStack: !TileStack, !LocalizedPlumbingPiece, codeDistance: !int, id: !int)} customPropagateSignal
+     * @param {undefined|!function(!LocalizedPlumbingPiece,
+     *                             !SimulationLayout,
+     *                             codeDistance: !int,
+     *                             id: !int) : !function(
+     *      !Surface,
+     *      !GeneralMap.<!Point, !GeneralMap.<!UnitCellSocket, !string>>)} makeCustomSimulationWork
      */
     constructor(name,
                 socket,
@@ -19,7 +25,8 @@ class PlumbingPiece {
                 textureRect=undefined,
                 customToRenderData=undefined,
                 customFootprint=undefined,
-                customPropagateSignal=undefined) {
+                customPropagateSignal=undefined,
+                makeCustomSimulationWork=undefined) {
         this.name = name;
         this.socket = socket;
         this.color = color;
@@ -27,6 +34,7 @@ class PlumbingPiece {
         this.customToRenderData = customToRenderData;
         this.customFootprint = customFootprint;
         this.customPropagateSignal = customPropagateSignal;
+        this.makeCustomSimulationWork = makeCustomSimulationWork;
     }
 
     /**
@@ -41,6 +49,7 @@ class PlumbingPiece {
             equate(this.textureRect, other.textureRect) &&
             this.customToRenderData === other.customToRenderData &&
             this.customFootprint === other.customFootprint &&
+            this.makeCustomSimulationWork === other.makeCustomSimulationWork &&
             this.customPropagateSignal === other.customPropagateSignal;
     }
 
@@ -95,7 +104,8 @@ class PlumbingPiece {
             this.textureRect,
             this.customToRenderData,
             this.customFootprint,
-            this.customPropagateSignal);
+            this.customPropagateSignal,
+            this.makeCustomSimulationWork);
     }
 
     /**

@@ -19,6 +19,13 @@ class Quad {
     }
 
     /**
+     * @returns {!Point}
+     */
+    center() {
+        return this.origin.plus(this.horizontal.scaledBy(0.5)).plus(this.vertical.scaledBy(0.5));
+    }
+
+    /**
      * @returns {!Quad}
      */
     swapLegs() {

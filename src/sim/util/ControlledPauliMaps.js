@@ -66,10 +66,10 @@ class ControlledPauliMaps {
 
     /**
      * @param {!XYT} control
-     * @returns {undefined|!PauliMap}
+     * @returns {!PauliMap}
      */
     pauliMapForControl(control) {
-        return this._pauliMaps.get(control);
+        return this._pauliMaps.getOrInsert(control, () => new PauliMap());
     }
 
     /**

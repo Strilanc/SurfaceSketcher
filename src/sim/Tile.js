@@ -83,11 +83,16 @@ class Tile {
      * @param {!GeneralMap.<!XY, !Axis>} initializations
      * @param {!GeneralMap.<!XY, !TileColumn>} operations
      * @param {!GeneralMap.<!XY, !Axis>} measurements
+     * @param {!Array.<!function(!Surface)>} customWork
      */
-    constructor(initializations=new GeneralMap(), operations=new GeneralMap(), measurements=new GeneralMap()) {
+    constructor(initializations=new GeneralMap(),
+                operations=new GeneralMap(),
+                measurements=new GeneralMap(),
+                customWork = []) {
         this.initializations = initializations;
         this.operations = operations;
-        this.measurements = measurements
+        this.measurements = measurements;
+        this.customWork = customWork;
     }
 
     /**
@@ -146,8 +151,12 @@ class Tile {
      * @param {!SimulationLayout} layout
      * @param {!int} tileIndex
      * @param {!GeneralMap.<!XYT, !Measurement>} measurementResultsOut
+     * @param {!GeneralMap.<!Point, !GeneralMap.<!UnitCellSocket, !string>>} displaysOut
      */
-    simulateOn(surface, layout, tileIndex, measurementResultsOut) {
+    simulateOn(surface, layout, tileIndex, measurementResultsOut, displaysOut) {
+        for (let action of this.customWork) {
+            action(surface, displaysOut);
+        }
         this._simulateInit(surface, layout);
         this._simulateOps(surface, layout);
         this._simulateMeasurements(surface, layout, tileIndex, measurementResultsOut);

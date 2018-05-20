@@ -18,4 +18,6 @@ Config.SIMPLIFIED_DATA_PRIMAL_MEASURE_OFF_COLOR = [0, 0.2, 0, 1.0];
 Config.SIMPLIFIED_DATA_DUAL_MEASURE_ON_COLOR = [0, 0, 0.5, 1.0];
 Config.SIMPLIFIED_DATA_DUAL_MEASURE_OFF_COLOR = [0, 0, 0.2, 1.0];
 
+Config.DisplayColor = [1.0, 1.0, 0.7, 1];
+
 export {Config}
