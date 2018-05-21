@@ -42,17 +42,14 @@ function cnotDirection(operationIdentifier) {
  * @returns {*}
  */
 function keyFrameLerp(time, ...keyframes) {
-    if (time < keyframes[0][0]) {
-        return keyframes[0][1]
-    }
     for (let i = 0; i < keyframes.length - 1; i++) {
         let [k0, x0] = keyframes[i];
         let [k1, x1] = keyframes[i + 1];
         if (k0 <= time && time < k1) {
-            return x0 + (time - k0 + 1) / (k1 - k0 + 1) * (x1 - x0);
+            return x0 + (time - k0) / (k1 - k0) * (x1 - x0);
         }
     }
-    return keyframes[keyframes.length - 1][1]
+    throw new DetailedError('Out of range.', {time, keyframes});
 }
 
 /**
@@ -62,23 +59,79 @@ function keyFrameLerp(time, ...keyframes) {
  * @param {!int} tileIndex
  * @returns {!Point}
  */
-function qubitPosition(codeDistance, xy, opIndex, tileIndex) {
+function qubitCenter(codeDistance, xy, opIndex, tileIndex) {
+    return qubitBraidTrackingPosition(codeDistance, xy.offsetBy(0.5, 0.5), opIndex, tileIndex);
+}
+
+/**
+ * @param {!int} codeDistance
+ * @param {!XY} xy
+ * @param {!int} tileIndex
+ * @param {!int} w
+ * @param {!int} h
+ * @returns {!Quad}
+ */
+function qubitQuad(codeDistance, xy, tileIndex, w=1, h=1) {
+    let c1 = qubitBraidTrackingPosition(codeDistance, xy, 0, tileIndex);
+    let c2 = qubitBraidTrackingPosition(codeDistance, xy.offsetBy(w, h), 0, tileIndex);
+    let d = c2.minus(c1);
+    return new Quad(c1, new Vector(d.x, 0, 0), new Vector(0, 0, d.z));
+}
+
+/**
+ * @param {!int} codeDistance
+ * @param {!XY} xy
+ * @param {!int} opIndex
+ * @param {!int} tileIndex
+ * @returns {!Point}
+ */
+function qubitBraidTrackingPosition(codeDistance, xy, opIndex, tileIndex) {
     let unitCellIndex = Math.floor(tileIndex / IMPORTANT_UNIT_CELL_TIMES.length);
     let transitionIndex = tileIndex - unitCellIndex * IMPORTANT_UNIT_CELL_TIMES.length;
     let tileIndexY = unitCellIndex + IMPORTANT_UNIT_CELL_TIMES[transitionIndex];
 
-    let {y: row, x: col} = xy;
-    let {w: uw, h: uh} = codeDistanceUnitCellSize(codeDistance);
-    let {w: pw, h: ph} = codeDistanceToPipeSize(codeDistance);
-    let blockX = Math.floor(col / uw);
-    let blockY = Math.floor(row / uh);
-    let subX = ((col % uw) + uw) % uw;
-    let subY = ((row % uh) + uh) % uh;
-    let sw = Math.floor((uw - 2*pw)/4) * 2;
-    let sh = Math.floor((uh - 2*ph)/4) * 2;
-    let x = keyFrameLerp(subX, [0, 0], [pw, 0.2], [pw + sw, 0.5], [pw*2 + sw, 0.7], [uw, 1]);
-    let y = keyFrameLerp(subY, [0, 0], [ph, 0.2], [ph + sh, 0.5], [ph*2 + sh, 0.7], [uh, 1]);
-    return new Point(x + blockX, opIndex*OP_HEIGHT + tileIndexY, y + blockY)
+    let unitSize = codeDistanceUnitCellSize(codeDistance);
+    let pipeSize = codeDistanceToPipeSize(codeDistance);
+    let x = qubitFlatAxisBraidTrackingPosition(xy.x, unitSize.w, pipeSize.w);
+    let y = qubitFlatAxisBraidTrackingPosition(xy.y, unitSize.h, pipeSize.h);
+
+    return new Point(x, opIndex*OP_HEIGHT + tileIndexY, y)
+}
+
+/**
+ * @param {!number} qubitPos Use an integer to get transitions between qubits, and a half-integer to get qubit centers.
+ * @param {!int} unitCellDiameter The number of qubits that a unit cell spans.
+ * @param {!int} pipeDiameter The number of qubits that a pipe spans.
+ * @returns {!number}
+ */
+function qubitFlatAxisBraidTrackingPosition(qubitPos, unitCellDiameter, pipeDiameter) {
+    if (unitCellDiameter === 2) {
+        return qubitPos / 2 - 0.15;
+    }
+    let cellIndex = Math.floor(qubitPos / unitCellDiameter);
+    let subPos = qubitPos - cellIndex * unitCellDiameter;
+    let keyFrames;
+    let dualJump = Math.floor((unitCellDiameter - 2*pipeDiameter)/4) * 2 + pipeDiameter;
+    if (unitCellDiameter === 4) {
+        keyFrames = [
+            [0, -0.05],
+            [1, 0.35],
+            [2, 0.75],
+            [3, 0.85],
+            [4, 0.95]
+        ]
+    } else {
+        let pad = 0.05;
+        keyFrames = [
+            [0, -pad],
+            [pipeDiameter, 0.2+pad],
+            [dualJump, 0.5-pad],
+            [dualJump + pipeDiameter, 0.7+pad],
+            [unitCellDiameter, 1-pad]
+        ]
+    }
+
+    return keyFrameLerp(subPos, ...keyFrames) + cellIndex;
 }
 
 /**
@@ -89,7 +142,7 @@ function qubitPosition(codeDistance, xy, opIndex, tileIndex) {
  * @returns {!Array.<!RenderData>}
  */
 function _tileWireRenderData(tile, tileIndex, codeDistance, simResult) {
-    let pos = (xy, opIndex) => qubitPosition(codeDistance, xy, opIndex, tileIndex);
+    let pos = (xy, opIndex) => qubitCenter(codeDistance, xy, opIndex, tileIndex);
 
     let result = [];
     let depth = tile.depth();
@@ -139,25 +192,8 @@ function _tileWireRenderData(tile, tileIndex, codeDistance, simResult) {
  * @returns {!Array.<!RenderData>}
  */
 function _tileSimplifiedWireRenderData(layout, tile, tileIndex, codeDistance, simResult) {
-    // let pos = xy => qubitPosition(codeDistance, xy, 0, tileIndex);
-    let quadData = (xy, color, tex=undefined) => {
-        let c1 = qubitPosition(codeDistance, xy.offsetBy(-0.001, -0.001), 0, tileIndex);
-        let c2 = qubitPosition(codeDistance, xy.offsetBy(0.999, 0.999), 0, tileIndex);
-        let d = c2.minus(c1);
-        return new Quad(c1, new Vector(d.x, 0, 0), new Vector(0, 0, d.z)).toRenderData(color, tex, [0, 0, 0, 1]);
-    };
-    // let circleData = (xy, color) => {
-    //     let center = pos(xy);
-    //     return circleRenderData(center, new Vector(0.01, 0, 0), new Vector(0, 0, 0.01), color);
-    // };
-    // let faceData = (xy, color) => {
-    //     let center = pos(xy);
-    //     let left = pos(xy.offsetBy(1, 0));
-    //     let right = pos(xy.offsetBy(-1, 0));
-    //     let top = pos(xy.offsetBy(0, 1));
-    //     let down = pos(xy.offsetBy(0, -1));
-    //     return polygonRenderData(center, [left, top, right, down], color, [0, 0, 0, 1]);
-    // };
+    let quadData = (xy, color, tex=undefined) =>
+        qubitQuad(codeDistance, xy, tileIndex).toRenderData(color, tex, [0, 0, 0, 1]);
 
     let result = [];
 
@@ -227,7 +263,7 @@ function _tileSimplifiedWireRenderData(layout, tile, tileIndex, codeDistance, si
  * @returns {!Array.<!RenderData>}
  */
 function _tileOperationToRenderData(tileColumn, tileIndex, opIndex, colXy, codeDistance) {
-    let pos = xy => qubitPosition(codeDistance, xy, opIndex, tileIndex);
+    let pos = xy => qubitCenter(codeDistance, xy, opIndex, tileIndex);
 
     let delta = cnotDirection(tileColumn.entries[opIndex]);
     if (delta === undefined) {
@@ -269,7 +305,7 @@ function _tileStackFeedToRenderData(tileStack, tileIndex, codeDistance, simplifi
     let result = [];
 
     for (let [xyt, pauliMap] of tileStack.feed.entries()) {
-        let controlPos = qubitPosition(codeDistance, xyt.xy, 10, xyt.t + tileIndex);
+        let controlPos = qubitCenter(codeDistance, xyt.xy, 10, xyt.t + tileIndex);
         let controlData = circleRenderData(
             controlPos,
             new Vector(0.002, 0, 0),
@@ -280,7 +316,7 @@ function _tileStackFeedToRenderData(tileStack, tileIndex, codeDistance, simplifi
         result.push(controlData);
 
         for (let [target, effect] of pauliMap.operations.entries()) {
-            let targetPos = qubitPosition(codeDistance, target, 10, xyt.t + tileIndex);
+            let targetPos = qubitCenter(codeDistance, target, 10, xyt.t + tileIndex);
             let targetColor;
             if (effect === PauliMap.XMask) {
                 targetColor = Config.BRAIDING_PRIMAL_COLOR;
@@ -327,7 +363,7 @@ function _tileStackPropToRenderData(tileStack, tileIndex, codeDistance, simplifi
             continue;
         }
 
-        let controlPos = qubitPosition(codeDistance, xyt.xy, 9, xyt.t + tileIndex);
+        let controlPos = qubitCenter(codeDistance, xyt.xy, 9, xyt.t + tileIndex);
         let controlData = circleRenderData(
             controlPos,
             new Vector(0.002, 0, 0),
@@ -338,7 +374,7 @@ function _tileStackPropToRenderData(tileStack, tileIndex, codeDistance, simplifi
         result.push(controlData);
 
         for (let target of outs) {
-            let targetPos = qubitPosition(codeDistance, target, 7, xyt.t + tileIndex);
+            let targetPos = qubitCenter(codeDistance, target, 7, xyt.t + tileIndex);
             let delta = targetPos.minus(controlPos).perpOnto(new Vector(0, 1, 0)).unit();
             let targetData = flatCrossedCircleRenderDataMulti(
                 targetPos,
@@ -372,9 +408,9 @@ function _tileStackPropToRenderDataSimplified(tileStack, tileIndex, codeDistance
             continue;
         }
 
-        let controlPos = qubitPosition(codeDistance, xyt.xy.offsetBy(0.5, 0.5), 1, xyt.t + tileIndex);
+        let controlPos = qubitCenter(codeDistance, xyt.xy, 1, xyt.t + tileIndex);
         for (let target of outs) {
-            let targetPos = qubitPosition(codeDistance, target.xy.offsetBy(0.5, 0.5), 1, xyt.t + tileIndex);
+            let targetPos = qubitCenter(codeDistance, target.xy, 1, xyt.t + tileIndex);
             result.push(arrowRenderData(targetPos, controlPos, Config.SIMPLIFIED_PROPAGATE_COLOR));
         }
     }
@@ -389,10 +425,10 @@ function _tileStackPropToRenderDataSimplified(tileStack, tileIndex, codeDistance
 function _tileStackFeedToRenderDataSimplified(tileStack, tileIndex, codeDistance) {
     let result = [];
     for (let [xyt, pauliMap] of tileStack.feed.entries()) {
-        let controlPos = qubitPosition(codeDistance, xyt.xy.offsetBy(0.5, 0.5), 1, xyt.t + tileIndex);
+        let controlPos = qubitCenter(codeDistance, xyt.xy, 1, xyt.t + tileIndex);
 
         for (let [target, effect] of pauliMap.operations.entries()) {
-            let targetPos = qubitPosition(codeDistance, target.offsetBy(0.5, 0.5), 1, xyt.t + tileIndex);
+            let targetPos = qubitCenter(codeDistance, target, 1, xyt.t + tileIndex);
             let targetColor;
             if (effect === PauliMap.XMask) {
                 targetColor = Config.SIMPLIFIED_PRIMAL_COLOR;
@@ -489,11 +525,10 @@ function tileStackToRenderData(layout, tileStack, tileIndex, codeDistance, simRe
  * @returns {!RenderData}
  */
 function tileStackToOutlineRenderData(layout, tileIndex, codeDistance) {
-    let c1 = qubitPosition(codeDistance, new XY(layout.minX - 0.001, layout.minY - 0.001), 0, tileIndex);
-    let c2 = qubitPosition(codeDistance, new XY(layout.maxX + 0.999, layout.maxY + 0.999), 0, tileIndex);
-    let d = c2.minus(c1);
-    return new Quad(c1, new Vector(d.x, 0, 0), new Vector(0, 0, d.z)).toRenderData(
-        undefined, undefined, [0, 0, 0, 0.5]);
+    let w = layout.maxX - layout.minX + 1;
+    let h = layout.maxY - layout.minY + 1;
+    let quad = qubitQuad(codeDistance, new XY(layout.minX, layout.minY), tileIndex, w, h);
+    return quad.toRenderData(undefined, undefined, [0, 0, 0, 0.5]);
 }
 
 /**

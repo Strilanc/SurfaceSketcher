@@ -83,7 +83,7 @@ function makeRenderData() {
         result.push(...drawState.cellMap.renderData(simResultsDef));
     }
 
-    if (!drawState.drawOps && drawState.drawBraids) {
+    if (drawState.drawBraids) {
         if (drawState.selectedPiece !== undefined) {
             let unitCell = drawState.cellMap.cell(drawState.selectedPiece.loc);
             let curPiece = unitCell.pieces.get(drawState.selectedPiece.socket);

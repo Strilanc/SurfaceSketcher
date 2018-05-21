@@ -607,7 +607,7 @@ PlumbingPieces.TDualToggle = new PlumbingPiece(
     Config.BRAIDING_DUAL_COLOR,
     undefined,
     ringAroundRenderData,
-    undefined,
+    DEFAULT_FOOTPRINT,
     undefined,
     (piece, layout, codeDistance, id) => surface => {
         if (id === PRIMAL_FLAT_INTERIOR_INDEX) {
@@ -622,7 +622,7 @@ PlumbingPieces.TPrimalToggle = new PlumbingPiece(
     Config.BRAIDING_PRIMAL_COLOR,
     undefined,
     ringAroundRenderData,
-    undefined,
+    DEFAULT_FOOTPRINT,
     undefined,
     (piece, layout, codeDistance, id) => surface => {
         if (id === DUAL_FLAT_INTERIOR_INDEX) {
